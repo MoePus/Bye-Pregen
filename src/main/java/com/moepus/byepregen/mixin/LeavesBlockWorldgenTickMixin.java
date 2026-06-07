@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(value = LeavesBlock.class,remap = false, priority = 500)
+@Mixin(value = LeavesBlock.class, priority = 500)
 public abstract class LeavesBlockWorldgenTickMixin {
     @Inject(method = "updateShape", at = @At("HEAD"), cancellable = true)
     private void c6c$skipStableWorldgenLeafTick(

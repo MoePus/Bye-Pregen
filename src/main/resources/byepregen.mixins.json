@@ -2,7 +2,8 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.moepus.byepregen.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "byepregen.refmap.json",
   "mixins": [
     "AllOfPredicateMixin",
     "AnyOfPredicateMixin",

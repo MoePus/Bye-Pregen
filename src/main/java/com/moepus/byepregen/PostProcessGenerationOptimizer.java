@@ -49,37 +49,25 @@ public final class PostProcessGenerationOptimizer {
 
     public static BlockState updateFromNeighbourShapes(BlockState state, LevelAccessor level, BlockPos pos) {
         Block block = state.getBlock();
+        if (block instanceof SnowLayerBlock
+                || block instanceof BushBlock
+                || block instanceof CarpetBlock
+                || block instanceof CactusBlock) {
+            return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
+        }
 
-        switch (block) {
-            case SnowLayerBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
-            }
-            case BushBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
-            }
-            case CarpetBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
-            }
-            case CactusBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
-            }
-            case SnowyDirtBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
-            }
-            case MagmaBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
-            }
-            case CocoaBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, state.getValue(CocoaBlock.FACING));
-            }
-            case CaveVinesBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
-            }
-            case CaveVinesPlantBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
-            }
-            default -> {
-            }
+        if (block instanceof SnowyDirtBlock
+                || block instanceof MagmaBlock) {
+            return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
+        }
+
+        if (block instanceof CocoaBlock) {
+            return updateFromNeighbourShape(state, level, pos, state.getValue(CocoaBlock.FACING));
+        }
+
+        if (block instanceof CaveVinesBlock
+                || block instanceof CaveVinesPlantBlock) {
+            return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
         }
 
         if (!HAS_CUSTOM_UPDATE_SHAPE.get(block.getClass())) {

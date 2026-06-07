@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import net.minecraft.world.level.levelgen.blockpredicates.CombiningPredicate;
 
-@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AnyOfPredicate", remap = false)
+@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AnyOfPredicate")
 public abstract class AnyOfPredicateMixin extends CombiningPredicate {
     protected AnyOfPredicateMixin(List<BlockPredicate> p_190455_) {
         super(p_190455_);

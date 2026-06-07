@@ -7,8 +7,8 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 public class WorldgenUtil {
     public static boolean isCrossChunk(final BlockPos origin, final BlockPos target) {
@@ -18,7 +18,7 @@ public class WorldgenUtil {
 
     public static boolean isFullChunk(ServerLevelAccessor level, final BlockPos pos) {
         final ChunkAccess chunk = level.getChunk(SectionPos.blockToSectionCoord(pos.getX()), SectionPos.blockToSectionCoord(pos.getZ()));
-        return chunk.getPersistedStatus().isOrAfter(ChunkStatus.FULL);
+        return chunk.getStatus().isOrAfter(ChunkStatus.FULL);
     }
 
     public static boolean isChunkEdge(BlockPos pos, ChunkPos chunkPos) {
@@ -58,6 +58,6 @@ public class WorldgenUtil {
 
     private static boolean isLoadedFullChunk(ServerLevel level, int chunkX, int chunkZ) {
         LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
-        return chunk != null && chunk.getPersistedStatus().isOrAfter(ChunkStatus.FULL);
+        return chunk != null && chunk.getStatus().isOrAfter(ChunkStatus.FULL);
     }
 }

@@ -32,7 +32,7 @@ import it.unimi.dsi.fastutil.shorts.ShortList;
 import it.unimi.dsi.fastutil.shorts.ShortListIterator;
 
 
-@Mixin(value = LevelChunk.class, remap = false)
+@Mixin(value = LevelChunk.class)
 public abstract class LevelChunkPostProcessMixin extends ChunkAccess {
     @Shadow
     @Final

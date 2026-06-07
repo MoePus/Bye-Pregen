@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(value = PalettedContainer.class, remap = false)
+@Mixin(value = PalettedContainer.class)
 public abstract class PalettedContainerMixin {
     @Unique
     private static final ThreadingDetector c6c$dummy = new ThreadingDetector("c6c$PalettedContainer");

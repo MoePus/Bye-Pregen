@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
-@Mixin(value = StateTestingPredicate.class, remap = false)
+@Mixin(value = StateTestingPredicate.class)
 public abstract class StateTestingPredicateMixin {
     @Unique
     private static final ThreadLocal<BlockPos.MutableBlockPos> bpg$mutablePos = ThreadLocal.withInitial(BlockPos.MutableBlockPos::new);
