@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "AllOfPredicateMixin",
+    "AnyOfPredicateMixin",
+    "C2MEServerBlockTickingMixin",
+    "LeavesBlockWorldgenTickMixin",
+    "LevelChunkPostProcessMixin",
+    "PalettedContainerMixin",
+    "StateTestingPredicateMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
