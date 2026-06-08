@@ -1,0 +1,64 @@
+package com.moepus.byepregen;
+
+import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
+import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
+import org.spongepowered.asm.service.MixinService;
+
+import java.util.List;
+import java.util.Set;
+
+public final class MixinPlugin implements IMixinConfigPlugin {
+    private static final String FASTNOISE_COMPAT_MIXIN =
+            "com.moepus.byepregen.mixin.compat.FastNoiseFastChunkSectionMixin";
+    private static final String FASTNOISE_BIOME_COMPAT_MIXIN =
+            "com.moepus.byepregen.mixin.compat.FastNoiseFastBiomeGenMixin";
+
+    @Override
+    public void onLoad(String mixinPackage) {
+    }
+
+    @Override
+    public String getRefMapperConfig() {
+        return null;
+    }
+
+    @Override
+    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (FASTNOISE_COMPAT_MIXIN.equals(mixinClassName)) {
+            return this.hasClass("org.codeberg.zenxarch.fastnoise.noise.FastChunkSection");
+        }
+
+        if (FASTNOISE_BIOME_COMPAT_MIXIN.equals(mixinClassName)) {
+            return this.hasClass("org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen");
+        }
+
+        return true;
+    }
+
+    @Override
+    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
+    }
+
+    @Override
+    public List<String> getMixins() {
+        return null;
+    }
+
+    @Override
+    public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+    }
+
+    @Override
+    public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+    }
+
+    private boolean hasClass(String className) {
+        try {
+            MixinService.getService().getBytecodeProvider().getClassNode(className);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+}

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.compat;
 
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
