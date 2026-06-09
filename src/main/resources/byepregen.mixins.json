@@ -8,6 +8,7 @@
     "AllOfPredicateMixin",
     "AnyOfPredicateMixin",
     "compat.C2MEServerBlockTickingMixin",
+    "ChunkStatusPostProcessingPreNormMixin",
     "ChunkHolderAccessor",
     "ChunkMapAccessor",
     "compat.FastNoiseFastBiomeGenMixin",

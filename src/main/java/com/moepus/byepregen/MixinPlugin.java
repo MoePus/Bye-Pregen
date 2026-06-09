@@ -9,6 +9,10 @@ import java.util.List;
 import java.util.Set;
 
 public final class MixinPlugin implements IMixinConfigPlugin {
+    private static final String C2ME_COMPAT_MIXIN =
+            "com.moepus.byepregen.mixin.compat.C2MEServerBlockTickingMixin";
+    private static final String VANILLA_CHUNK_STATUS_PRENORM_MIXIN =
+            "com.moepus.byepregen.mixin.ChunkStatusPostProcessingPreNormMixin";
     private static final String FASTNOISE_COMPAT_MIXIN =
             "com.moepus.byepregen.mixin.compat.FastNoiseFastChunkSectionMixin";
     private static final String FASTNOISE_BIOME_COMPAT_MIXIN =
@@ -25,6 +29,14 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (C2ME_COMPAT_MIXIN.equals(mixinClassName)) {
+            return this.hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
+        }
+
+        if (VANILLA_CHUNK_STATUS_PRENORM_MIXIN.equals(mixinClassName)) {
+            return !this.hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
+        }
+
         if (FASTNOISE_COMPAT_MIXIN.equals(mixinClassName)) {
             return this.hasClass("org.codeberg.zenxarch.fastnoise.noise.FastChunkSection");
         }
