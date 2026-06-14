@@ -19,7 +19,7 @@ public abstract class FastNoiseFastChunkSectionMixin {
     private LevelChunkSection section;
 
     @Inject(
-            method = "init(Lnet/minecraft/world/level/block/state/BlockState;)V",
+            method = "<init>",
             at = @At(
                     value = "FIELD",
                     target = "Lnet/minecraft/world/level/chunk/PalettedContainer;data:Lnet/minecraft/world/level/chunk/PalettedContainer$Data;",
@@ -28,7 +28,7 @@ public abstract class FastNoiseFastChunkSectionMixin {
             ),
             remap = false
     )
-    private void byepregen$syncFastPalettedContainer(BlockState state, CallbackInfo ci) {
+    private void byepregen$syncFastPalettedContainer(LevelChunkSection section, CallbackInfo ci) {
         PalettedContainer<BlockState> container = this.section.getStates();
         if (container instanceof FastPalettedContainerAccess<?> access) {
             @SuppressWarnings("unchecked")

@@ -97,7 +97,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 
 dependencies {
-    implementation "curse.maven:zfastnoise-1460602:7981225"
+    implementation "curse.maven:zfastnoise-1460602:8235165"
     compileOnly files("libs/c2me-base-mc1.21.1-0.3.0+alpha.0.93-dirty-all.jar")
     compileOnly files("libs/c2me-rewrites-chunk-system-mc1.21.1-0.3.0+alpha.0.93-dirty.jar")
     runtimeOnly "curse.maven:c2me-533097:8123104"
