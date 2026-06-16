@@ -17,6 +17,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.FastNoiseFastChunkSectionMixin";
     private static final String FASTNOISE_BIOME_COMPAT_MIXIN =
             "com.moepus.byepregen.mixin.compat.FastNoiseFastBiomeGenMixin";
+    private static final String PLACED_FEATURE_MIXIN =
+            "com.moepus.byepregen.mixin.PlacedFeatureMixin";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -43,6 +45,10 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
         if (FASTNOISE_BIOME_COMPAT_MIXIN.equals(mixinClassName)) {
             return this.hasClass("org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen");
+        }
+
+        if (PLACED_FEATURE_MIXIN.equals(mixinClassName)) {
+            return ConfigParser.getConfig().enablePlacedFeatureMixin;
         }
 
         return true;
