@@ -1,0 +1,39 @@
+package com.moepus.byepregen;
+
+import java.lang.reflect.Field;
+import sun.misc.Unsafe;
+
+final class UnsafeIntArrayAccess {
+    private static final Unsafe UNSAFE = findUnsafe();
+    private static final long INT_ARRAY_BASE = UNSAFE.arrayBaseOffset(int[].class);
+    private static final int INT_ARRAY_SHIFT = Integer.numberOfTrailingZeros(UNSAFE.arrayIndexScale(int[].class));
+
+    private UnsafeIntArrayAccess() {
+    }
+
+    static int get(int[] array, int index) {
+        return UNSAFE.getInt(array, offset(index));
+    }
+
+    static void set(int[] array, int index, int value) {
+        UNSAFE.putInt(array, offset(index), value);
+    }
+
+    static void clear(int[] array, int fromIndex, int toIndex) {
+        UNSAFE.setMemory(array, offset(fromIndex), (long) (toIndex - fromIndex) << INT_ARRAY_SHIFT, (byte) 0);
+    }
+
+    private static long offset(int index) {
+        return INT_ARRAY_BASE + ((long) index << INT_ARRAY_SHIFT);
+    }
+
+    private static Unsafe findUnsafe() {
+        try {
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            return (Unsafe) field.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+}

@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin;
 
+import com.moepus.byepregen.FastBlockPredicateOptimizer;
+import com.moepus.byepregen.FastStateTestingPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.WorldGenLevel;
@@ -9,13 +11,9 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(value = StateTestingPredicate.class, remap = false)
-public abstract class StateTestingPredicateMixin {
-    @Unique
-    private static final ThreadLocal<BlockPos.MutableBlockPos> bpg$mutablePos = ThreadLocal.withInitial(BlockPos.MutableBlockPos::new);
-
+public abstract class StateTestingPredicateMixin implements FastStateTestingPredicate {
     @Shadow
     @Final
     protected Vec3i offset;
@@ -23,18 +21,22 @@ public abstract class StateTestingPredicateMixin {
     @Shadow
     protected abstract boolean test(BlockState state);
 
+    @Override
+    public final Vec3i bpg$getOffset() {
+        return this.offset;
+    }
+
+    @Override
+    public final boolean bpg$testState(BlockState state) {
+        return this.test(state);
+    }
+
     /**
      * @author moepus
-     * @reason Avoid allocating a fresh immutable BlockPos for every worldgen block predicate offset check.
+     * @reason Avoid allocating BlockPos instances while reading predicate target states during worldgen.
      */
     @Overwrite
     public final boolean test(final WorldGenLevel level, final BlockPos pos) {
-        if (this.offset == Vec3i.ZERO) {
-            return this.test(level.getBlockState(pos));
-        }
-
-        final BlockPos.MutableBlockPos mutablePos = bpg$mutablePos.get();
-        mutablePos.set(pos.getX() + this.offset.getX(), pos.getY() + this.offset.getY(), pos.getZ() + this.offset.getZ());
-        return this.test(level.getBlockState(mutablePos));
+        return this.test(FastBlockPredicateOptimizer.getState(level, pos, this.offset));
     }
 }

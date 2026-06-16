@@ -11,7 +11,6 @@ public final class FastPlacementContext {
     private static final int INITIAL_STACK_SIZE = 8;
     private static final ThreadLocal<Stack> STACK = ThreadLocal.withInitial(Stack::new);
 
-    private final BlockPos.MutableBlockPos placementPos = new BlockPos.MutableBlockPos();
     private final BlockPos.MutableBlockPos modifierPos = new BlockPos.MutableBlockPos();
     private PlacementContext placementContext;
     private RandomSource random;
@@ -60,7 +59,7 @@ public final class FastPlacementContext {
 
     public boolean apply(int index, int x, int y, int z) {
         if (index == this.modifiers.size()) {
-            BlockPos pos = this.placementPos.set(x, y, z);
+            BlockPos pos = new BlockPos(x, y, z);
             if (this.feature.place(this.placementContext.getLevel(), this.placementContext.generator(), this.random, pos)) {
                 this.placed = true;
             }

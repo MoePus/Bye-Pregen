@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.compat;
 
+import com.moepus.byepregen.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.FastPalettedContainerAccess;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -18,6 +19,12 @@ public abstract class FastNoiseFastChunkSectionMixin {
     @Final
     private LevelChunkSection section;
 
+    @Shadow
+    private long[] storage;
+
+    @Shadow
+    private BlockState[] states;
+
     @Inject(
             method = "<init>",
             at = @At(
@@ -34,6 +41,14 @@ public abstract class FastNoiseFastChunkSectionMixin {
             @SuppressWarnings("unchecked")
             FastPalettedContainerAccess<BlockState> typedAccess = (FastPalettedContainerAccess<BlockState>) access;
             typedAccess.byepregen$updateFastData(container.data);
+        }
+    }
+
+    @Inject(method = "recalculateCounts", at = @At("HEAD"), remap = false)
+    private void byepregen$importArenaContainer(CallbackInfo ci) {
+        PalettedContainer<BlockState> container = this.section.getStates();
+        if (container instanceof ArenaBlockStatePalettedContainer arenaContainer) {
+            arenaContainer.importPackedPalette(this.states, this.storage);
         }
     }
 }

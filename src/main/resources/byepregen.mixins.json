@@ -7,6 +7,7 @@
   "mixins": [
     "AllOfPredicateMixin",
     "AnyOfPredicateMixin",
+    "ChunkAccessArenaMixin",
     "compat.C2MEServerBlockTickingMixin",
     "ChunkStatusPostProcessingPreNormMixin",
     "ChunkHolderAccessor",
@@ -16,7 +17,9 @@
     "compat.FastNoiseFastChunkSectionMixin",
     "LeavesBlockWorldgenTickMixin",
     "LevelChunkPostProcessMixin",
+    "LevelChunkArenaMixin",
     "LevelChunkSectionMixin",
+    "LevelChunkSectionAccessor",
     "PalettedContainerMixin",
     "PlacedFeatureMixin",
     "PlacementModifierMixin",
@@ -30,7 +33,8 @@
     "placement.PlacementFilterMixin",
     "placement.RandomOffsetPlacementMixin",
     "placement.RepeatingPlacementMixin",
-    "StateTestingPredicateMixin"
+    "StateTestingPredicateMixin",
+    "WorldGenRegionSectionCacheMixin"
   ],
   "client": [
   ],
