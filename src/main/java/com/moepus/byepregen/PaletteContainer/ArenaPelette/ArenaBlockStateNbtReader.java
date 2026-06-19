@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
 import java.util.Optional;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -32,7 +32,7 @@ public final class ArenaBlockStateNbtReader {
         return container.importVanillaPackedRawIds(paletteRawIds, packedStorage) ? container : null;
     }
 
-    static int[] readPaletteRawIds(ListTag paletteTag) {
+    public static int[] readPaletteRawIds(ListTag paletteTag) {
         if (paletteTag.isEmpty()) {
             return null;
         }

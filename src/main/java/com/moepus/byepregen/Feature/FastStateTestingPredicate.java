@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.Feature;
 
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.block.state.BlockState;

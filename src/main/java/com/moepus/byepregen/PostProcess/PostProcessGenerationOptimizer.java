@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PostProcess;
 
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import net.minecraft.core.BlockPos;

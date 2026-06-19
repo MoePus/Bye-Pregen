@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.Feature;
 
 import net.minecraft.world.level.chunk.LevelChunkSection;
 

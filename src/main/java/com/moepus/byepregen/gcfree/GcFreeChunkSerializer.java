@@ -19,14 +19,6 @@ public final class GcFreeChunkSerializer {
     private GcFreeChunkSerializer() {
     }
 
-    public static SerializedChunk serialize(ServerLevel level, ChunkAccess chunk) {
-        if (!shouldUseGcFree(chunk)) {
-            return SerializedChunk.vanilla(ChunkSerializer.write(level, chunk));
-        }
-
-        return SerializedChunk.raw(serializeRaw(level, chunk));
-    }
-
     public static byte[] serializeRaw(ServerLevel level, ChunkAccess chunk) {
         NbtWriter writer = writeRaw(level, chunk);
         try {

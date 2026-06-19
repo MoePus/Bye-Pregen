@@ -1,8 +1,8 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.FastBiomePalettedContainer;
-import com.moepus.byepregen.FastBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBiomePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
 import javax.annotation.Nullable;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;

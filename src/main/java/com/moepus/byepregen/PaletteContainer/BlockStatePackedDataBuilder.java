@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
 
-final class BlockStatePackedDataBuilder {
+final public class BlockStatePackedDataBuilder {
     private static final int SECTION_SIZE = 4096;
     private static final int MIN_SECTION_STATE_BITS = 4;
     private static final ThreadLocal<Scratch> SCRATCH = ThreadLocal.withInitial(Scratch::new);
@@ -16,7 +16,7 @@ final class BlockStatePackedDataBuilder {
     private BlockStatePackedDataBuilder() {
     }
 
-    static PalettedContainerRO.PackedData<BlockState> pack(RawIdGetter rawIds) {
+    public static PalettedContainerRO.PackedData<BlockState> pack(RawIdGetter rawIds) {
         Scratch scratch = SCRATCH.get();
         for (int i = 0; i < SECTION_SIZE; ++i) {
             scratch.addRawId(rawIds.rawId(i), i);
@@ -24,11 +24,11 @@ final class BlockStatePackedDataBuilder {
         return scratch.finish();
     }
 
-    static PalettedContainerRO.PackedData<BlockState> packSingle(BlockState state) {
+    public static PalettedContainerRO.PackedData<BlockState> packSingle(BlockState state) {
         return new PalettedContainerRO.PackedData<>(List.of(state), Optional.empty());
     }
 
-    static int rawId(BlockState state) {
+    public static int rawId(BlockState state) {
         int id = state == null ? 0 : Block.BLOCK_STATE_REGISTRY.getId(state);
         return id < 0 ? 0 : id;
     }
@@ -57,7 +57,7 @@ final class BlockStatePackedDataBuilder {
     }
 
     @FunctionalInterface
-    interface RawIdGetter {
+    public interface RawIdGetter {
         int rawId(int sectionIndex);
     }
 

@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.FastPalette;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStateNbtReader;
 import net.minecraft.nbt.CompoundTag;

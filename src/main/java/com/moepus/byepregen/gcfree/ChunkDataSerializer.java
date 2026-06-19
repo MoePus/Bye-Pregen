@@ -2,8 +2,8 @@ package com.moepus.byepregen.gcfree;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
-import com.moepus.byepregen.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.ArenaBlockStateSectionWriter;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStateSectionWriter;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import java.util.concurrent.ConcurrentHashMap;

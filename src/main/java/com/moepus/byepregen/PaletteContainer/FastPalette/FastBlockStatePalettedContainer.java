@@ -1,5 +1,6 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.FastPalette;
 
+import com.moepus.byepregen.PaletteContainer.BlockStatePackedDataBuilder;
 import net.minecraft.core.IdMap;
 import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.Block;

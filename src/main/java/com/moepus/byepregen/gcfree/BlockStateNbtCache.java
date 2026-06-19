@@ -1,6 +1,5 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.gcfree;
 
-import com.moepus.byepregen.gcfree.NbtWriter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -9,7 +8,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 
-final class BlockStateNbtCache {
+final public class BlockStateNbtCache {
     private static final int STATE_ENTRY_INITIAL_CAPACITY = 128;
     private static final byte[] NAME = NbtWriter.asciiName("Name");
     private static final byte[] PROPERTIES = NbtWriter.asciiName("Properties");
@@ -22,7 +21,7 @@ final class BlockStateNbtCache {
 
     private BlockStateNbtCache() {}
 
-    static void writeStateEntry(NbtWriter writer, BlockState state) {
+    public static void writeStateEntry(NbtWriter writer, BlockState state) {
         int rawId = Block.BLOCK_STATE_REGISTRY.getId(state);
         if (rawId >= 0) {
             writeRawIdEntry(writer, rawId);
@@ -31,7 +30,7 @@ final class BlockStateNbtCache {
         writer.write(STATE_ENTRIES.computeIfAbsent(state, BlockStateNbtCache::createStateEntry));
     }
 
-    static void writeRawIdEntry(NbtWriter writer, int rawId) {
+    public static void writeRawIdEntry(NbtWriter writer, int rawId) {
         rawId = Math.max(rawId, 0);
         if (rawId >= RAW_ID_ENTRIES.length()) {
             writer.write(STATE_ENTRIES.computeIfAbsent(Block.stateById(rawId), BlockStateNbtCache::createStateEntry));

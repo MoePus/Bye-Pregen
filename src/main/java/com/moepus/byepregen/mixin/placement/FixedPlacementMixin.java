@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.placement;
 
-import com.moepus.byepregen.FastPlacementContext;
-import com.moepus.byepregen.FastPlacementModifier;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastPlacementContext;
+import com.moepus.byepregen.Feature.FastPlacementModifier;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;

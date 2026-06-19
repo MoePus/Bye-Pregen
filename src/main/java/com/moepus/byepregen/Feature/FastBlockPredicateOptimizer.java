@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.Feature;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;

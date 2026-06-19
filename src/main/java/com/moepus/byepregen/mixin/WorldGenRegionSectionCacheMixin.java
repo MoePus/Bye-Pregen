@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.WorldGenRegionSectionCache;
+import com.moepus.byepregen.Feature.WorldGenRegionSectionCache;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.ChunkPos;

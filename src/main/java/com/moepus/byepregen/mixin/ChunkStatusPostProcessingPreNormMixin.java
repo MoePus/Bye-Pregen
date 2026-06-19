@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.PostProcessGenerationOptimizer;
+import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.util.StaticCache2D;
 import net.minecraft.world.level.chunk.ChunkAccess;

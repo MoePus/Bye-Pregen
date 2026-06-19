@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.FastBlockPredicateOptimizer;
-import com.moepus.byepregen.FastStateTestingPredicate;
+import com.moepus.byepregen.Feature.FastBlockPredicateOptimizer;
+import com.moepus.byepregen.Feature.FastStateTestingPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.WorldGenLevel;

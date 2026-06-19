@@ -1,5 +1,6 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
+import com.moepus.byepregen.gcfree.BlockStateNbtCache;
 import com.moepus.byepregen.gcfree.NbtWriter;
 import java.util.Arrays;
 import net.minecraft.nbt.Tag;

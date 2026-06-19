@@ -1,5 +1,6 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
 import com.moepus.byepregen.mixin.LevelChunkSectionAccessor;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.Arrays;

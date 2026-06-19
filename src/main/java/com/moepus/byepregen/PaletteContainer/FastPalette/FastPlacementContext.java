@@ -1,6 +1,8 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.FastPalette;
 
 import java.util.List;
+
+import com.moepus.byepregen.Feature.FastPlacementModifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;

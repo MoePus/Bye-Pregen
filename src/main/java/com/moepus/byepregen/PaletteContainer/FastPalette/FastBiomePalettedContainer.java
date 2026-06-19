@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.PaletteContainer.FastPalette;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.IdMap;

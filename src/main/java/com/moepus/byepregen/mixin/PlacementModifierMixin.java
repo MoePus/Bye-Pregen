@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.FastPlacementModifier;
+import com.moepus.byepregen.Feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import org.spongepowered.asm.mixin.Mixin;
 

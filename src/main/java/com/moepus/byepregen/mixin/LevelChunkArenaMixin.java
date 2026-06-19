@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.ArenaSectionMaterializer;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaSectionMaterializer;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.LevelChunk;

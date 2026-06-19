@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.compat;
 
-import com.moepus.byepregen.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.FastPalettedContainerAccess;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastPalettedContainerAccess;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.PalettedContainer;
