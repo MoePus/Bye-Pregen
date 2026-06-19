@@ -1,5 +1,7 @@
 package com.moepus.byepregen;
 
+import net.neoforged.fml.loading.LoadingModList;
+import net.neoforged.fml.loading.moddiscovery.ModFileInfo;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -11,6 +13,8 @@ import java.util.Set;
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String C2ME_COMPAT_MIXIN =
             "com.moepus.byepregen.mixin.compat.C2MEServerBlockTickingMixin";
+    private static final String C2ME_HOOK_COMPATIBILITY_MIXIN =
+            "com.moepus.byepregen.mixin.compat.C2MEHookCompatibilityMixin";
     private static final String VANILLA_CHUNK_STATUS_PRENORM_MIXIN =
             "com.moepus.byepregen.mixin.ChunkStatusPostProcessingPreNormMixin";
     private static final String FASTNOISE_COMPAT_MIXIN =
@@ -19,6 +23,28 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.FastNoiseFastBiomeGenMixin";
     private static final String PLACED_FEATURE_MIXIN =
             "com.moepus.byepregen.mixin.PlacedFeatureMixin";
+    private static final String ARCHITECTURY_EVENT_ACCESSOR =
+            "com.moepus.byepregen.mixin.accessor.ArchitecturyEventImplAccessor";
+    private static final String C2ME_SERIALIZER_ACCESS =
+            "com.ishland.c2me.base.common.registry.SerializerAccess";
+    private static final String C2ME_HOOK_COMPATIBILITY =
+            "com.ishland.c2me.base.common.util.HookCompatibility";
+    private static final String GC_FREE_MIXIN_PREFIX =
+            "com.moepus.byepregen.mixin.gcfree.";
+    private static final String CHUNK_MAP_GC_FREE_SAVE_MIXIN =
+            "com.moepus.byepregen.mixin.gcfree.ChunkMapGcFreeSaveMixin";
+    private static final String CHUNK_STORAGE_RAW_MIXIN =
+            "com.moepus.byepregen.mixin.gcfree.ChunkStorageRawMixin";
+    private static final String IO_WORKER_RAW_MIXIN =
+            "com.moepus.byepregen.mixin.gcfree.IOWorkerRawMixin";
+    private static final String CHUNK_STORAGE_ACCESSOR =
+            "com.moepus.byepregen.mixin.accessor.ChunkStorageAccessor";
+    private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
+            "com.moepus.byepregen.mixin.accessor.IOWorkerPendingStoreAccessor";
+    private static final String REGION_FILE_STORAGE_ACCESSOR =
+            "com.moepus.byepregen.mixin.accessor.RegionFileStorageAccessor";
+    private static final String PALETTED_CONTAINER_NO_LITHIUM =
+            "com.moepus.byepregen.mixin.PalettedContainerNoLithiumMixin";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -31,27 +57,53 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (C2ME_COMPAT_MIXIN.equals(mixinClassName)) {
-            return this.hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
+        boolean gcFreeSaveEnabled = ConfigParser.getConfig().enableGcFreeWorldgenSave;
+        return switch (mixinClassName) {
+            case C2ME_COMPAT_MIXIN ->
+                    hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
+            case C2ME_HOOK_COMPATIBILITY_MIXIN ->
+                    gcFreeSaveEnabled && hasClass(C2ME_HOOK_COMPATIBILITY);
+            case VANILLA_CHUNK_STATUS_PRENORM_MIXIN ->
+                    !hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
+            case FASTNOISE_COMPAT_MIXIN ->
+                    hasClass("org.codeberg.zenxarch.fastnoise.noise.FastChunkSection");
+            case FASTNOISE_BIOME_COMPAT_MIXIN ->
+                    hasClass("org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen");
+            case PLACED_FEATURE_MIXIN ->
+                    ConfigParser.getConfig().enablePlacedFeatureMixin;
+            case ARCHITECTURY_EVENT_ACCESSOR ->
+                    gcFreeSaveEnabled && hasClass("dev.architectury.event.EventFactory$EventImpl");
+            case CHUNK_MAP_GC_FREE_SAVE_MIXIN,
+                 CHUNK_STORAGE_RAW_MIXIN,
+                 IO_WORKER_RAW_MIXIN,
+                 CHUNK_STORAGE_ACCESSOR,
+                 IO_WORKER_PENDING_STORE_ACCESSOR,
+                 REGION_FILE_STORAGE_ACCESSOR ->
+                    gcFreeSaveEnabled && !hasClass(C2ME_SERIALIZER_ACCESS);
+            case PALETTED_CONTAINER_NO_LITHIUM ->
+                    !doModExist("lithium");
+            default ->
+                    !mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX) || gcFreeSaveEnabled;
+        };
+    }
+
+    private ModFileInfo getModFile(String modId) {
+        LoadingModList modList = LoadingModList.get();
+        ModFileInfo modFile = modList.getModFileById(modId);
+        if (modFile != null) {
+            return modFile;
         }
 
-        if (VANILLA_CHUNK_STATUS_PRENORM_MIXIN.equals(mixinClassName)) {
-            return !this.hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
-        }
+        return modList.getPlugins().stream()
+                .filter(ModFileInfo.class::isInstance)
+                .map(ModFileInfo.class::cast)
+                .filter(file -> file.getMods().stream().anyMatch(mod -> mod.getModId().equals(modId)))
+                .findFirst()
+                .orElse(null);
+    }
 
-        if (FASTNOISE_COMPAT_MIXIN.equals(mixinClassName)) {
-            return this.hasClass("org.codeberg.zenxarch.fastnoise.noise.FastChunkSection");
-        }
-
-        if (FASTNOISE_BIOME_COMPAT_MIXIN.equals(mixinClassName)) {
-            return this.hasClass("org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen");
-        }
-
-        if (PLACED_FEATURE_MIXIN.equals(mixinClassName)) {
-            return ConfigParser.getConfig().enablePlacedFeatureMixin;
-        }
-
-        return true;
+    private boolean doModExist(String modId) {
+        return getModFile(modId) != null;
     }
 
     @Override
@@ -71,7 +123,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
     }
 
-    private boolean hasClass(String className) {
+    public static boolean hasClass(String className) {
         try {
             MixinService.getService().getBytecodeProvider().getClassNode(className);
             return true;

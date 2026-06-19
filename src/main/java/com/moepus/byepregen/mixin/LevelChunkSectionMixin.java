@@ -18,16 +18,6 @@ public abstract class LevelChunkSectionMixin {
             method = "<init>(Lnet/minecraft/world/level/chunk/PalettedContainer;Lnet/minecraft/world/level/chunk/PalettedContainerRO;)V",
             at = @At("HEAD"),
             argsOnly = true,
-            index = 1
-    )
-    private static PalettedContainer<BlockState> byepregen$wrapStateContainer(PalettedContainer<BlockState> states) {
-        return FastBlockStatePalettedContainer.wrap(states);
-    }
-
-    @ModifyVariable(
-            method = "<init>(Lnet/minecraft/world/level/chunk/PalettedContainer;Lnet/minecraft/world/level/chunk/PalettedContainerRO;)V",
-            at = @At("HEAD"),
-            argsOnly = true,
             index = 2
     )
     private static PalettedContainerRO<Holder<Biome>> byepregen$wrapBiomeContainer(PalettedContainerRO<Holder<Biome>> biomes) {

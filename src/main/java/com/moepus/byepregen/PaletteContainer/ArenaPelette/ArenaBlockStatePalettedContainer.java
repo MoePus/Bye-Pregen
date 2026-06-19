@@ -26,14 +26,14 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
     static final int SECTION_SIZE = 4096;
 
     private static final int PAGE_HEIGHT = 4;
-    private static final int PAGE_COUNT = 4;
-    private static final int PAGE_SIZE = 16 * 16 * PAGE_HEIGHT;
+    static final int PAGE_COUNT = 4;
+    static final int PAGE_SIZE = 16 * 16 * PAGE_HEIGHT;
 
     private static final int BITS_PER_ENTRY = 4;
     private static final int ENTRIES_PER_WORD = Integer.SIZE / BITS_PER_ENTRY;
-    private static final int INDEX_WORDS_PER_PAGE = PAGE_SIZE / ENTRIES_PER_WORD;
+    static final int INDEX_WORDS_PER_PAGE = PAGE_SIZE / ENTRIES_PER_WORD;
 
-    private static final int PAGE_PALETTE_SIZE = 16;
+    static final int PAGE_PALETTE_SIZE = 16;
     private static final int PAGE_DEFAULT_OFFSET = INDEX_WORDS_PER_PAGE;
     private static final int EXTRA_PALETTE_OFFSET = PAGE_DEFAULT_OFFSET + 1;
     private static final int EXTRA_PALETTE_SIZE = PAGE_PALETTE_SIZE - 1;
@@ -87,6 +87,38 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         }
 
         this.tryPromoteFullUniformSection();
+    }
+
+    boolean importVanillaPackedRawIds(int[] paletteRawIds, long[] packedStorage) {
+        if (paletteRawIds == null || paletteRawIds.length == 0) {
+            return false;
+        }
+
+        this.releaseRawIds();
+        if (paletteRawIds.length == 1) {
+            this.setUniformSection(sanitizeRawId(paletteRawIds[0]));
+            return true;
+        }
+
+        int bits = vanillaSerializedBits(paletteRawIds.length);
+        if (packedStorage == null || packedStorage.length != packedLength(bits)) {
+            return false;
+        }
+
+        int[] pageRawIds = new int[PAGE_PALETTE_SIZE + 1];
+        VanillaPackedRawIdSource source = new VanillaPackedRawIdSource(paletteRawIds, packedStorage, bits);
+        for (int page = 0; page < PAGE_COUNT; ++page) {
+            if (!this.importPage(page, source, pageRawIds)) {
+                this.importPagesToDense(page, source);
+                return source.isValid();
+            }
+            if (!source.isValid()) {
+                return false;
+            }
+        }
+
+        this.tryPromoteFullUniformSection();
+        return true;
     }
 
     @Override
@@ -253,6 +285,26 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
 
     int uniformRawId() {
         return this.uniformRawId;
+    }
+
+    boolean hasPagePalettes() {
+        return this.arena != null && this.denseIds == null;
+    }
+
+    int arenaPageBase(int page) {
+        return pageBase(page);
+    }
+
+    int arenaLivePaletteMask(int base) {
+        return pageLivePaletteMask(this.arena, base);
+    }
+
+    int arenaPaletteRawId(int base, int paletteIndex) {
+        return this.rawIdForPaletteIndex(base, paletteIndex);
+    }
+
+    int arenaPaletteWord(int base, int wordIndex) {
+        return this.arena[base + wordIndex];
     }
 
     void forEachRawId(RawIdConsumer consumer) {
@@ -655,6 +707,10 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         return id < 0 ? AIR_RAW_ID : id;
     }
 
+    private static int sanitizeRawId(int rawId) {
+        return rawId < 0 ? AIR_RAW_ID : rawId;
+    }
+
     private static int rawIdForLocal(Palette<BlockState> palette, int[] localToRaw, int localId) {
         int marker = localId < localToRaw.length ? localToRaw[localId] : 0;
         if (marker != 0) {
@@ -673,6 +729,16 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         int x = sectionIndex & 15;
         int paletteIndex = (int) ((packedStorage[yz] >>> (x << 2)) & 15L);
         return rawIds[paletteIndex];
+    }
+
+    private static int vanillaSerializedBits(int paletteSize) {
+        int bits = 32 - Integer.numberOfLeadingZeros(paletteSize - 1);
+        return Math.max(BITS_PER_ENTRY, bits);
+    }
+
+    private static int packedLength(int bits) {
+        int valuesPerLong = Long.SIZE / bits;
+        return (SECTION_SIZE + valuesPerLong - 1) / valuesPerLong;
     }
 
     private static int pageIndexFromSectionIndex(int sectionIndex) {
@@ -705,5 +771,38 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
     @FunctionalInterface
     private interface RawIdSource {
         int rawId(int sectionIndex);
+    }
+
+    private static final class VanillaPackedRawIdSource implements RawIdSource {
+        private final int[] paletteRawIds;
+        private final long[] packedStorage;
+        private final long mask;
+        private final int bits;
+        private final int valuesPerLong;
+        private boolean valid = true;
+
+        private VanillaPackedRawIdSource(int[] paletteRawIds, long[] packedStorage, int bits) {
+            this.paletteRawIds = paletteRawIds;
+            this.packedStorage = packedStorage;
+            this.bits = bits;
+            this.valuesPerLong = Long.SIZE / bits;
+            this.mask = (1L << bits) - 1L;
+        }
+
+        @Override
+        public int rawId(int sectionIndex) {
+            int cell = sectionIndex / this.valuesPerLong;
+            int shift = (sectionIndex - cell * this.valuesPerLong) * this.bits;
+            int localId = (int) ((this.packedStorage[cell] >>> shift) & this.mask);
+            if (localId >= this.paletteRawIds.length) {
+                this.valid = false;
+                return AIR_RAW_ID;
+            }
+            return sanitizeRawId(this.paletteRawIds[localId]);
+        }
+
+        private boolean isValid() {
+            return this.valid;
+        }
     }
 }
