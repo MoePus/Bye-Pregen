@@ -4,6 +4,7 @@ package com.moepus.byepregen.gcfree;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStateSectionWriter;
+import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -170,14 +171,28 @@ public final class ChunkDataSerializer {
     private static void writeBlockEntities(NbtWriter writer, ServerLevel level, ChunkAccess chunk) {
         long listStart = writer.startList(BLOCK_ENTITIES, Tag.TAG_COMPOUND);
         int count = 0;
-        for (BlockPos pos : chunk.getBlockEntitiesPos()) {
-            Tag tag = chunk.getBlockEntityNbtForSaving(pos, level.registryAccess());
+        for (BlockPos pos : blockEntityPositions(chunk)) {
+            Tag tag = blockEntityNbtForSaving(level, chunk, pos);
             if (tag != null) {
                 writer.putTagEntry(tag);
                 ++count;
             }
         }
         writer.finishList(listStart, count);
+    }
+
+    private static Iterable<BlockPos> blockEntityPositions(ChunkAccess chunk) {
+        if (GcFreeChunkSerializer.hasC2MEAsyncSerializationManager()) {
+            return C2MEAsyncSerializationCompat.blockEntityPositions(chunk);
+        }
+        return chunk.getBlockEntitiesPos();
+    }
+
+    private static Tag blockEntityNbtForSaving(ServerLevel level, ChunkAccess chunk, BlockPos pos) {
+        if (GcFreeChunkSerializer.hasC2MEAsyncSerializationManager()) {
+            return C2MEAsyncSerializationCompat.blockEntityNbtForSaving(level, chunk, pos);
+        }
+        return chunk.getBlockEntityNbtForSaving(pos, level.registryAccess());
     }
 
     private static void writeChunkTypeExtras(NbtWriter writer, ServerLevel level, ChunkAccess chunk, ChunkPos pos) {

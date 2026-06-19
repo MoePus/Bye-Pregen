@@ -7,14 +7,19 @@ package com.moepus.byepregen.gcfree;
  * Copyright (c) 2021-2024 ishland
  */
 
+import com.moepus.byepregen.MixinPlugin;
+import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkType;
-import net.minecraft.world.level.chunk.storage.ChunkSerializer;
 
 public final class GcFreeChunkSerializer {
     private static final int MAX_RAW_BUFFER_SLACK_BYTES = 8192;
+    private static final String C2ME_ASYNC_SERIALIZATION_MANAGER =
+            "com.ishland.c2me.rewrites.chunksystem.common.async_chunkio.AsyncSerializationManager";
+    private static final boolean HAS_C2ME_ASYNC_SERIALIZATION_MANAGER =
+            MixinPlugin.hasClass(C2ME_ASYNC_SERIALIZATION_MANAGER);
 
     private GcFreeChunkSerializer() {
     }
@@ -54,16 +59,38 @@ public final class GcFreeChunkSerializer {
     }
 
     public static boolean shouldUseGcFree(ChunkAccess chunk) {
-        if (!isWorldgenSave(chunk)) {
+        if (!ChunkSaveHookGate.CAN_USE_RAW_SAVE) {
             return false;
         }
-        return ChunkSaveHookGate.CAN_USE_RAW_SAVE;
+        return isEligible(chunk);
     }
 
-    private static boolean isWorldgenSave(ChunkAccess chunk) {
-        return chunk.getPersistedStatus().getChunkType() == ChunkType.LEVELCHUNK
+    private static boolean isEligible(ChunkAccess chunk) {
+        ChunkType chunkType = chunk.getPersistedStatus().getChunkType();
+        if (chunkType == ChunkType.PROTOCHUNK) {
+            return true;
+        }
+        if (isFreshLevelChunk(chunk, chunkType)) {
+            return true;
+        }
+        return !hasBlockEntities(chunk);
+    }
+
+    private static boolean isFreshLevelChunk(ChunkAccess chunk, ChunkType chunkType) {
+        return chunkType == ChunkType.LEVELCHUNK
                 && chunk instanceof WorldgenChunkState state
                 && state.byepregen$isFreshWorldgenChunk();
+    }
+
+    static boolean hasC2MEAsyncSerializationManager() {
+        return HAS_C2ME_ASYNC_SERIALIZATION_MANAGER;
+    }
+
+    private static boolean hasBlockEntities(ChunkAccess chunk) {
+        if (hasC2MEAsyncSerializationManager()) {
+            return C2MEAsyncSerializationCompat.hasBlockEntities(chunk);
+        }
+        return !chunk.getBlockEntitiesPos().isEmpty();
     }
 
     public record SerializedChunk(CompoundTag tag, byte[] rawBytes) {
