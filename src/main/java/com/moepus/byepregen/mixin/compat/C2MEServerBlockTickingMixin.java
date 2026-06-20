@@ -1,11 +1,11 @@
 package com.moepus.byepregen.mixin.compat;
 
 import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
+import com.moepus.byepregen.compat.C2MEChunkAccess;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -20,7 +20,7 @@ public abstract class C2MEServerBlockTickingMixin {
             Object cancellable,
             CallbackInfoReturnable<?> cir
     ) {
-        ChunkAccess chunk = byepregen$getChunk(context);
+        ChunkAccess chunk = C2MEChunkAccess.getChunk(context);
         if (chunk != null) {
             PostProcessGenerationOptimizer.preNormalizeAndFilterChunkLocalPostProcessingLists(chunk, chunk.getPostProcessing());
         }
@@ -37,18 +37,5 @@ public abstract class C2MEServerBlockTickingMixin {
     )
     private boolean c6c$disableC2MEFluidPostProcessingFilter() {
         return false;
-    }
-
-    @Unique
-    private ChunkAccess byepregen$getChunk(Object context) {
-        try {
-            Object holder = context.getClass().getMethod("holder").invoke(context);
-            Object item = holder.getClass().getMethod("getItem").invoke(holder);
-            Object generationChunk = item.getClass().getMethod("get").invoke(item);
-            Object chunk = generationChunk.getClass().getMethod("chunk").invoke(generationChunk);
-            return chunk instanceof ChunkAccess chunkAccess ? chunkAccess : null;
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-            return null;
-        }
     }
 }
