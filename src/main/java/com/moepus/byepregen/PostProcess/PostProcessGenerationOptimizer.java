@@ -99,6 +99,8 @@ public final class PostProcessGenerationOptimizer {
                 current.getDeclaredMethod("updateShape", BlockState.class, Direction.class, BlockState.class, LevelAccessor.class, BlockPos.class, BlockPos.class);
                 return true;
             } catch (NoSuchMethodException ignored) {
+            } catch (RuntimeException | LinkageError ignored) {
+                return true;
             }
         }
 
