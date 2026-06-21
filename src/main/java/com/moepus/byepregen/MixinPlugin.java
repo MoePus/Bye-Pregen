@@ -21,8 +21,16 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.FastNoiseFastChunkSectionMixin";
     private static final String FASTNOISE_BIOME_COMPAT_MIXIN =
             "com.moepus.byepregen.mixin.compat.FastNoiseFastBiomeGenMixin";
+    private static final String VOXY_WORLD_CONVERSION_FACTORY_MIXIN =
+            "com.moepus.byepregen.mixin.compat.VoxyWorldConversionFactoryMixin";
     private static final String PLACED_FEATURE_MIXIN =
             "com.moepus.byepregen.mixin.PlacedFeatureMixin";
+    private static final String CHUNK_ACCESS_ARENA_MIXIN =
+            "com.moepus.byepregen.mixin.ChunkAccessArenaMixin";
+    private static final String LEVEL_CHUNK_ARENA_MIXIN =
+            "com.moepus.byepregen.mixin.LevelChunkArenaMixin";
+    private static final String CHUNK_SERIALIZER_ARENA_READ_MIXIN =
+            "com.moepus.byepregen.mixin.ChunkSerializerArenaReadMixin";
     private static final String ARCHITECTURY_EVENT_ACCESSOR =
             "com.moepus.byepregen.mixin.accessor.ArchitecturyEventImplAccessor";
     private static final String C2ME_SERIALIZER_ACCESS =
@@ -57,7 +65,11 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        boolean gcFreeSaveEnabled = ConfigParser.getConfig().enableGcFreeWorldgenSave;
+        Config config = ConfigParser.getConfig();
+        boolean gcFreeSaveEnabled = config.enableGcFreeWorldgenSave;
+        boolean arenaEnabled = config.enableArenaPalette;
+        boolean serverRuntimeArena = arenaEnabled && config.enableServerRuntimeArenaPalette;
+        boolean clientArena = arenaEnabled && config.enableClientArenaPalette;
         return switch (mixinClassName) {
             case C2ME_COMPAT_MIXIN ->
                     hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
@@ -66,11 +78,17 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             case VANILLA_CHUNK_STATUS_PRENORM_MIXIN ->
                     !hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
             case FASTNOISE_COMPAT_MIXIN ->
-                    hasClass("org.codeberg.zenxarch.fastnoise.noise.FastChunkSection");
+                    arenaEnabled && hasClass("org.codeberg.zenxarch.fastnoise.noise.FastChunkSection");
             case FASTNOISE_BIOME_COMPAT_MIXIN ->
                     hasClass("org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen");
+            case VOXY_WORLD_CONVERSION_FACTORY_MIXIN ->
+                    clientArena && hasClass("me.cortex.voxy.common.voxelization.WorldConversionFactory");
             case PLACED_FEATURE_MIXIN ->
-                    ConfigParser.getConfig().enablePlacedFeatureMixin;
+                    config.enablePlacedFeatureMixin;
+            case CHUNK_ACCESS_ARENA_MIXIN, CHUNK_SERIALIZER_ARENA_READ_MIXIN ->
+                    arenaEnabled;
+            case LEVEL_CHUNK_ARENA_MIXIN ->
+                    arenaEnabled && !serverRuntimeArena;
             case ARCHITECTURY_EVENT_ACCESSOR ->
                     gcFreeSaveEnabled && hasClass("dev.architectury.event.EventFactory$EventImpl");
             case CHUNK_MAP_GC_FREE_SAVE_MIXIN,

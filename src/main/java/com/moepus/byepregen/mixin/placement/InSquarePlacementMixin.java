@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.placement;
 
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastPlacementContext;
+import com.moepus.byepregen.Feature.FastPlacementContext;
 import com.moepus.byepregen.Feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.placement.InSquarePlacement;
 import org.spongepowered.asm.mixin.Mixin;

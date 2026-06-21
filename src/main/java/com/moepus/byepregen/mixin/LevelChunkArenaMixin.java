@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin;
 
+import com.moepus.byepregen.Config;
+import com.moepus.byepregen.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaSectionMaterializer;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
@@ -16,7 +18,15 @@ public abstract class LevelChunkArenaMixin {
             method = "<init>(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ProtoChunk;Lnet/minecraft/world/level/chunk/LevelChunk$PostLoadProcessor;)V",
             at = @At("RETURN")
     )
-    private void byepregen$materializeArenaSections(ServerLevel level, ProtoChunk protoChunk, @Nullable LevelChunk.PostLoadProcessor postLoad, CallbackInfo ci) {
-        ArenaSectionMaterializer.materializeChunk((LevelChunk) (Object) this);
+    private void byepregen$materializeArenaSections(
+            ServerLevel level, ProtoChunk protoChunk, @Nullable LevelChunk.PostLoadProcessor postLoad, CallbackInfo ci) {
+        Config config = ConfigParser.getConfig();
+        if (!config.enableArenaPalette) {
+            return;
+        }
+
+        if (!config.enableServerRuntimeArenaPalette) {
+            ArenaSectionMaterializer.materializeChunkToFast((LevelChunk) (Object) this);
+        }
     }
 }

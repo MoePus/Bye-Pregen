@@ -3,7 +3,7 @@ package com.moepus.byepregen.gcfree;
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStateSectionWriter;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SectionWriter;
 import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.shorts.ShortList;
@@ -138,7 +138,7 @@ public final class ChunkDataSerializer {
 
     private static void writeBlockStates(NbtWriter writer, PalettedContainer<BlockState> states) {
         if (states instanceof ArenaBlockStatePalettedContainer arena) {
-            ArenaBlockStateSectionWriter.write(writer, arena);
+            SectionWriter.write(writer, arena);
             return;
         }
 
@@ -148,7 +148,7 @@ public final class ChunkDataSerializer {
         writer.startFixedList(PALETTE, data.paletteEntries().size(), Tag.TAG_COMPOUND);
         for (BlockState state : data.paletteEntries()) {
             writer.compoundEntryStart();
-            ArenaBlockStateSectionWriter.writeStateEntry(writer, state);
+            SectionWriter.writeStateEntry(writer, state);
             writer.finishCompound();
         }
         data.storage().ifPresent(stream -> writer.putLongArray(DATA, stream.toArray()));

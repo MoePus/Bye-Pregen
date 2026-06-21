@@ -22,19 +22,25 @@ final public class BlockStateNbtCache {
     private BlockStateNbtCache() {}
 
     public static void writeStateEntry(NbtWriter writer, BlockState state) {
-        int rawId = Block.BLOCK_STATE_REGISTRY.getId(state);
-        if (rawId >= 0) {
-            writeRawIdEntry(writer, rawId);
-            return;
-        }
-        writer.write(STATE_ENTRIES.computeIfAbsent(state, BlockStateNbtCache::createStateEntry));
+        writer.write(stateEntryBytes(state));
     }
 
     public static void writeRawIdEntry(NbtWriter writer, int rawId) {
+        writer.write(rawIdEntryBytes(rawId));
+    }
+
+    public static byte[] stateEntryBytes(BlockState state) {
+        int rawId = Block.BLOCK_STATE_REGISTRY.getId(state);
+        if (rawId >= 0) {
+            return rawIdEntryBytes(rawId);
+        }
+        return STATE_ENTRIES.computeIfAbsent(state, BlockStateNbtCache::createStateEntry);
+    }
+
+    public static byte[] rawIdEntryBytes(int rawId) {
         rawId = Math.max(rawId, 0);
         if (rawId >= RAW_ID_ENTRIES.length()) {
-            writer.write(STATE_ENTRIES.computeIfAbsent(Block.stateById(rawId), BlockStateNbtCache::createStateEntry));
-            return;
+            return STATE_ENTRIES.computeIfAbsent(Block.stateById(rawId), BlockStateNbtCache::createStateEntry);
         }
 
         byte[] entry = RAW_ID_ENTRIES.get(rawId);
@@ -44,7 +50,7 @@ final public class BlockStateNbtCache {
                 entry = RAW_ID_ENTRIES.get(rawId);
             }
         }
-        writer.write(entry);
+        return entry;
     }
 
     private static byte[] createStateEntry(BlockState state) {

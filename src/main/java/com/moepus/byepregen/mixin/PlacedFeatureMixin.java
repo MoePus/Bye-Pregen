@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastPlacementContext;
+import com.moepus.byepregen.Feature.FastPlacementContext;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;

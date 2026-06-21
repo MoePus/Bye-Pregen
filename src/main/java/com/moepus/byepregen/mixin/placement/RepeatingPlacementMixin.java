@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.placement;
 
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastPlacementContext;
+import com.moepus.byepregen.Feature.FastPlacementContext;
 import com.moepus.byepregen.Feature.FastPlacementModifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;

@@ -1,9 +1,10 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
+import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
+
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
 import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
 import com.moepus.byepregen.mixin.LevelChunkSectionAccessor;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import java.util.Arrays;
 import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -19,16 +20,15 @@ public final class ArenaSectionMaterializer {
     private static final int MIN_LOCAL_PALETTE_BITS = 4;
     private static final int MAX_LOCAL_PALETTE_BITS = 8;
     private static final int GLOBAL_PALETTE_BITS = MAX_LOCAL_PALETTE_BITS + 1;
-    private static final int INITIAL_PALETTE_CAPACITY = 64;
-    private static final int INITIAL_MAP_CAPACITY = 128;
-    private static final int MAX_RETAINED_SCRATCH_SIZE = 512;
-    private static final int MISSING_LOCAL_ID = -1;
-    private static final ThreadLocal<Scratch> SCRATCH = ThreadLocal.withInitial(Scratch::new);
 
     private ArenaSectionMaterializer() {
     }
 
     public static void materializeChunk(ChunkAccess chunk) {
+        materializeChunkToFast(chunk);
+    }
+
+    public static void materializeChunkToFast(ChunkAccess chunk) {
         for (LevelChunkSection section : chunk.getSections()) {
             PalettedContainer<BlockState> states = section.getStates();
             if (states instanceof ArenaBlockStatePalettedContainer arenaContainer) {
@@ -38,46 +38,30 @@ public final class ArenaSectionMaterializer {
         }
     }
 
-    public static void releaseChunk(ChunkAccess chunk) {
+    public static void materializeChunkToVanilla(ChunkAccess chunk) {
         for (LevelChunkSection section : chunk.getSections()) {
             PalettedContainer<BlockState> states = section.getStates();
             if (states instanceof ArenaBlockStatePalettedContainer arenaContainer) {
+                ((LevelChunkSectionAccessor) section).byepregen$setStates(materializeVanilla(arenaContainer));
                 arenaContainer.releaseRawIds();
             }
         }
     }
 
-    public static void count(ArenaBlockStatePalettedContainer container, PalettedContainer.CountConsumer<BlockState> consumer) {
-        if (container.isUniform()) {
-            consumer.accept(Block.stateById(container.uniformRawId()), ArenaBlockStatePalettedContainer.SECTION_SIZE);
-            return;
-        }
-
-        Int2IntOpenHashMap counts = new Int2IntOpenHashMap();
-        container.countRawIds(counts);
-        counts.int2IntEntrySet().forEach(entry -> consumer.accept(Block.stateById(entry.getIntKey()), entry.getIntValue()));
-    }
-
     public static FastBlockStatePalettedContainer materialize(ArenaBlockStatePalettedContainer container) {
-        if (!container.isDirty()) {
-            return createSingle(AIR);
-        }
         if (container.isUniform()) {
-            return createSingle(Block.stateById(container.uniformRawId()));
+            return createFastSingle(Block.stateById(container.uniformRawId()));
         }
 
-        Scratch scratch = SCRATCH.get();
+        SerializationScratch scratch = SerializationScratch.get();
         try {
-            container.forEachRawId(scratch::addRawId);
-            if (scratch.paletteSize == 1) {
-                return createSingle(Block.stateById(scratch.paletteRawIds[0]));
+            scratch.collect(container);
+            if (scratch.paletteSize() == 1) {
+                return createFastSingle(Block.stateById(scratch.paletteRawId(0)));
             }
 
-            FastBlockStatePalettedContainer materialized = createSingle(AIR);
-            PalettedContainer.Data<BlockState> data =
-                    materialized.createOrReuseData(null, storageBits(scratch.paletteSize));
-            fillPalette(data.palette(), scratch);
-            writeStorage(data.storage(), scratch, container);
+            FastBlockStatePalettedContainer materialized = createFastSingle(AIR);
+            PalettedContainer.Data<BlockState> data = createMaterializedData(materialized, scratch, container);
             materialized.data = data;
             materialized.byepregen$updateFastData(data);
             return materialized;
@@ -86,9 +70,51 @@ public final class ArenaSectionMaterializer {
         }
     }
 
-    private static FastBlockStatePalettedContainer createSingle(BlockState state) {
+    private static PalettedContainer<BlockState> materializeVanilla(ArenaBlockStatePalettedContainer container) {
+        if (container.isUniform()) {
+            return createVanillaSingle(Block.stateById(container.uniformRawId()));
+        }
+
+        SerializationScratch scratch = SerializationScratch.get();
+        try {
+            scratch.collect(container);
+            if (scratch.paletteSize() == 1) {
+                return createVanillaSingle(Block.stateById(scratch.paletteRawId(0)));
+            }
+
+            PalettedContainer<BlockState> materialized = createVanillaSingle(AIR);
+            materialized.data = createMaterializedData(materialized, scratch, container);
+            return materialized;
+        } finally {
+            scratch.clear();
+        }
+    }
+
+    private static FastBlockStatePalettedContainer createFastSingle(BlockState state) {
         return new FastBlockStatePalettedContainer(
-                Block.BLOCK_STATE_REGISTRY, state, PalettedContainer.Strategy.SECTION_STATES);
+                Block.BLOCK_STATE_REGISTRY,
+                state,
+                PalettedContainer.Strategy.SECTION_STATES
+        );
+    }
+
+    private static PalettedContainer<BlockState> createVanillaSingle(BlockState state) {
+        return new PalettedContainer<>(
+                Block.BLOCK_STATE_REGISTRY,
+                state,
+                PalettedContainer.Strategy.SECTION_STATES
+        );
+    }
+
+    private static PalettedContainer.Data<BlockState> createMaterializedData(
+            PalettedContainer<BlockState> materialized,
+            SerializationScratch scratch,
+            ArenaBlockStatePalettedContainer container) {
+        PalettedContainer.Data<BlockState> data =
+                materialized.createOrReuseData(null, storageBits(scratch.paletteSize()));
+        fillPalette(data.palette(), scratch);
+        writeStorage(data.storage(), scratch, container);
+        return data;
     }
 
     private static int storageBits(int paletteSize) {
@@ -99,104 +125,77 @@ public final class ArenaSectionMaterializer {
         return Math.max(MIN_LOCAL_PALETTE_BITS, bits);
     }
 
-    private static void fillPalette(Palette<BlockState> palette, Scratch scratch) {
+    private static void fillPalette(Palette<BlockState> palette, SerializationScratch scratch) {
         if (palette instanceof GlobalPalette<?>) {
             return;
         }
-        for (int i = 0; i < scratch.paletteSize; ++i) {
-            palette.idFor(Block.stateById(scratch.paletteRawIds[i]));
+
+        int size = scratch.paletteSize();
+        for (int i = 0; i < size; ++i) {
+            palette.idFor(Block.stateById(scratch.paletteRawId(i)));
         }
     }
 
     private static void writeStorage(
-            BitStorage storage, Scratch scratch, ArenaBlockStatePalettedContainer container) {
+            BitStorage storage, SerializationScratch scratch, ArenaBlockStatePalettedContainer container) {
         int bits = storage.getBits();
         if (bits == 0) {
             return;
         }
 
-        boolean globalPalette = scratch.paletteSize > (1 << MAX_LOCAL_PALETTE_BITS);
-        scratch.configureWrite(storage, globalPalette);
-        container.forEachRawId(scratch::writeRawId);
+        long[] output = storage.getRaw();
+        int valuesPerLong = Long.SIZE / bits;
+        long mask = (1L << bits) - 1L;
+        boolean globalPalette = scratch.paletteSize() > (1 << MAX_LOCAL_PALETTE_BITS);
+        if (container.hasPagePalettes() && !globalPalette) {
+            writePagePaletteStorage(output, valuesPerLong, mask, bits, scratch, container);
+            return;
+        }
+
+        for (int index = 0; index < SECTION_SIZE; ++index) {
+            int rawId = Math.max(container.rawIdAt(index), 0);
+            int id = globalPalette ? rawId : scratch.localIdFor(rawId);
+            writePackedId(output, valuesPerLong, mask, bits, index, id);
+        }
     }
 
-    private static final class Scratch {
-        private Int2IntOpenHashMap rawToLocal = createRawToLocalMap();
-        private int[] paletteRawIds = new int[INITIAL_PALETTE_CAPACITY];
-        private long[] writeRaw;
-        private long writeMask;
-        private int writeBits;
-        private int writeValuesPerLong;
-        private boolean writeGlobalPalette;
-        private int paletteSize;
-
-        private void addRawId(int sectionIndex, int rawId) {
-            if (rawId < 0) {
-                rawId = 0;
+    private static void writePagePaletteStorage(
+            long[] output,
+            int valuesPerLong,
+            long mask,
+            int bits,
+            SerializationScratch scratch,
+            ArenaBlockStatePalettedContainer container) {
+        for (int page = 0; page < PAGE_COUNT; ++page) {
+            int base = container.arenaPageBase(page);
+            int pageLocalIdOffset = page * PAGE_PALETTE_SIZE;
+            int sectionIndex = page << 10;
+            for (int wordIndex = 0; wordIndex < INDEX_WORDS_PER_PAGE; ++wordIndex) {
+                int word = container.arenaPaletteWord(base, wordIndex);
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, word & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 4) & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 8) & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 12) & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 16) & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 20) & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 24) & PALETTE_INDEX_MASK));
+                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 28) & PALETTE_INDEX_MASK));
             }
-            this.addLocalId(rawId);
         }
+    }
 
-        private void addLocalId(int rawId) {
-            int localId = this.rawToLocal.get(rawId);
-            if (localId != MISSING_LOCAL_ID) {
-                return;
-            }
-
-            localId = this.paletteSize++;
-            this.ensurePaletteCapacity(localId);
-            this.rawToLocal.put(rawId, localId);
-            this.paletteRawIds[localId] = rawId;
-        }
-
-        private int localIdFor(int rawId) {
-            int localId = this.rawToLocal.get(Math.max(rawId, 0));
-            if (localId == MISSING_LOCAL_ID) {
-                throw new IllegalStateException("Missing materialized palette entry for raw id " + rawId);
-            }
-            return localId;
-        }
-
-        private void configureWrite(BitStorage storage, boolean globalPalette) {
-            this.writeRaw = storage.getRaw();
-            this.writeBits = storage.getBits();
-            this.writeValuesPerLong = Long.SIZE / this.writeBits;
-            this.writeMask = (1L << this.writeBits) - 1L;
-            this.writeGlobalPalette = globalPalette;
-        }
-
-        private void writeRawId(int sectionIndex, int rawId) {
-            int id = this.writeGlobalPalette ? (Math.max(rawId, 0)) : this.localIdFor(rawId);
-            int cell = sectionIndex / this.writeValuesPerLong;
-            int shift = (sectionIndex - cell * this.writeValuesPerLong) * this.writeBits;
-            this.writeRaw[cell] |= ((long)id & this.writeMask) << shift;
-        }
-
-        private void clear() {
-            if (this.rawToLocal.size() > MAX_RETAINED_SCRATCH_SIZE) {
-                this.rawToLocal = createRawToLocalMap();
-            } else {
-                this.rawToLocal.clear();
-            }
-            if (this.paletteRawIds.length > MAX_RETAINED_SCRATCH_SIZE) {
-                this.paletteRawIds = new int[INITIAL_PALETTE_CAPACITY];
-            }
-            this.writeRaw = null;
-            this.paletteSize = 0;
-        }
-
-        private void ensurePaletteCapacity(int localId) {
-            if (localId < this.paletteRawIds.length) {
-                return;
-            }
-
-            this.paletteRawIds = Arrays.copyOf(this.paletteRawIds, this.paletteRawIds.length * 2);
-        }
-
-        private static Int2IntOpenHashMap createRawToLocalMap() {
-            Int2IntOpenHashMap map = new Int2IntOpenHashMap(INITIAL_MAP_CAPACITY);
-            map.defaultReturnValue(MISSING_LOCAL_ID);
-            return map;
-        }
+    private static void writePackedId(
+            long[] output, int valuesPerLong, long mask, int bits, int index, int id) {
+        int cell = index / valuesPerLong;
+        int shift = (index - cell * valuesPerLong) * bits;
+        output[cell] |= ((long) id & mask) << shift;
     }
 }

@@ -1,17 +1,20 @@
 package com.moepus.byepregen.mixin;
 
+import com.moepus.byepregen.Config;
+import com.moepus.byepregen.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastBiomePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBiomePalettedContainer;
 import javax.annotation.Nullable;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -44,12 +47,12 @@ public abstract class ChunkAccessArenaMixin {
             @Nullable LevelChunkSection[] providedSections,
             @Nullable BlendingData blendingData
     ) {
-        if ((Object) this instanceof ProtoChunk && providedSections == null) {
+        if ((Object) this instanceof ProtoChunk && providedSections == null && ConfigParser.getConfig().enableArenaPalette) {
             this.byepregen$replaceWithArenaSections(biomeRegistry, sections);
             return;
         }
 
-        this.byepregen$replaceWithNormalSections(biomeRegistry, sections);
+        this.byepregen$replaceWithNormalSections(biomeRegistry, sections, heightAccessor);
     }
 
     @Unique
@@ -65,11 +68,12 @@ public abstract class ChunkAccessArenaMixin {
     }
 
     @Unique
-    private void byepregen$replaceWithNormalSections(Registry<Biome> biomeRegistry, LevelChunkSection[] sections) {
+    private void byepregen$replaceWithNormalSections(
+            Registry<Biome> biomeRegistry, LevelChunkSection[] sections, LevelHeightAccessor heightAccessor) {
         for (int i = 0; i < sections.length; ++i) {
             if (sections[i] == null) {
                 sections[i] = new LevelChunkSection(
-                        this.byepregen$createStateContainer(),
+                        this.byepregen$createStateContainer(heightAccessor),
                         this.byepregen$createBiomeContainer(biomeRegistry)
                 );
             }
@@ -77,8 +81,28 @@ public abstract class ChunkAccessArenaMixin {
     }
 
     @Unique
-    private PalettedContainer<BlockState> byepregen$createStateContainer() {
+    private PalettedContainer<BlockState> byepregen$createStateContainer(LevelHeightAccessor heightAccessor) {
+        Config config = ConfigParser.getConfig();
+        if (heightAccessor instanceof Level level && level.isClientSide()) {
+            if (config.enableArenaPalette && config.enableClientArenaPalette) {
+                return new ArenaBlockStatePalettedContainer();
+            }
+            return this.byepregen$createVanillaStateContainer();
+        }
+
+        if (config.enableArenaPalette && config.enableServerRuntimeArenaPalette) {
+            return new ArenaBlockStatePalettedContainer();
+        }
         return new FastBlockStatePalettedContainer(
+                Block.BLOCK_STATE_REGISTRY,
+                Blocks.AIR.defaultBlockState(),
+                PalettedContainer.Strategy.SECTION_STATES
+        );
+    }
+
+    @Unique
+    private PalettedContainer<BlockState> byepregen$createVanillaStateContainer() {
+        return new PalettedContainer<>(
                 Block.BLOCK_STATE_REGISTRY,
                 Blocks.AIR.defaultBlockState(),
                 PalettedContainer.Strategy.SECTION_STATES

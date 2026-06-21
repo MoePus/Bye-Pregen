@@ -1,6 +1,5 @@
 package com.moepus.byepregen.Feature;
 
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastPlacementContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 

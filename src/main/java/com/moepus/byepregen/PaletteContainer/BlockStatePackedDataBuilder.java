@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
 
-final public class BlockStatePackedDataBuilder {
+public final class BlockStatePackedDataBuilder {
     private static final int SECTION_SIZE = 4096;
     private static final int MIN_SECTION_STATE_BITS = 4;
     private static final ThreadLocal<Scratch> SCRATCH = ThreadLocal.withInitial(Scratch::new);

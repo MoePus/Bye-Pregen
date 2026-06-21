@@ -76,7 +76,8 @@ public final class FastBlockStatePalettedContainer extends FastPalettedContainer
     }
 
     @Override
-    public PalettedContainerRO.@NotNull PackedData<BlockState> pack(@NotNull IdMap<BlockState> idMap, @NotNull Strategy strategy) {
+    public PalettedContainerRO.@NotNull PackedData<BlockState> pack(
+            @NotNull IdMap<BlockState> idMap, @NotNull Strategy strategy) {
         if (strategy != Strategy.SECTION_STATES) {
             return super.pack(idMap, strategy);
         }
@@ -133,7 +134,7 @@ public final class FastBlockStatePalettedContainer extends FastPalettedContainer
         int valuesPerLong = Long.SIZE / bits;
         int cell = index / valuesPerLong;
         int shift = (index - cell * valuesPerLong) * bits;
-        packedStorage[cell] |= ((long) value & ((1L << bits) - 1L)) << shift;
+        packedStorage[cell] |= ((long)value & ((1L << bits) - 1L)) << shift;
     }
 
     private static int vanillaSerializedBits(int paletteSize) {

@@ -1,6 +1,8 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette;
+package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 
 import java.util.Optional;
+
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -10,13 +12,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 
-public final class ArenaBlockStateNbtReader {
+public final class NbtReader {
     private static final String PALETTE = "palette";
     private static final String DATA = "data";
     private static final String NAME = "Name";
     private static final String PROPERTIES = "Properties";
 
-    private ArenaBlockStateNbtReader() {
+    private NbtReader() {
     }
 
     public static ArenaBlockStatePalettedContainer read(CompoundTag blockStatesTag) {

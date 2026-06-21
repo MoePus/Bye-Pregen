@@ -35,6 +35,7 @@
     "compat.C2MEServerBlockTickingMixin",
     "compat.FastNoiseFastBiomeGenMixin",
     "compat.FastNoiseFastChunkSectionMixin",
+    "compat.VoxyWorldConversionFactoryMixin",
     "gcfree.ChunkMapGcFreeSaveMixin",
     "gcfree.ChunkSerializerWorldgenStateMixin",
     "gcfree.ChunkStorageRawMixin",

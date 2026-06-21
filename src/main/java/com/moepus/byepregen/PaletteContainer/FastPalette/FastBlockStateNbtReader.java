@@ -1,6 +1,6 @@
 package com.moepus.byepregen.PaletteContainer.FastPalette;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStateNbtReader;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NbtReader;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.Block;
@@ -15,8 +15,7 @@ public final class FastBlockStateNbtReader {
     }
 
     public static FastBlockStatePalettedContainer read(CompoundTag blockStatesTag) {
-        int[] paletteRawIds = ArenaBlockStateNbtReader.readPaletteRawIds(
-                blockStatesTag.getList(PALETTE, Tag.TAG_COMPOUND));
+        int[] paletteRawIds = NbtReader.readPaletteRawIds(blockStatesTag.getList(PALETTE, Tag.TAG_COMPOUND));
         if (paletteRawIds == null) {
             return null;
         }
