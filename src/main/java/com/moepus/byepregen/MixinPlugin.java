@@ -15,6 +15,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.C2MEServerBlockTickingMixin";
     private static final String C2ME_HOOK_COMPATIBILITY_MIXIN =
             "com.moepus.byepregen.mixin.compat.C2MEHookCompatibilityMixin";
+    private static final String C2ME_GET_CHUNK_OVERWRITE_MIXIN =
+            "com.moepus.byepregen.mixin.compat.C2MEGetChunkOverwriteMixin";
     private static final String VANILLA_CHUNK_STATUS_PRENORM_MIXIN =
             "com.moepus.byepregen.mixin.ChunkStatusPostProcessingPreNormMixin";
     private static final String FASTNOISE_COMPAT_MIXIN =
@@ -75,6 +77,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                     hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
             case C2ME_HOOK_COMPATIBILITY_MIXIN ->
                     gcFreeSaveEnabled && hasClass(C2ME_HOOK_COMPATIBILITY);
+            case C2ME_GET_CHUNK_OVERWRITE_MIXIN ->
+                    config.enableFasterGetChunk && hasClass("com.ishland.c2me.base.mixin.instrumentation.MixinServerChunkManager");
             case VANILLA_CHUNK_STATUS_PRENORM_MIXIN ->
                     !hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
             case FASTNOISE_COMPAT_MIXIN ->

@@ -6,4 +6,5 @@ public final class Config {
     public boolean enableServerRuntimeArenaPalette = false;
     public boolean enableClientArenaPalette = false;
     public boolean enableGcFreeWorldgenSave = true;
+    public boolean enableFasterGetChunk = true;
 }

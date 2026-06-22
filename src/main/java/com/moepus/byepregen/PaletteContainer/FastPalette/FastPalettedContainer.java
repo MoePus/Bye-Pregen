@@ -83,4 +83,8 @@ abstract class FastPalettedContainer<T> extends PalettedContainer<T> implements 
         this.fastData = data;
         this.zeroValue = data.storage() instanceof ZeroBitStorage ? data.palette().valueFor(0) : null;
     }
+
+    public final void c2me$setUnsafe(int x, int y, int z, T value) {
+        this.setFast(this.strategy.getIndex(x, y, z), value);
+    }
 }
