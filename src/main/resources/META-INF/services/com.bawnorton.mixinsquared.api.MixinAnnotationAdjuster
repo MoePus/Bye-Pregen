@@ -1,1 +1,2 @@
-com.moepus.byepregen.compat.C2MEGetChunkAnnotationAdjuster
+com.moepus.byepregen.compat.C2MEMixinAdjuster
+com.moepus.byepregen.compat.LithiumMixinAdjuster

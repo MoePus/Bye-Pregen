@@ -1,15 +1,10 @@
-package com.moepus.byepregen.mixin.compat;
+package com.moepus.byepregen.mixin;
 
-import com.ishland.c2me.base.common.scheduler.IVanillaChunkManager;
-import com.ishland.c2me.base.common.scheduler.SchedulingManager;
+import com.moepus.byepregen.compat.C2MECompat;
 import com.moepus.byepregen.compat.ServerChunkCacheAccess;
 import com.moepus.byepregen.mixin.accessor.ServerChunkCacheAccessor;
 import net.minecraft.Util;
-import net.minecraft.server.level.ChunkHolder;
-import net.minecraft.server.level.ChunkLevel;
-import net.minecraft.server.level.ChunkResult;
-import net.minecraft.server.level.ServerChunkCache;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.*;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ImposterProtoChunk;
@@ -25,7 +20,7 @@ import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
 
 @Mixin(value = ServerChunkCache.class, priority = 1050, remap = false)
-public abstract class C2MEGetChunkOverwriteMixin {
+public abstract class ServerChunkCacheGetChunkMixin {
     @Shadow
     @Final
     Thread mainThread;
@@ -36,7 +31,7 @@ public abstract class C2MEGetChunkOverwriteMixin {
 
     @Shadow
     @Final
-    public net.minecraft.server.level.ChunkMap chunkMap;
+    public ChunkMap chunkMap;
 
     @Shadow
     @Final
@@ -152,14 +147,18 @@ public abstract class C2MEGetChunkOverwriteMixin {
             CompletableFuture<ChunkResult<ChunkAccess>> future,
             int chunkX,
             int chunkZ) {
-        ChunkPos syncLoadChunk = new ChunkPos(chunkX, chunkZ);
-        SchedulingManager schedulingManager = ((IVanillaChunkManager) this.chunkMap).c2me$getSchedulingManager();
-        schedulingManager.setCurrentSyncLoad(syncLoadChunk);
-        try {
-            ServerChunkCacheAccess.mainThreadProcessor((ServerChunkCache) (Object) this).managedBlock(future::isDone);
-        } finally {
-            schedulingManager.setCurrentSyncLoad(null);
+        ServerChunkCache cache = (ServerChunkCache) (Object) this;
+        if (!C2MECompat.isC2MEInstalled()) {
+            ServerChunkCacheAccess.mainThreadProcessor(cache).managedBlock(future::isDone);
+            return;
         }
+
+        C2MECompat.managedBlockWithSyncLoad(
+                cache,
+                this.chunkMap,
+                future,
+                chunkX,
+                chunkZ);
     }
 
     @Unique

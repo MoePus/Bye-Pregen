@@ -15,8 +15,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.C2MEServerBlockTickingMixin";
     private static final String C2ME_HOOK_COMPATIBILITY_MIXIN =
             "com.moepus.byepregen.mixin.compat.C2MEHookCompatibilityMixin";
-    private static final String C2ME_GET_CHUNK_OVERWRITE_MIXIN =
-            "com.moepus.byepregen.mixin.compat.C2MEGetChunkOverwriteMixin";
     private static final String VANILLA_CHUNK_STATUS_PRENORM_MIXIN =
             "com.moepus.byepregen.mixin.ChunkStatusPostProcessingPreNormMixin";
     private static final String FASTNOISE_COMPAT_MIXIN =
@@ -55,6 +53,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.accessor.RegionFileStorageAccessor";
     private static final String PALETTED_CONTAINER_NO_LITHIUM =
             "com.moepus.byepregen.mixin.PalettedContainerNoLithiumMixin";
+    private static final String SERVER_CHUNK_CACHE_TICK_CHUNKS_MIXIN =
+            "com.moepus.byepregen.mixin.ServerChunkCacheTickChunksMixin";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -77,8 +77,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                     hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
             case C2ME_HOOK_COMPATIBILITY_MIXIN ->
                     gcFreeSaveEnabled && hasClass(C2ME_HOOK_COMPATIBILITY);
-            case C2ME_GET_CHUNK_OVERWRITE_MIXIN ->
-                    config.enableFasterGetChunk && hasClass("com.ishland.c2me.base.mixin.instrumentation.MixinServerChunkManager");
             case VANILLA_CHUNK_STATUS_PRENORM_MIXIN ->
                     !hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
             case FASTNOISE_COMPAT_MIXIN ->
@@ -89,6 +87,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                     clientArena && hasClass("me.cortex.voxy.common.voxelization.WorldConversionFactory");
             case PLACED_FEATURE_MIXIN ->
                     config.enablePlacedFeatureMixin;
+            case SERVER_CHUNK_CACHE_TICK_CHUNKS_MIXIN ->
+                    config.enableFastTickChunks;
             case CHUNK_ACCESS_ARENA_MIXIN, CHUNK_SERIALIZER_ARENA_READ_MIXIN ->
                     arenaEnabled;
             case LEVEL_CHUNK_ARENA_MIXIN ->
@@ -103,13 +103,13 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                  REGION_FILE_STORAGE_ACCESSOR ->
                     gcFreeSaveEnabled && !hasClass(C2ME_SERIALIZER_ACCESS);
             case PALETTED_CONTAINER_NO_LITHIUM ->
-                    !doModExist("lithium");
+                    !isModExist("lithium");
             default ->
                     !mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX) || gcFreeSaveEnabled;
         };
     }
 
-    private ModFileInfo getModFile(String modId) {
+    private static ModFileInfo getModFile(String modId) {
         LoadingModList modList = LoadingModList.get();
         ModFileInfo modFile = modList.getModFileById(modId);
         if (modFile != null) {
@@ -124,7 +124,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                 .orElse(null);
     }
 
-    private boolean doModExist(String modId) {
+    public static boolean isModExist(String modId) {
         return getModFile(modId) != null;
     }
 
