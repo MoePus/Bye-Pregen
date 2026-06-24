@@ -26,8 +26,8 @@ public final class FastBlockStatePalettedContainer extends FastPalettedContainer
 
         int bits = vanillaSerializedBits(paletteRawIds.length);
         PalettedContainer.Data<BlockState> data = this.createOrReuseData(null, bits);
-        fillPalette(data.palette(), paletteRawIds);
-        if (bits != 0 && !this.importStorage(data, paletteRawIds, packedStorage, bits)) {
+        int[] localIds = fillPalette(data.palette(), paletteRawIds);
+        if (bits != 0 && !this.importStorage(data, paletteRawIds, localIds, packedStorage, bits)) {
             return false;
         }
 
@@ -37,14 +37,17 @@ public final class FastBlockStatePalettedContainer extends FastPalettedContainer
     }
 
     private boolean importStorage(
-            PalettedContainer.Data<BlockState> data, int[] paletteRawIds, long[] packedStorage, int bits) {
+            PalettedContainer.Data<BlockState> data,
+            int[] paletteRawIds,
+            int[] localIds,
+            long[] packedStorage,
+            int bits) {
         if (packedStorage == null || packedStorage.length != packedLength(bits)) {
             return false;
         }
 
         if (bits <= MAX_LOCAL_PALETTE_BITS) {
-            System.arraycopy(packedStorage, 0, data.storage().getRaw(), 0, packedStorage.length);
-            return true;
+            return writeLocalStorage(data.storage(), paletteRawIds.length, localIds, packedStorage, bits);
         }
 
         return writeGlobalStorage(data.storage(), paletteRawIds, packedStorage, bits);
@@ -100,13 +103,30 @@ public final class FastBlockStatePalettedContainer extends FastPalettedContainer
         return new FastBlockStatePalettedContainer(this.registry, this.fastData.palette().valueFor(0), this.strategy);
     }
 
-    private static void fillPalette(Palette<BlockState> palette, int[] paletteRawIds) {
+    private static int[] fillPalette(Palette<BlockState> palette, int[] paletteRawIds) {
+        int[] localIds = new int[paletteRawIds.length];
         if (palette instanceof GlobalPalette<?>) {
-            return;
+            System.arraycopy(paletteRawIds, 0, localIds, 0, paletteRawIds.length);
+            return localIds;
         }
-        for (int rawId : paletteRawIds) {
-            palette.idFor(Block.stateById(rawId));
+        for (int i = 0; i < paletteRawIds.length; ++i) {
+            localIds[i] = palette.idFor(Block.stateById(paletteRawIds[i]));
         }
+        return localIds;
+    }
+
+    private static boolean writeLocalStorage(
+            BitStorage storage, int paletteSize, int[] localIds, long[] packedStorage, int serializedBits) {
+        long[] output = storage.getRaw();
+        int outputBits = storage.getBits();
+        for (int index = 0; index < SECTION_SIZE; ++index) {
+            int localId = packedValueAt(packedStorage, serializedBits, index);
+            if (localId >= paletteSize) {
+                return false;
+            }
+            setPackedValue(output, outputBits, index, localIds[localId]);
+        }
+        return true;
     }
 
     private static boolean writeGlobalStorage(
