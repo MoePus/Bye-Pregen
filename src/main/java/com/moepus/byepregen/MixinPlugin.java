@@ -23,6 +23,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.FastNoiseFastBiomeGenMixin";
     private static final String VOXY_WORLD_CONVERSION_FACTORY_MIXIN =
             "com.moepus.byepregen.mixin.compat.VoxyWorldConversionFactoryMixin";
+    private static final String SABLE_NATURAL_SPAWNER_MIXIN =
+            "com.moepus.byepregen.mixin.compat.SableNaturalSpawnerMixin";
     private static final String PLACED_FEATURE_MIXIN =
             "com.moepus.byepregen.mixin.PlacedFeatureMixin";
     private static final String CHUNK_ACCESS_ARENA_MIXIN =
@@ -37,6 +39,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.ishland.c2me.base.common.registry.SerializerAccess";
     private static final String C2ME_HOOK_COMPATIBILITY =
             "com.ishland.c2me.base.common.util.HookCompatibility";
+    private static final String SABLE_ACTIVE_COMPANION =
+            "dev.ryanhcode.sable.companion.ActiveSableCompanion";
     private static final String GC_FREE_MIXIN_PREFIX =
             "com.moepus.byepregen.mixin.gcfree.";
     private static final String CHUNK_MAP_GC_FREE_SAVE_MIXIN =
@@ -85,6 +89,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                     hasClass("org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen");
             case VOXY_WORLD_CONVERSION_FACTORY_MIXIN ->
                     clientArena && hasClass("me.cortex.voxy.common.voxelization.WorldConversionFactory");
+            case SABLE_NATURAL_SPAWNER_MIXIN ->
+                    hasClass(SABLE_ACTIVE_COMPANION);
             case PLACED_FEATURE_MIXIN ->
                     config.enablePlacedFeatureMixin;
             case SERVER_CHUNK_CACHE_TICK_CHUNKS_MIXIN ->
