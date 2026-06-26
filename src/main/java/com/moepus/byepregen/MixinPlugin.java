@@ -57,8 +57,14 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.accessor.RegionFileStorageAccessor";
     private static final String PALETTED_CONTAINER_NO_LITHIUM =
             "com.moepus.byepregen.mixin.PalettedContainerNoLithiumMixin";
+    private static final String LITHIUM_HASH_PALETTE_MIXIN =
+            "com.moepus.byepregen.mixin.compat.LithiumHashPaletteMixin";
+    private static final String SODIUM_LIGHT_DATA_ACCESS_YA_LIGHT_MIXIN =
+            "com.moepus.byepregen.mixin.compat.SodiumLightDataAccessYALightMixin";
     private static final String SERVER_CHUNK_CACHE_TICK_CHUNKS_MIXIN =
             "com.moepus.byepregen.mixin.ServerChunkCacheTickChunksMixin";
+    private static final String YA_LIGHT_MIXIN_PREFIX =
+            "com.moepus.byepregen.mixin.yalight.";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -110,8 +116,14 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                     gcFreeSaveEnabled && !hasClass(C2ME_SERIALIZER_ACCESS);
             case PALETTED_CONTAINER_NO_LITHIUM ->
                     !isModExist("lithium");
+            case LITHIUM_HASH_PALETTE_MIXIN ->
+                    isModExist("lithium") && hasClass("net.caffeinemc.mods.lithium.common.world.chunk.LithiumHashPalette");
+            case SODIUM_LIGHT_DATA_ACCESS_YA_LIGHT_MIXIN ->
+                    config.enableYALightEngine && isModExist("sodium")
+                            && hasClass("net.caffeinemc.mods.sodium.client.model.light.data.LightDataAccess");
             default ->
-                    !mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX) || gcFreeSaveEnabled;
+                    (mixinClassName.startsWith(YA_LIGHT_MIXIN_PREFIX) ? config.enableYALightEngine :
+                            !mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX) || gcFreeSaveEnabled);
         };
     }
 

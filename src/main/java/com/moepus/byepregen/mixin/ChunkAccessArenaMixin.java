@@ -87,22 +87,17 @@ public abstract class ChunkAccessArenaMixin {
             if (config.enableArenaPalette && config.enableClientArenaPalette) {
                 return new ArenaBlockStatePalettedContainer();
             }
-            return this.byepregen$createVanillaStateContainer();
+            return new FastBlockStatePalettedContainer(
+                    Block.BLOCK_STATE_REGISTRY,
+                    Blocks.AIR.defaultBlockState(),
+                    PalettedContainer.Strategy.SECTION_STATES
+            );
         }
 
         if (config.enableArenaPalette && config.enableServerRuntimeArenaPalette) {
             return new ArenaBlockStatePalettedContainer();
         }
         return new FastBlockStatePalettedContainer(
-                Block.BLOCK_STATE_REGISTRY,
-                Blocks.AIR.defaultBlockState(),
-                PalettedContainer.Strategy.SECTION_STATES
-        );
-    }
-
-    @Unique
-    private PalettedContainer<BlockState> byepregen$createVanillaStateContainer() {
-        return new PalettedContainer<>(
                 Block.BLOCK_STATE_REGISTRY,
                 Blocks.AIR.defaultBlockState(),
                 PalettedContainer.Strategy.SECTION_STATES

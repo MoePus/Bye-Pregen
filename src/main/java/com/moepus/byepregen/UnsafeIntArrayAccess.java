@@ -7,6 +7,7 @@ final public class UnsafeIntArrayAccess {
     private static final Unsafe UNSAFE = findUnsafe();
     private static final long INT_ARRAY_BASE = UNSAFE.arrayBaseOffset(int[].class);
     private static final int INT_ARRAY_SHIFT = Integer.numberOfTrailingZeros(UNSAFE.arrayIndexScale(int[].class));
+    private static final long BYTE_ARRAY_BASE = UNSAFE.arrayBaseOffset(byte[].class);
 
     private UnsafeIntArrayAccess() {
     }
@@ -21,6 +22,14 @@ final public class UnsafeIntArrayAccess {
 
     public static void clear(int[] array, int fromIndex, int toIndex) {
         UNSAFE.setMemory(array, offset(fromIndex), (long) (toIndex - fromIndex) << INT_ARRAY_SHIFT, (byte) 0);
+    }
+
+    public static byte get(byte[] array, int index) {
+        return UNSAFE.getByte(array, BYTE_ARRAY_BASE + index);
+    }
+
+    public static void set(byte[] array, int index, byte value) {
+        UNSAFE.putByte(array, BYTE_ARRAY_BASE + index, value);
     }
 
     private static long offset(int index) {

@@ -2,6 +2,7 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
 import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
 
+import com.moepus.byepregen.PaletteContainer.BlockStateRawIdAccess;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateImporter;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NetworkWriter;
 import com.moepus.byepregen.UnsafeIntArrayAccess;
@@ -27,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
  * Starts as one uniform raw id, upgrades to four 16x16x4 page-local 4-bit palettes,
  * and falls back to dense int[4096] when any page needs more than 16 live states.
  */
-public final class ArenaBlockStatePalettedContainer extends PalettedContainer<BlockState> {
+public final class ArenaBlockStatePalettedContainer extends PalettedContainer<BlockState> implements BlockStateRawIdAccess {
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
     private static final PalettedContainer.Configuration<BlockState> DUMMY_PARENT_CONFIGURATION =
             Strategy.SECTION_STATES.getConfiguration(Block.BLOCK_STATE_REGISTRY, 0);
@@ -229,6 +230,11 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         int base = pageBase(page);
         int paletteIndex = localPaletteIndex(arena, base, local);
         return rawIdForPaletteIndex(arena, base, paletteIndex);
+    }
+
+    @Override
+    public int getRawId(int x, int y, int z) {
+        return this.rawIdAt(localIndex(x, y, z));
     }
 
     public boolean isUniform() {

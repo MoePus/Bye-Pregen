@@ -5,6 +5,9 @@ package com.moepus.byepregen.gcfree;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SectionWriter;
 import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
+import com.moepus.byepregen.yalight.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.YAChunkLightData;
+import com.moepus.byepregen.yalight.YANibbleArray;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -99,14 +102,17 @@ public final class ChunkDataSerializer {
         LevelChunkSection[] sections = chunk.getSections();
         LevelLightEngine lightEngine = level.getChunkSource().getLightEngine();
         Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
+        YAChunkLightAccess yaLight = chunk instanceof YAChunkLightAccess access ? access : null;
         long listStart = writer.startList(SECTIONS, Tag.TAG_COMPOUND);
         int count = 0;
         for (int y = lightEngine.getMinLightSection(); y < lightEngine.getMaxLightSection(); ++y) {
             int index = chunk.getSectionIndexFromSectionY(y);
             boolean hasSection = index >= 0 && index < sections.length;
-            DataLayer blockLight = lightEngine.getLayerListener(LightLayer.BLOCK).getDataLayerData(SectionPos.of(pos, y));
-            DataLayer skyLight = lightEngine.getLayerListener(LightLayer.SKY).getDataLayerData(SectionPos.of(pos, y));
-            if (writeSection(writer, hasSection ? sections[index] : null, biomeRegistry, blockLight, skyLight, y)) {
+            YANibbleArray blockYALight = yaLight(yaLight, LightLayer.BLOCK, y);
+            YANibbleArray skyYALight = yaLight(yaLight, LightLayer.SKY, y);
+            DataLayer blockLight = yaLight == null ? lightEngine.getLayerListener(LightLayer.BLOCK).getDataLayerData(SectionPos.of(pos, y)) : null;
+            DataLayer skyLight = yaLight == null ? lightEngine.getLayerListener(LightLayer.SKY).getDataLayerData(SectionPos.of(pos, y)) : null;
+            if (writeSection(writer, hasSection ? sections[index] : null, biomeRegistry, blockLight, skyLight, blockYALight, skyYALight, y)) {
                 ++count;
             }
         }
@@ -115,8 +121,8 @@ public final class ChunkDataSerializer {
 
     private static boolean writeSection(
             NbtWriter writer, LevelChunkSection section, Registry<Biome> biomeRegistry,
-            DataLayer blockLight, DataLayer skyLight, int sectionY) {
-        if (section == null && isEmpty(blockLight) && isEmpty(skyLight)) {
+            DataLayer blockLight, DataLayer skyLight, YANibbleArray blockYALight, YANibbleArray skyYALight, int sectionY) {
+        if (section == null && isEmpty(blockLight) && isEmpty(skyLight) && isEmpty(blockYALight) && isEmpty(skyYALight)) {
             return false;
         }
 
@@ -125,10 +131,14 @@ public final class ChunkDataSerializer {
             writeBlockStates(writer, section.getStates());
             writeBiomes(writer, section.getBiomes(), biomeRegistry);
         }
-        if (!isEmpty(blockLight)) {
+        if (!isEmpty(blockYALight)) {
+            writeLight(writer, BLOCK_LIGHT, blockYALight);
+        } else if (!isEmpty(blockLight)) {
             writer.putByteArray(BLOCK_LIGHT, blockLight.getData());
         }
-        if (!isEmpty(skyLight)) {
+        if (!isEmpty(skyYALight)) {
+            writeLight(writer, SKY_LIGHT, skyYALight);
+        } else if (!isEmpty(skyLight)) {
             writer.putByteArray(SKY_LIGHT, skyLight.getData());
         }
         writer.putByte(Y, (byte) sectionY);
@@ -261,6 +271,27 @@ public final class ChunkDataSerializer {
     }
 
     private static boolean isEmpty(DataLayer layer) { return layer == null || layer.isEmpty(); }
+
+    private static boolean isEmpty(YANibbleArray nibble) {
+        return nibble == null || nibble.visibleSaveKind() == YANibbleArray.SAVE_EMPTY;
+    }
+
+    private static YANibbleArray yaLight(YAChunkLightAccess access, LightLayer layer, int sectionY) {
+        if (access == null) {
+            return null;
+        }
+        YAChunkLightData data = access.byepregen$yaLightData(layer, false);
+        return data == null ? null : data.getVisibleSection(sectionY);
+    }
+
+    private static void writeLight(NbtWriter writer, byte[] name, YANibbleArray nibble) {
+        int kind = nibble.visibleSaveKind();
+        if (kind == YANibbleArray.SAVE_FULL) {
+            writer.putByteArrayFilled(name, YANibbleArray.SIZE, (byte)-1);
+        } else if (kind == YANibbleArray.SAVE_DATA) {
+            writer.putByteArray(name, nibble.visibleDataForSave());
+        }
+    }
 
     private static byte[] statusName(ChunkStatus status) {
         return STATUS_NAMES.computeIfAbsent(

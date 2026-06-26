@@ -109,6 +109,14 @@ public final class NbtWriter implements DataOutput {
         this.write(value, 0, value.length);
     }
 
+    public void putByteArrayFilled(byte[] name, int length, byte value) {
+        this.writeNamedType(Tag.TAG_BYTE_ARRAY, name);
+        this.writeInt(length);
+        this.ensureCapacity(length);
+        UNSAFE.setMemory(this.address(), length, value);
+        this.offset += length;
+    }
+
     public void putIntArray(byte[] name, int[] value) {
         this.writeNamedType(Tag.TAG_INT_ARRAY, name);
         this.writeInt(value.length);
