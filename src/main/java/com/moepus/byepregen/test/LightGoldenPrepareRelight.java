@@ -23,6 +23,13 @@ import java.util.stream.Stream;
 public final class LightGoldenPrepareRelight {
     private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo("light-golden-prepare-relight", Level.OVERWORLD, "chunk");
     static final String CHUNK_LIST_FILE = "byepregen-light-golden-chunks.txt";
+    private static final double RELIGHT_RADIUS = Double.parseDouble(System.getProperty(
+            "byepregen.lightGolden.prepareRadius",
+            Double.toString(Double.POSITIVE_INFINITY)
+    ));
+    private static final int RELIGHT_CHUNK_RADIUS = Double.isFinite(RELIGHT_RADIUS)
+            ? (int)Math.ceil(RELIGHT_RADIUS / 16.0D)
+            : Integer.MAX_VALUE;
 
     private LightGoldenPrepareRelight() {
     }
@@ -83,19 +90,24 @@ public final class LightGoldenPrepareRelight {
         try (Stream<Path> stream = Files.walk(worldDir, 6);
              BufferedWriter writer = Files.newBufferedWriter(chunkList)) {
             int chunks = 0;
+            int relightChunks = 0;
             for (Path region : stream.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".mca"))
                     .filter(path -> path.getParent() != null && path.getParent().getFileName().toString().equals("region"))
                     .toList()) {
-                chunks += stripRegion(region, writer);
+                StripCounts counts = stripRegion(region, writer);
+                chunks += counts.stripped;
+                relightChunks += counts.relightListed;
             }
             System.out.println("Stripped saved light from " + chunks + " chunk(s) in " + worldDir);
+            System.out.println("Wrote " + relightChunks + " relight target chunk(s) to " + chunkList);
         }
     }
 
-    private static int stripRegion(Path regionPath, BufferedWriter chunkList) throws IOException {
+    private static StripCounts stripRegion(Path regionPath, BufferedWriter chunkList) throws IOException {
         RegionCoords region = RegionCoords.parse(regionPath.getFileName().toString());
         int chunks = 0;
+        int relightChunks = 0;
         try (RegionFile regionFile = new RegionFile(REGION_INFO, regionPath, regionPath.getParent(), false)) {
             for (int localZ = 0; localZ < 32; ++localZ) {
                 for (int localX = 0; localX < 32; ++localX) {
@@ -111,15 +123,22 @@ public final class LightGoldenPrepareRelight {
                     try (DataOutputStream output = regionFile.getChunkDataOutputStream(pos)) {
                         NbtIo.write(chunkTag, output);
                     }
-                    chunkList.write(Integer.toString(pos.x));
-                    chunkList.write(' ');
-                    chunkList.write(Integer.toString(pos.z));
-                    chunkList.newLine();
+                    if (shouldRelight(pos)) {
+                        chunkList.write(Integer.toString(pos.x));
+                        chunkList.write(' ');
+                        chunkList.write(Integer.toString(pos.z));
+                        chunkList.newLine();
+                        ++relightChunks;
+                    }
                     ++chunks;
                 }
             }
         }
-        return chunks;
+        return new StripCounts(chunks, relightChunks);
+    }
+
+    private static boolean shouldRelight(ChunkPos pos) {
+        return Math.abs(pos.x) <= RELIGHT_CHUNK_RADIUS && Math.abs(pos.z) <= RELIGHT_CHUNK_RADIUS;
     }
 
     private static void stripChunkLight(CompoundTag chunkTag) {
@@ -147,5 +166,8 @@ public final class LightGoldenPrepareRelight {
             }
             return new RegionCoords(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
         }
+    }
+
+    private record StripCounts(int stripped, int relightListed) {
     }
 }

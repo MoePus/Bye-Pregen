@@ -28,13 +28,19 @@ def lightGoldenConfig = [
         vanillaDir       : file("${lightGoldenRoot}/vanilla"),
         yaDir            : file("${lightGoldenRoot}/ya"),
         radius           : prop('byepregenLightGoldenRadius', '64'),
+        sourceBuffer     : prop('byepregenLightGoldenSourceBuffer', '192'),
         gcFree           : prop('byepregenLightGoldenGcFree', 'true'),
         maxMismatches    : prop('byepregenLightGoldenMaxMismatches', '50'),
         minComparedLayers: prop('byepregenLightGoldenMinComparedLayers', '1'),
         missingAsZero    : prop('byepregenLightGoldenMissingAsZero', 'false'),
+        sourceArena      : prop('byepregenLightGoldenSourceArenaPalette', 'true'),
+        vanillaArena     : prop('byepregenLightGoldenVanillaArenaPalette', 'true'),
+        yaArena          : prop('byepregenLightGoldenYAArenaPalette', 'true'),
 ]
 lightGoldenConfig.expectedWorld = prop('byepregenLightGoldenExpectedWorld', file("${lightGoldenConfig.vanillaDir}/world").absolutePath)
 lightGoldenConfig.actualWorld = prop('byepregenLightGoldenActualWorld', file("${lightGoldenConfig.yaDir}/world").absolutePath)
+lightGoldenConfig.sourceRadius = (lightGoldenConfig.radius.toBigDecimal() + lightGoldenConfig.sourceBuffer.toBigDecimal()).toPlainString()
+lightGoldenConfig.diffChunkLimit = Math.ceil(lightGoldenConfig.radius.toBigDecimal().doubleValue() / 16.0D).intValue()
 lightGoldenConfig.relightJfrRepository = file("${lightGoldenConfig.rootDir}/jfr-repository")
 lightGoldenConfig.relightVanillaJfrEnabled = prop('byepregenLightGoldenRelightVanillaJfr', 'false').toBoolean()
 lightGoldenConfig.relightYAJfrEnabled = prop('byepregenLightGoldenRelightYAJfr', 'false').toBoolean()
@@ -90,6 +96,7 @@ def configureLightFuzzRun = { run, File dir ->
 
 def prepareWorldGenRunDir = { Map options ->
     File dir = options.dir
+    String arenaPalette = options.get('arenaPalette') ?: 'true'
     if (options.clearWorld) {
         delete(file("${dir}/world"))
     }
@@ -100,6 +107,7 @@ def prepareWorldGenRunDir = { Map options ->
     file("${dir}/config/byepregen.json").text = """\
 {
   "enablePlacedFeatureMixin": false,
+  "enableArenaPalette": ${arenaPalette},
   "enableYALightEngine": ${options.yaLight},
   "enableGcFreeWorldgenSave": ${options.gcFree}
 }
@@ -152,7 +160,13 @@ def prepareRelightRunTask = { String taskName, Map options ->
                 options.jfrFile.parentFile.mkdirs()
                 lightGoldenConfig.relightJfrRepository.mkdirs()
             }
-            prepareWorldGenRunDir([dir: options.dir, yaLight: options.yaLight, gcFree: lightGoldenConfig.gcFree, clearWorld: false])
+            prepareWorldGenRunDir([
+                    dir         : options.dir,
+                    yaLight     : options.yaLight,
+                    arenaPalette: options.arenaPalette,
+                    gcFree      : lightGoldenConfig.gcFree,
+                    clearWorld  : false,
+            ])
         }
     }
 }
@@ -169,7 +183,7 @@ neoForge {
         }
 
         lightGoldenSource {
-            configureWorldgenRun(delegate, [dir: lightGoldenConfig.sourceDir, radius: lightGoldenConfig.radius])
+            configureWorldgenRun(delegate, [dir: lightGoldenConfig.sourceDir, radius: lightGoldenConfig.sourceRadius])
         }
 
         lightGoldenVanilla {
@@ -227,18 +241,36 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
         [
                 taskName: 'runLightGoldenSource',
                 reason  : 'Prepares a disposable source terrain world before launching the server',
-                prepare : [dir: lightGoldenConfig.sourceDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true],
+                prepare : [
+                        dir         : lightGoldenConfig.sourceDir,
+                        yaLight     : 'false',
+                        arenaPalette: lightGoldenConfig.sourceArena,
+                        gcFree      : lightGoldenConfig.gcFree,
+                        clearWorld  : true,
+                ],
         ],
         [
                 taskName: 'runLightGoldenVanilla',
                 reason  : 'Prepares a disposable vanilla-light golden world before launching the server',
-                prepare : [dir: lightGoldenConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true],
+                prepare : [
+                        dir         : lightGoldenConfig.vanillaDir,
+                        yaLight     : 'false',
+                        arenaPalette: lightGoldenConfig.vanillaArena,
+                        gcFree      : lightGoldenConfig.gcFree,
+                        clearWorld  : true,
+                ],
         ],
         [
                 taskName    : 'runLightGoldenYA',
                 reason      : 'Prepares a disposable YA-light golden world before launching the server',
                 mustRunAfter: 'runLightGoldenVanilla',
-                prepare     : [dir: lightGoldenConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: true],
+                prepare     : [
+                        dir         : lightGoldenConfig.yaDir,
+                        yaLight     : 'true',
+                        arenaPalette: lightGoldenConfig.yaArena,
+                        gcFree      : lightGoldenConfig.gcFree,
+                        clearWorld  : true,
+                ],
         ],
 ].each { prepareRunTask(it.taskName, it) }
 
@@ -251,9 +283,22 @@ tasks.register('prepareLightGoldenRelight', JavaExec) {
     args file("${lightGoldenConfig.sourceDir}/world").absolutePath,
             file("${lightGoldenConfig.vanillaDir}/world").absolutePath,
             file("${lightGoldenConfig.yaDir}/world").absolutePath
+    systemProperty 'byepregen.lightGolden.prepareRadius', lightGoldenConfig.radius
     doFirst {
-        prepareWorldGenRunDir([dir: lightGoldenConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: false])
-        prepareWorldGenRunDir([dir: lightGoldenConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: false])
+        prepareWorldGenRunDir([
+                dir         : lightGoldenConfig.vanillaDir,
+                yaLight     : 'false',
+                arenaPalette: lightGoldenConfig.vanillaArena,
+                gcFree      : lightGoldenConfig.gcFree,
+                clearWorld  : false,
+        ])
+        prepareWorldGenRunDir([
+                dir         : lightGoldenConfig.yaDir,
+                yaLight     : 'true',
+                arenaPalette: lightGoldenConfig.yaArena,
+                gcFree      : lightGoldenConfig.gcFree,
+                clearWorld  : false,
+        ])
     }
 }
 
@@ -261,6 +306,7 @@ prepareRelightRunTask('runLightGoldenRelightVanilla', [
         reason    : 'Uses the prepared vanilla relight world without deleting it',
         dir       : lightGoldenConfig.vanillaDir,
         yaLight   : 'false',
+        arenaPalette: lightGoldenConfig.vanillaArena,
         jfrEnabled: lightGoldenConfig.relightVanillaJfrEnabled,
         jfrFile   : lightGoldenConfig.relightVanillaJfr,
 ])
@@ -269,6 +315,7 @@ prepareRelightRunTask('runLightGoldenRelightYA', [
         mustRunAfter: 'runLightGoldenRelightVanilla',
         dir         : lightGoldenConfig.yaDir,
         yaLight     : 'true',
+        arenaPalette: lightGoldenConfig.yaArena,
         jfrEnabled  : lightGoldenConfig.relightYAJfrEnabled,
         jfrFile     : lightGoldenConfig.relightYAJfr,
 ])
@@ -283,6 +330,10 @@ tasks.register('diffLightGolden', JavaExec) {
     systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
     systemProperty 'byepregen.lightGolden.minComparedLayers', lightGoldenConfig.minComparedLayers
     systemProperty 'byepregen.lightGolden.missingAsZero', lightGoldenConfig.missingAsZero
+    systemProperty 'byepregen.lightGolden.minChunkX', -lightGoldenConfig.diffChunkLimit
+    systemProperty 'byepregen.lightGolden.maxChunkX', lightGoldenConfig.diffChunkLimit
+    systemProperty 'byepregen.lightGolden.minChunkZ', -lightGoldenConfig.diffChunkLimit
+    systemProperty 'byepregen.lightGolden.maxChunkZ', lightGoldenConfig.diffChunkLimit
 }
 
 tasks.register('runLightGoldenDiff') {
