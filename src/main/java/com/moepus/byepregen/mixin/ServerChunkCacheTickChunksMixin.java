@@ -230,10 +230,10 @@ public abstract class ServerChunkCacheTickChunksMixin {
 
         if (this.level.shouldTickBlocksAt(chunkPosLong)) {
             this.byepregen$seedChunkCache(levelChunk, ChunkStatus.FULL);
-            this.level.tickChunk(levelChunk, randomTickSpeed);
             if (C2MECompat.isC2MEInstalled()) {
                 C2MECompat.executeTasksMidTick(this.level);
             }
+            this.level.tickChunk(levelChunk, randomTickSpeed);
         }
     }
 
