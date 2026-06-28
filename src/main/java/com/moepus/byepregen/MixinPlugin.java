@@ -65,6 +65,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.ServerChunkCacheTickChunksMixin";
     private static final String YA_LIGHT_MIXIN_PREFIX =
             "com.moepus.byepregen.mixin.yalight.";
+    private static final String CLIENT_OPTIMIZATION_MIXIN_PREFIX =
+            "com.moepus.byepregen.mixin.client.";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -81,7 +83,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         boolean gcFreeSaveEnabled = config.enableGcFreeWorldgenSave;
         boolean arenaEnabled = config.enableArenaPalette;
         boolean serverRuntimeArena = arenaEnabled && config.enableServerRuntimeArenaPalette;
-        boolean clientArena = arenaEnabled && config.enableClientArenaPalette;
+        boolean clientOptimizationsEnabled = config.enableClientOptimizations;
+        boolean clientArena = clientOptimizationsEnabled && arenaEnabled && config.enableClientArenaPalette;
         return switch (mixinClassName) {
             case C2ME_COMPAT_MIXIN ->
                     hasClass("com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking");
@@ -123,6 +126,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                             && hasClass("net.caffeinemc.mods.sodium.client.model.light.data.LightDataAccess");
             default ->
                     (mixinClassName.startsWith(YA_LIGHT_MIXIN_PREFIX) ? config.enableYALightEngine :
+                            mixinClassName.startsWith(CLIENT_OPTIMIZATION_MIXIN_PREFIX) ? clientOptimizationsEnabled :
                             !mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX) || gcFreeSaveEnabled);
         };
     }

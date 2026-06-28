@@ -82,6 +82,7 @@
     "placement.RepeatingPlacementMixin"
   ],
   "client": [
+    "client.gcfree.RegistryDataLoaderRetainedReaderMixin",
     "yalight.LevelRendererYALightMixin"
   ],
   "injectors": {
