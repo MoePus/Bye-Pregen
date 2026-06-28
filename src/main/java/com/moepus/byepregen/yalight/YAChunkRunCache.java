@@ -11,7 +11,7 @@ import net.minecraft.world.level.chunk.LightChunkGetter;
 
 import java.util.Arrays;
 
-class YAChunkRunCache {
+public class YAChunkRunCache {
     private static final int UNSET = Integer.MIN_VALUE;
 
     private final ChunkAccess[] chunks = new ChunkAccess[9];
@@ -87,23 +87,7 @@ class YAChunkRunCache {
 
     int getRawId(LightChunkGetter chunkGetter, int x, int y, int z) {
         int index = this.chunkIndex(chunkGetter, x >> 4, z >> 4);
-        BlockStateRawIdAccess access = rawAccess(this.chunks[index], y >> 4);
-        return access == null ? -1 : access.getRawId(x & 15, y & 15, z & 15);
-    }
-
-    BlockState getState(LightChunkGetter chunkGetter, BlockPos.MutableBlockPos mutablePos, int x, int y, int z) {
-        return this.getState(chunkGetter, mutablePos, x, y, z, -1);
-    }
-
-    BlockState getState(LightChunkGetter chunkGetter, BlockPos.MutableBlockPos mutablePos, int x, int y, int z, int rawId) {
-        if (rawId >= 0) {
-            return Block.stateById(rawId);
-        }
-        LightChunk chunk = this.chunk(chunkGetter, x >> 4, z >> 4);
-        if (chunk == null) {
-            return YALightMath.air();
-        }
-        return chunk.getBlockState(mutablePos.set(x, y, z));
+        return rawIdAt(this.chunks[index], x, y, z);
     }
 
     private int chunkIndex(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
@@ -163,7 +147,12 @@ class YAChunkRunCache {
         return data;
     }
 
-    private static BlockStateRawIdAccess rawAccess(ChunkAccess chunk, int sectionY) {
+    public static int rawIdAt(ChunkAccess chunk, int x, int y, int z) {
+        BlockStateRawIdAccess access = rawAccess(chunk, y >> 4);
+        return access == null ? -1 : access.getRawId(x & 15, y & 15, z & 15);
+    }
+
+    public static BlockStateRawIdAccess rawAccess(ChunkAccess chunk, int sectionY) {
         if (chunk == null) {
             return null;
         }

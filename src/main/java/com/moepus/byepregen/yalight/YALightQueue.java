@@ -5,17 +5,14 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 
-import java.util.ArrayDeque;
-
 final class YALightQueue {
     // Coalesce source propagation and block checks by chunk so warm caches stay useful for the whole task.
     private final Long2ObjectLinkedOpenHashMap<ChunkTask> tasks = new Long2ObjectLinkedOpenHashMap<>();
-    // ChunkTasks are drained fully every run and never escape, so we recycle them and their warm
-    // check buffers through a free-list instead of allocating per touched chunk.
-    private final ArrayDeque<ChunkTask> pool = new ArrayDeque<>();
+    // ChunkTasks are drained fully every run and never escape, so a simple intrusive free-list is enough.
+    private ChunkTask pooledTask;
 
     void queueCheck(BlockPos pos) {
-        this.task(ChunkPos.asLong(pos)).checks.add(pos.asLong());
+        this.task(ChunkPos.asLong(pos)).addCheck(pos);
     }
 
     void queueSource(ChunkPos pos) {
@@ -29,7 +26,7 @@ final class YALightQueue {
     void removeChunk(ChunkPos pos) {
         ChunkTask task = this.tasks.remove(pos.toLong());
         if (task != null) {
-            this.pool.addFirst(task);
+            this.recycle(task);
         }
     }
 
@@ -58,15 +55,19 @@ final class YALightQueue {
     }
 
     void recycle(ChunkTask task) {
-        this.pool.addFirst(task);
+        task.nextPooled = this.pooledTask;
+        this.pooledTask = task;
     }
 
     private ChunkTask task(long chunkKey) {
         ChunkTask task = this.tasks.get(chunkKey);
         if (task == null) {
-            task = this.pool.pollFirst();
+            task = this.pooledTask;
             if (task == null) {
                 task = new ChunkTask();
+            } else {
+                this.pooledTask = task.nextPooled;
+                task.nextPooled = null;
             }
             task.reset(chunkKey);
             this.tasks.put(chunkKey, task);
@@ -75,18 +76,33 @@ final class YALightQueue {
     }
 
     static final class ChunkTask {
-        final YALongQueue checks = new YALongQueue(4);
+        private static final int LOCAL_BITS = 4;
+        private static final int LOCAL_MASK = (1 << LOCAL_BITS) - 1;
+        private static final int Z_SHIFT = LOCAL_BITS;
+        private static final int Y_SHIFT = LOCAL_BITS * 2;
+        private static final int Y_MASK = (1 << 24) - 1;
+
+        final YAIntQueue checks = new YAIntQueue(16);
         long chunkKey;
         int maxSourceSection;
         int sourceSectionCount;
         boolean source;
+        ChunkTask nextPooled;
 
         void reset(long chunkKey) {
             this.chunkKey = chunkKey;
             this.source = false;
             this.maxSourceSection = Integer.MIN_VALUE;
             this.sourceSectionCount = 0;
-            this.checks.clear();
+            this.clearChecks();
+        }
+
+        void addCheck(BlockPos pos) {
+            this.checks.add(packCheck(pos));
+        }
+
+        long pollCheckPos() {
+            return unpackCheck(this.chunkKey, this.checks.poll());
         }
 
         void queueSourceSection(int sectionY) {
@@ -104,6 +120,25 @@ final class YALightQueue {
 
         int chunkZ() {
             return ChunkPos.getZ(this.chunkKey);
+        }
+
+        private void clearChecks() {
+            this.checks.clear();
+        }
+
+        private static int packCheck(BlockPos pos) {
+            return ((pos.getY() & Y_MASK) << Y_SHIFT)
+                    | ((pos.getZ() & LOCAL_MASK) << Z_SHIFT)
+                    | (pos.getX() & LOCAL_MASK);
+        }
+
+        private static long unpackCheck(long chunkKey, int packed) {
+            int chunkX = ChunkPos.getX(chunkKey);
+            int chunkZ = ChunkPos.getZ(chunkKey);
+            int x = (chunkX << LOCAL_BITS) | (packed & LOCAL_MASK);
+            int y = packed >> Y_SHIFT;
+            int z = (chunkZ << LOCAL_BITS) | ((packed >>> Z_SHIFT) & LOCAL_MASK);
+            return BlockPos.asLong(x, y, z);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 
+import java.util.HashMap;
 import java.util.Optional;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
@@ -38,10 +39,13 @@ public final class NbtReader {
         if (paletteTag.isEmpty()) {
             return null;
         }
+        return readPaletteRawIds(paletteTag, new PaletteReadCache());
+    }
 
+    private static int[] readPaletteRawIds(ListTag paletteTag, PaletteReadCache cache) {
         int[] rawIds = new int[paletteTag.size()];
         for (int i = 0; i < rawIds.length; ++i) {
-            BlockState state = readState(paletteTag.getCompound(i));
+            BlockState state = readState(paletteTag.getCompound(i), cache);
             if (state == null) {
                 return null;
             }
@@ -55,8 +59,8 @@ public final class NbtReader {
         return rawIds;
     }
 
-    private static BlockState readState(CompoundTag stateTag) {
-        Block block = readBlock(stateTag.getString(NAME));
+    private static BlockState readState(CompoundTag stateTag, PaletteReadCache cache) {
+        Block block = cache.readBlock(stateTag.getString(NAME));
         if (block == null) {
             return null;
         }
@@ -68,7 +72,7 @@ public final class NbtReader {
 
         CompoundTag properties = stateTag.getCompound(PROPERTIES);
         for (String key : properties.getAllKeys()) {
-            state = setProperty(state, key, properties.getString(key));
+            state = setProperty(state, key, properties.getString(key), cache);
             if (state == null) {
                 return null;
             }
@@ -76,29 +80,82 @@ public final class NbtReader {
         return state;
     }
 
-    private static Block readBlock(String name) {
-        ResourceLocation id = ResourceLocation.tryParse(name);
-        if (id == null) {
-            return null;
-        }
-        Optional<Block> block = BuiltInRegistries.BLOCK.getOptional(id);
-        return block.orElse(null);
-    }
-
-    private static BlockState setProperty(BlockState state, String key, String valueName) {
+    private static BlockState setProperty(
+            BlockState state, String key, String valueName, PaletteReadCache cache) {
         Property<?> property = state.getBlock().getStateDefinition().getProperty(key);
         if (property == null) {
             return null;
         }
-        return setProperty(state, property, valueName);
+        return setProperty(state, property, valueName, cache);
+    }
+
+    private static BlockState setProperty(
+            BlockState state, Property<?> property, String valueName, PaletteReadCache cache) {
+        Comparable<?> value = cache.readPropertyValue(property, valueName);
+        if (value == null) {
+            return null;
+        }
+        return setPropertyValue(state, property, value);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static BlockState setProperty(BlockState state, Property property, String valueName) {
-        Optional<? extends Comparable> value = property.getValue(valueName);
-        if (value.isEmpty()) {
-            return null;
+    private static BlockState setPropertyValue(BlockState state, Property property, Comparable value) {
+        return state.setValue(property, value);
+    }
+
+    private static final class PaletteReadCache {
+        private HashMap<String, Block> blocksByName;
+        private HashMap<Property<?>, HashMap<String, Comparable<?>>> propertyValues;
+
+        Block readBlock(String name) {
+            HashMap<String, Block> blocks = this.blocksByName;
+            if (blocks != null) {
+                Block cached = blocks.get(name);
+                if (cached != null) {
+                    return cached;
+                }
+            }
+
+            ResourceLocation id = ResourceLocation.tryParse(name);
+            if (id == null || !BuiltInRegistries.BLOCK.containsKey(id)) {
+                return null;
+            }
+
+            Block value = BuiltInRegistries.BLOCK.get(id);
+            if (blocks == null) {
+                blocks = new HashMap<>();
+                this.blocksByName = blocks;
+            }
+            blocks.put(name, value);
+            return value;
         }
-        return state.setValue(property, value.get());
+
+        Comparable<?> readPropertyValue(Property<?> property, String valueName) {
+            HashMap<Property<?>, HashMap<String, Comparable<?>>> propertyValues = this.propertyValues;
+            if (propertyValues == null) {
+                propertyValues = new HashMap<>();
+                this.propertyValues = propertyValues;
+            }
+
+            HashMap<String, Comparable<?>> values = propertyValues.get(property);
+            if (values == null) {
+                values = new HashMap<>();
+                propertyValues.put(property, values);
+            }
+
+            Comparable<?> cached = values.get(valueName);
+            if (cached != null) {
+                return cached;
+            }
+
+            Optional<? extends Comparable<?>> value = property.getValue(valueName);
+            if (value.isEmpty()) {
+                return null;
+            }
+
+            Comparable<?> resolved = value.get();
+            values.put(valueName, resolved);
+            return resolved;
+        }
     }
 }

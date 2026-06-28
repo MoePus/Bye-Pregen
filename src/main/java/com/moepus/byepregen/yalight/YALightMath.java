@@ -84,8 +84,4 @@ final class YALightMath {
     static boolean isEmptyShape(BlockState state) {
         return !state.canOcclude() || !state.useShapeForLightOcclusion();
     }
-
-    static BlockState air() {
-        return Blocks.AIR.defaultBlockState();
-    }
 }

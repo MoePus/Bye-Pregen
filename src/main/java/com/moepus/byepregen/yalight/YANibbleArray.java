@@ -2,8 +2,8 @@ package com.moepus.byepregen.yalight;
 
 import com.moepus.byepregen.UnsafeIntArrayAccess;
 import net.minecraft.world.level.chunk.DataLayer;
+import org.spongepowered.asm.mixin.Unique;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 
 public final class YANibbleArray {
@@ -12,8 +12,8 @@ public final class YANibbleArray {
     public static final int SAVE_FULL = 1;
     public static final int SAVE_DATA = 2;
 
-    private static final int POOL_MAX_SIZE = 256;
-    private static final ThreadLocal<ArrayDeque<byte[]>> BYTE_POOL = ThreadLocal.withInitial(ArrayDeque::new);
+    @Unique
+    public static final byte[] FULL_LIGHT_DATA = createFullLightData();
 
     static final int STATE_NULL = 0;
     static final int STATE_ZERO = 1;
@@ -47,10 +47,6 @@ public final class YANibbleArray {
         return new YANibbleArray(STATE_FULL, null);
     }
 
-    public static YANibbleArray hidden(byte[] data) {
-        return new YANibbleArray(data == null ? STATE_NULL : STATE_HIDDEN, data);
-    }
-
     public static YANibbleArray fromVanilla(DataLayer layer) {
         if (layer == null) {
             return nullArray();
@@ -69,12 +65,20 @@ public final class YANibbleArray {
         if (data == null) {
             return nullArray();
         }
-        if (isAllZero(data)) {
-            release(data);
+        if (data.length != SIZE) {
+            throw new IllegalArgumentException("Expected " + SIZE + " light bytes, got " + data.length);
+        }
+        boolean allZero = true;
+        boolean allFull = true;
+        for (int i = 0; i < SIZE && (allZero || allFull); ++i) {
+            int value = data[i] & 255;
+            allZero &= value == 0;
+            allFull &= value == 255;
+        }
+        if (allZero) {
             return new YANibbleArray();
         }
-        if (isAllFull(data)) {
-            release(data);
+        if (allFull) {
             return fullArray();
         }
         return new YANibbleArray(STATE_INIT, data);
@@ -82,6 +86,11 @@ public final class YANibbleArray {
 
     public boolean isNullVisible() {
         return this.visibleState == STATE_NULL;
+    }
+
+    public boolean hasVisibleLayer() {
+        int state = this.visibleState;
+        return state != STATE_NULL && state != STATE_HIDDEN;
     }
 
     public boolean isNullUpdating() {
@@ -109,22 +118,6 @@ public final class YANibbleArray {
             return 0;
         }
         int index = index(x, y, z);
-        int packed = UnsafeIntArrayAccess.get(data, index >>> 1) & 255;
-        return packed >>> ((index & 1) << 2) & 15;
-    }
-
-    public int getVisible(int index) {
-        int state = this.visibleState;
-        if (state == STATE_NULL || state == STATE_ZERO) {
-            return 0;
-        }
-        if (state == STATE_FULL) {
-            return 15;
-        }
-        byte[] data = this.visible;
-        if (data == null) {
-            return 0;
-        }
         int packed = UnsafeIntArrayAccess.get(data, index >>> 1) & 255;
         return packed >>> ((index & 1) << 2) & 15;
     }
@@ -159,27 +152,6 @@ public final class YANibbleArray {
         int shift = (index & 1) << 2;
         int packed = UnsafeIntArrayAccess.get(data, byteIndex) & 255;
         UnsafeIntArrayAccess.set(data, byteIndex, (byte)((packed & ~(15 << shift)) | ((value & 15) << shift)));
-    }
-
-    public void setZero() {
-        this.releaseDirtyUpdating();
-        this.updating = null;
-        this.updatingState = STATE_ZERO;
-        this.dirty = this.visibleState != STATE_ZERO;
-    }
-
-    public void setFull() {
-        this.releaseDirtyUpdating();
-        this.updating = null;
-        this.updatingState = STATE_FULL;
-        this.dirty = this.visibleState != STATE_FULL;
-    }
-
-    public void setNull() {
-        this.releaseDirtyUpdating();
-        this.updating = null;
-        this.updatingState = STATE_NULL;
-        this.dirty = this.visibleState != STATE_NULL;
     }
 
     public void publish() {
@@ -229,41 +201,15 @@ public final class YANibbleArray {
         return this.visible;
     }
 
-    public void discard() {
-        byte[] updatingData = this.updating;
-        byte[] visibleData = this.visible;
-        if (updatingData != null && updatingData != visibleData) {
-            release(updatingData);
-        }
-        this.updating = null;
-        this.visible = null;
-        this.updatingState = STATE_NULL;
-        this.visibleState = STATE_NULL;
-        this.dirty = false;
-    }
-
     public void retirePublished() {
-        byte[] updatingData = this.updating;
-        byte[] visibleData = this.visible;
-        if (updatingData != null && updatingData != visibleData) {
-            release(updatingData);
-        }
         // This object may still be reachable through an older visible section snapshot.
         // Keep visibleState/visible immutable for racing readers; only drop writer-private state.
-        this.updating = visibleData;
+        this.updating = this.visible;
         this.updatingState = this.visibleState;
         this.dirty = false;
     }
 
     public void discardUnpublished() {
-        byte[] updatingData = this.updating;
-        byte[] visibleData = this.visible;
-        if (updatingData != null) {
-            release(updatingData);
-        }
-        if (visibleData != null && visibleData != updatingData) {
-            release(visibleData);
-        }
         this.updating = null;
         this.visible = null;
         this.updatingState = STATE_NULL;
@@ -271,16 +217,10 @@ public final class YANibbleArray {
         this.dirty = false;
     }
 
-    private void releaseDirtyUpdating() {
-        if (this.updating != null && this.updating != this.visible && this.dirty) {
-            release(this.updating);
-        }
-    }
-
     private byte[] ensureUpdating() {
         if (!this.dirty) {
             // Copy-on-write keeps visible stable while the same tick continues mutating updating light.
-            byte[] next = allocate();
+            byte[] next = new byte[SIZE];
             if ((this.updatingState == STATE_INIT || this.updatingState == STATE_HIDDEN) && this.updating != null) {
                 System.arraycopy(this.updating, 0, next, 0, SIZE);
             } else {
@@ -290,7 +230,7 @@ public final class YANibbleArray {
             this.updatingState = STATE_INIT;
             this.dirty = true;
         } else if (this.updating == null) {
-            this.updating = allocate();
+            this.updating = new byte[SIZE];
             this.updatingState = STATE_INIT;
         }
         return this.updating;
@@ -300,42 +240,10 @@ public final class YANibbleArray {
         return (y & 15) << 8 | (z & 15) << 4 | (x & 15);
     }
 
-    private static byte[] allocate() {
-        byte[] pooled = BYTE_POOL.get().pollFirst();
-        return pooled != null ? pooled : new byte[SIZE];
-    }
-
-    public static void release(byte[] data) {
-        if (data == null || data.length != SIZE) {
-            return;
-        }
-        ArrayDeque<byte[]> pool = BYTE_POOL.get();
-        if (pool.size() < POOL_MAX_SIZE) {
-            pool.addFirst(data);
-        }
-    }
-
-    private static boolean isAllZero(byte[] data) {
-        if (data.length != SIZE) {
-            return false;
-        }
-        for (int i = 0; i < SIZE; ++i) {
-            if (data[i] != 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isAllFull(byte[] data) {
-        if (data.length != SIZE) {
-            return false;
-        }
-        for (int i = 0; i < SIZE; ++i) {
-            if ((data[i] & 255) != 255) {
-                return false;
-            }
-        }
-        return true;
+    @Unique
+    private static byte[] createFullLightData() {
+        byte[] data = new byte[YANibbleArray.SIZE];
+        Arrays.fill(data, (byte)-1);
+        return data;
     }
 }

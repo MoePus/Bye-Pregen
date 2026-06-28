@@ -19,14 +19,7 @@ public final class YALightEngine {
 
     public YALightEngine(LightChunkGetter chunkGetter, boolean hasBlockLight, boolean hasSkyLight) {
         this.chunkGetter = chunkGetter;
-        if (!(chunkGetter.getLevel() instanceof LevelHeightAccessor level)) {
-            // Some synthetic LightChunkGetters do not expose a real level; keep YA inert instead of crashing init.
-            this.skyEngine = null;
-            this.blockEngine = null;
-            this.minLightSection = 0;
-            this.maxLightSection = -1;
-            return;
-        }
+        LevelHeightAccessor level = chunkGetter.getLevel();
         this.minLightSection = YALightStorage.minLightSection(level);
         this.maxLightSection = this.minLightSection + YALightStorage.lightSectionCount(level) - 1;
         this.skyEngine = hasSkyLight ? new YASkyLightEngine(chunkGetter, level) : null;
@@ -120,6 +113,11 @@ public final class YALightEngine {
         if (engine != null) {
             engine.queueZeroSectionData(pos);
         }
+    }
+
+    public YANibbleArray getVisibleSection(LightLayer layer, SectionPos pos) {
+        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        return engine == null ? null : engine.getNibble(pos.x(), pos.y(), pos.z());
     }
 
     public String getDebugData(LightLayer layer, SectionPos pos) {
@@ -218,7 +216,6 @@ public final class YALightEngine {
 
     public boolean lightOnInSection(SectionPos pos) {
         boolean block = this.blockEngine == null || this.blockEngine.lightOnInSection(pos);
-        boolean sky = this.skyEngine == null || this.skyEngine.lightOnInSection(pos);
-        return block && sky;
+        return block && (this.skyEngine == null || this.skyEngine.lightOnInSection(pos));
     }
 }

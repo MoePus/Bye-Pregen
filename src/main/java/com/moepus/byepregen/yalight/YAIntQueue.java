@@ -2,30 +2,19 @@ package com.moepus.byepregen.yalight;
 
 import java.util.Arrays;
 
-final class YALongQueue {
-    private static final int INITIAL_CAPACITY = 4096;
-    private static final int MAX_RETAINED_CAPACITY = 1 << 16;
-
-    private long[] values;
+final class YAIntQueue {
+    private int[] values;
     private final int maxRetainedCapacity;
     private int readIndex;
     private int writeIndex;
 
-    YALongQueue() {
-        this(INITIAL_CAPACITY, MAX_RETAINED_CAPACITY);
-    }
-
-    YALongQueue(int initialCapacity) {
-        this(initialCapacity, Math.max(initialCapacity, 1));
-    }
-
-    private YALongQueue(int initialCapacity, int maxRetainedCapacity) {
+    YAIntQueue(int initialCapacity) {
         int capacity = Math.max(initialCapacity, 1);
-        this.values = new long[capacity];
-        this.maxRetainedCapacity = Math.max(maxRetainedCapacity, capacity);
+        this.values = new int[capacity];
+        this.maxRetainedCapacity = capacity;
     }
 
-    void add(long value) {
+    void add(int value) {
         if (this.writeIndex >= this.values.length) {
             this.compactConsumed();
         }
@@ -39,13 +28,13 @@ final class YALongQueue {
         return this.readIndex >= this.writeIndex;
     }
 
-    long poll() {
+    int poll() {
         return this.values[this.readIndex++];
     }
 
     void clear() {
         if (this.values.length > this.maxRetainedCapacity) {
-            this.values = new long[this.maxRetainedCapacity];
+            this.values = new int[this.maxRetainedCapacity];
         }
         this.readIndex = 0;
         this.writeIndex = 0;

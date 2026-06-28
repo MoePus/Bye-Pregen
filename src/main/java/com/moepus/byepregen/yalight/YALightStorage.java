@@ -94,10 +94,6 @@ public final class YALightStorage {
         data.setSection(pos.y(), nibble, this);
     }
 
-    public void setFullSection(SectionPos pos) {
-        this.setFullSection(pos.x(), pos.y(), pos.z());
-    }
-
     public void setFullSection(int chunkX, int sectionY, int chunkZ) {
         YAChunkLightData data = this.data(this.chunkAccess(chunkX, chunkZ));
         if (data != null) {

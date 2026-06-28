@@ -3,6 +3,8 @@ package com.moepus.byepregen.yalight;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -72,14 +74,14 @@ final class YALightBlockAccess {
         return block < 0 && (block & SLOW_BIT) != 0;
     }
 
-    BlockState stateAt(int x, int y, int z, int block) {
+    BlockState toState(int block) {
         if (block == EMPTY_BLOCK) {
-            return YALightMath.air();
+            return Blocks.AIR.defaultBlockState();
         }
         if (block == FULL_BLOCK) {
-            throw new IllegalArgumentException("FULL light block does not retain a raw block-state id");
+            return Blocks.STONE.defaultBlockState();
         }
-        return this.cache.getState(this.chunkGetter, this.mutablePos, x, y, z, this.rawId(block));
+        return Block.stateById(this.rawId(block));
     }
 
     int opacityAt(int x, int y, int z, int block) {
@@ -92,7 +94,7 @@ final class YALightBlockAccess {
         if (this.isShaped(block)) {
             return 1;
         }
-        return Math.max(1, this.stateAt(x, y, z, block).getLightBlock(this.level, this.mutablePos.set(x, y, z)));
+        return Math.max(1, this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z)));
     }
 
     int lightBlockAt(int x, int y, int z, int block) {
@@ -102,7 +104,7 @@ final class YALightBlockAccess {
         if (block == FULL_BLOCK) {
             return 15;
         }
-        return this.stateAt(x, y, z, block).getLightBlock(this.level, this.mutablePos.set(x, y, z));
+        return this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z));
     }
 
     boolean shapeOccludes(
@@ -112,6 +114,9 @@ final class YALightBlockAccess {
     ) {
         if (fromBlock == EMPTY_BLOCK && toBlock == EMPTY_BLOCK) {
             return false;
+        }
+        if (fromBlock == FULL_BLOCK || toBlock == FULL_BLOCK) {
+            return true;
         }
         VoxelShape fromShape = this.faceShapeAt(fromX, fromY, fromZ, fromBlock, direction);
         VoxelShape toShape = this.faceShapeAt(toX, toY, toZ, toBlock, direction.getOpposite());
@@ -126,7 +131,7 @@ final class YALightBlockAccess {
             return Shapes.block();
         }
 
-        BlockState state = this.stateAt(x, y, z, block);
+        BlockState state = this.toState(block);
         // Slow includes emitters and dynamic/partial-opacity states; some still opt out of shape occlusion.
         if (this.isSlow(block) && YALightMath.isEmptyShape(state)) {
             return Shapes.empty();

@@ -40,10 +40,6 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         return this.sourceCodeAt(index(x, z));
     }
 
-    public int yCode(int y) {
-        return y - this.minY;
-    }
-
     public int decodeSourceCode(int code) {
         if (code == NO_SOURCE_CODE) {
             return Integer.MAX_VALUE;

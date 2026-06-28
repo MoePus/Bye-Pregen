@@ -72,7 +72,7 @@ abstract class YALightLayerEngine implements LayerLightEventListener {
             work += this.propagateLightSectionsInternal(task.chunkX(), task.maxSourceSection, task.sourceSectionCount, task.chunkZ());
         }
         while (!task.checks.isEmpty()) {
-            this.checkBlockInternal(task.checks.poll());
+            this.checkBlockInternal(task.pollCheckPos());
             ++work;
         }
         return work;
@@ -123,7 +123,8 @@ abstract class YALightLayerEngine implements LayerLightEventListener {
     }
 
     public String getDebugData(SectionPos pos) {
-        return this.getDataLayerData(pos) == null ? "n/a" : "YA";
+        YANibbleArray nibble = this.getNibble(pos.x(), pos.y(), pos.z());
+        return nibble == null || !nibble.hasVisibleLayer() ? "n/a" : "YA";
     }
 
     public boolean lightOnInSection(SectionPos pos) {

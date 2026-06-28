@@ -1,15 +1,16 @@
 package com.moepus.byepregen.yalight;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
-final class YABlockStateLightClass {
-    static final int CLEAR = 0;
-    static final int FULL = 1;
-    static final int SHAPED = 2;
-    static final int SLOW = 3;
+public final class YABlockStateLightClass {
+    public static final int CLEAR = 0;
+    public static final int FULL = 1;
+    public static final int SHAPED = 2;
+    public static final int SLOW = 3;
 
     private static final int VALUES_PER_WORD = 16;
     private static final int BITS_PER_VALUE = 2;
@@ -19,11 +20,19 @@ final class YABlockStateLightClass {
     private YABlockStateLightClass() {
     }
 
-    static int fromRawId(int rawId) {
+    public static void initialize() {
+        // The static call is intentional: class initialization builds PACKED at a known lifecycle point.
+    }
+
+    public static int fromRawId(int rawId) {
         if (rawId < 0 || rawId >= Block.BLOCK_STATE_REGISTRY.size()) {
             return SLOW;
         }
-        int word = PACKED[rawId / VALUES_PER_WORD];
+        int wordIndex = rawId / VALUES_PER_WORD;
+        if (wordIndex >= PACKED.length) {
+            return SLOW;
+        }
+        int word = PACKED[wordIndex];
         int shift = (rawId % VALUES_PER_WORD) * BITS_PER_VALUE;
         return (word >>> shift) & VALUE_MASK;
     }
@@ -39,7 +48,7 @@ final class YABlockStateLightClass {
     }
 
     private static int classify(BlockState state) {
-        if (state.getBlock().hasDynamicShape() || state.getLightEmission() != 0) {
+        if (state.getBlock().hasDynamicShape() || needsStateLightColor(state)) {
             return SLOW;
         }
 
@@ -53,5 +62,9 @@ final class YABlockStateLightClass {
             return FULL;
         }
         return SLOW;
+    }
+
+    private static boolean needsStateLightColor(BlockState state) {
+        return state.hasDynamicLightEmission() || state.getLightEmission() != 0 || state.emissiveRendering(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 }

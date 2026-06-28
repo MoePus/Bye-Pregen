@@ -43,7 +43,7 @@ public final class YABlockLightEngine extends YALightLayerEngine {
         int emitted = 0;
         // Fast classes are guaranteed non-emissive; only slow blocks need a BlockState source query.
         if (this.blocks.isSlow(block)) {
-            BlockState state = this.blocks.stateAt(x, y, z, block);
+            BlockState state = this.blocks.toState(block);
             emitted = this.getSourceLight(pos, state);
         }
         int current = this.getCachedUpdatingLight(x, y, z);
@@ -184,7 +184,7 @@ public final class YABlockLightEngine extends YALightLayerEngine {
             }
             this.setCachedUpdatingLight(toX, toY, toZ, 0);
             if (this.blocks.isSlow(toBlock)) {
-                int source = this.getSourceLight(toPos, this.blocks.stateAt(toX, toY, toZ, toBlock));
+                int source = this.getSourceLight(toPos, this.blocks.toState(toBlock));
                 if (source > 0) {
                     this.enqueueIncrease(toPos, source, YALightMath.ALL_DIRECTIONS, YALightMath.FLAG_WRITE_LEVEL);
                 }

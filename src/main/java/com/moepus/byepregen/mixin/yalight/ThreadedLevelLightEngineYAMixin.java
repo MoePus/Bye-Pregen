@@ -1,7 +1,6 @@
 package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.yalight.YALightEngineHolder;
-import com.moepus.byepregen.yalight.YAThreadedLightEngineAccess;
 import com.moepus.byepregen.yalight.YALightEngine;
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -23,9 +22,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 @Mixin(ThreadedLevelLightEngine.class)
-public abstract class ThreadedLevelLightEngineYAMixin implements YAThreadedLightEngineAccess {
+public abstract class ThreadedLevelLightEngineYAMixin {
+    @Unique
+    private static final int BYEPREGEN_LIGHT_TASK_BATCH_SIZE = 128;
+
     @Shadow
     @Final
     private ObjectList<Pair<ThreadedLevelLightEngine.TaskType, Runnable>> lightTasks;
@@ -40,6 +44,14 @@ public abstract class ThreadedLevelLightEngineYAMixin implements YAThreadedLight
     @Unique
     private YALightEngine byepregen$yaEngine() {
         return ((YALightEngineHolder)this).byepregen$getYALightEngine();
+    }
+
+    @ModifyConstant(
+            method = "runUpdate",
+            constant = @Constant(intValue = 1000)
+    )
+    private int byepregen$limitLightTaskBatch(int vanillaBatchSize) {
+        return BYEPREGEN_LIGHT_TASK_BATCH_SIZE;
     }
 
     /**
@@ -140,17 +152,4 @@ public abstract class ThreadedLevelLightEngineYAMixin implements YAThreadedLight
         }, task -> this.addTask(chunkPos.x, chunkPos.z, () -> 0, ThreadedLevelLightEngine.TaskType.POST_UPDATE, task));
     }
 
-    @Override
-    public void byepregen$queueOwnedSectionBytes(LightLayer layer, SectionPos pos, byte[] data) {
-        this.addTask(
-                pos.x(),
-                pos.z(),
-                () -> 0,
-                ThreadedLevelLightEngine.TaskType.PRE_UPDATE,
-                Util.name(
-                        () -> this.byepregen$yaEngine().queueOwnedSectionBytes(layer, pos, data),
-                        () -> "YA queueOwnedSectionBytes " + pos
-                )
-        );
-    }
 }
