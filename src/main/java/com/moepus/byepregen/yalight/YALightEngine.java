@@ -14,16 +14,28 @@ public final class YALightEngine {
     private final LightChunkGetter chunkGetter;
     private final YASkyLightEngine skyEngine;
     private final YABlockLightEngine blockEngine;
+    private final boolean hasBlockLight;
+    private final boolean hasSkyLight;
     private final int minLightSection;
     private final int maxLightSection;
 
     public YALightEngine(LightChunkGetter chunkGetter, boolean hasBlockLight, boolean hasSkyLight) {
         this.chunkGetter = chunkGetter;
+        this.hasBlockLight = hasBlockLight;
+        this.hasSkyLight = hasSkyLight;
         LevelHeightAccessor level = chunkGetter.getLevel();
         this.minLightSection = YALightStorage.minLightSection(level);
         this.maxLightSection = this.minLightSection + YALightStorage.lightSectionCount(level) - 1;
         this.skyEngine = hasSkyLight ? new YASkyLightEngine(chunkGetter, level) : null;
         this.blockEngine = hasBlockLight ? new YABlockLightEngine(chunkGetter, level) : null;
+    }
+
+    public boolean hasBlockLight() {
+        return this.hasBlockLight;
+    }
+
+    public boolean hasSkyLight() {
+        return this.hasSkyLight;
     }
 
     public void checkBlock(BlockPos pos) {

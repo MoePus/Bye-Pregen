@@ -61,6 +61,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             "com.moepus.byepregen.mixin.compat.LithiumHashPaletteMixin";
     private static final String SODIUM_LIGHT_DATA_ACCESS_YA_LIGHT_MIXIN =
             "com.moepus.byepregen.mixin.compat.SodiumLightDataAccessYALightMixin";
+    private static final String SABLE_SERVER_LEVEL_PLOT_YA_LIGHT_MIXIN =
+            "com.moepus.byepregen.mixin.yalight.compat.SableServerLevelPlotYALightMixin";
     private static final String SERVER_CHUNK_CACHE_TICK_CHUNKS_MIXIN =
             "com.moepus.byepregen.mixin.ServerChunkCacheTickChunksMixin";
     private static final String YA_LIGHT_MIXIN_PREFIX =
@@ -124,6 +126,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             case SODIUM_LIGHT_DATA_ACCESS_YA_LIGHT_MIXIN ->
                     config.enableYALightEngine && isModExist("sodium")
                             && hasClass("net.caffeinemc.mods.sodium.client.model.light.data.LightDataAccess");
+            case SABLE_SERVER_LEVEL_PLOT_YA_LIGHT_MIXIN ->
+                    config.enableYALightEngine && isModExist("sable");
             default ->
                     (mixinClassName.startsWith(YA_LIGHT_MIXIN_PREFIX) ? config.enableYALightEngine :
                             mixinClassName.startsWith(CLIENT_OPTIMIZATION_MIXIN_PREFIX) ? clientOptimizationsEnabled :

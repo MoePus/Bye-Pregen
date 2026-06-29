@@ -70,6 +70,7 @@
     "yalight.ChunkSkyLightSourcesStorageMixin",
     "yalight.ClientPacketListenerYALightMixin",
     "yalight.ClientboundLightUpdatePacketDataYALightMixin",
+    "yalight.compat.SableServerLevelPlotYALightMixin",
     "yalight.LevelLightEngineYAMixin",
     "yalight.ThreadedLevelLightEngineYAMixin",
     "yalight.WorldGenRegionYALightMixin",
