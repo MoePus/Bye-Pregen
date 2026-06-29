@@ -26,49 +26,6 @@ public abstract class ClientPacketListenerYALightMixin {
     @Shadow
     private ClientLevel level;
 
-    @Shadow
-    private void applyLightData(int chunkX, int chunkZ, ClientboundLightUpdatePacketData data) {
-        throw new AssertionError();
-    }
-
-    @Shadow
-    private void enableChunkLight(LevelChunk chunk, int chunkX, int chunkZ) {
-        throw new AssertionError();
-    }
-
-    @Redirect(
-            method = "handleLightUpdatePacket",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/multiplayer/ClientLevel;queueLightUpdate(Ljava/lang/Runnable;)V"
-            )
-    )
-    private void byepregen$applyLightUpdateImmediately(ClientLevel instance, Runnable task) {
-        task.run();
-    }
-
-    @Redirect(
-            method = "handleLevelChunkWithLight",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/multiplayer/ClientLevel;queueLightUpdate(Ljava/lang/Runnable;)V"
-            )
-    )
-    private void byepregen$skipQueuedChunkLightUpdate(ClientLevel instance, Runnable task) {
-        // Applied after the chunk has been installed, so YA light data is visible immediately.
-    }
-
-    @Inject(method = "handleLevelChunkWithLight", at = @At("RETURN"))
-    private void byepregen$applyChunkLightImmediately(ClientboundLevelChunkWithLightPacket packet, CallbackInfo ci) {
-        int chunkX = packet.getX();
-        int chunkZ = packet.getZ();
-        this.applyLightData(chunkX, chunkZ, packet.getLightData());
-        LevelChunk chunk = this.level.getChunkSource().getChunk(chunkX, chunkZ, false);
-        if (chunk != null) {
-            this.enableChunkLight(chunk, chunkX, chunkZ);
-        }
-    }
-
     /**
      * @author MoePus
      * @reason Feed packet light bytes directly into YA light storage without constructing vanilla DataLayer objects.

@@ -120,7 +120,7 @@ public class YAChunkRunCache {
             return;
         }
         LightChunk chunk = chunkGetter.getChunkForLighting(this.chunkCenterX + dx, this.chunkCenterZ + dz);
-        this.chunks[index] = chunk == null ? null : (ChunkAccess)chunk;
+        this.chunks[index] = chunk == null ? null : (ChunkAccess) chunk;
         this.chunkLoadedMask |= bit;
     }
 
@@ -148,21 +148,22 @@ public class YAChunkRunCache {
     }
 
     public static int rawIdAt(ChunkAccess chunk, int x, int y, int z) {
-        BlockStateRawIdAccess access = rawAccess(chunk, y >> 4);
-        return access == null ? -1 : access.getRawId(x & 15, y & 15, z & 15);
-    }
-
-    public static BlockStateRawIdAccess rawAccess(ChunkAccess chunk, int sectionY) {
         if (chunk == null) {
-            return null;
+            return -1;
         }
-        int sectionIndex = chunk.getSectionIndexFromSectionY(sectionY);
+        int sectionIndex = chunk.getSectionIndexFromSectionY(y >> 4);
         LevelChunkSection[] sections = chunk.getSections();
         if (sectionIndex < 0 || sectionIndex >= sections.length) {
-            return null;
+            return -1;
         }
         LevelChunkSection section = sections[sectionIndex];
-        return section != null && section.getStates() instanceof BlockStateRawIdAccess access ? access : null;
+        if (section == null) {
+            return -1;
+        }
+        if (!(section.getStates() instanceof BlockStateRawIdAccess access)) {
+            return -1;
+        }
+        return access.getRawId(x & 15, y & 15, z & 15);
     }
 
     private static int chunkWindowIndex(int dx, int dz) {

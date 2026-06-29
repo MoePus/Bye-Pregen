@@ -57,7 +57,7 @@ public final class YASkyLightEngine extends YALightLayerEngine {
         int z = BlockPos.getZ(pos);
         LightChunk chunk = this.sourceCache.chunk(this.chunkGetter, x >> 4, z >> 4);
         if (chunk != null) {
-            YAChunkSkyLightSources sources = (YAChunkSkyLightSources)chunk.getSkyLightSources();
+            YAChunkSkyLightSources sources = (YAChunkSkyLightSources) chunk.getSkyLightSources();
             if (sources != null) {
                 sources.update(this.blocks, x, y, z);
                 this.updateColumn(x, z);
@@ -83,15 +83,6 @@ public final class YASkyLightEngine extends YALightLayerEngine {
     @Override
     protected void propagateLightSourcesInternal(int chunkX, int chunkZ) {
         this.propagateLightSourcesFromSection(chunkX, this.maxLightSection, chunkZ);
-    }
-
-    @Override
-    protected void propagateLightSectionInternal(int chunkX, int sectionY, int chunkZ) {
-        int maxSection = Math.min(sectionY, this.maxLightSection);
-        if (maxSection < this.minLightSection) {
-            return;
-        }
-        this.propagateLightSourcesFromSection(chunkX, maxSection, chunkZ);
     }
 
     private void propagateLightSourcesFromSection(int chunkX, int maxSection, int chunkZ) {
@@ -133,7 +124,7 @@ public final class YASkyLightEngine extends YALightLayerEngine {
         for (int dz = -1; dz <= 16; ++dz) {
             for (int dx = -1; dx <= 16; ++dx) {
                 int sourceCode = this.getCachedSourceCode(minX + dx, minZ + dz);
-                lowestByColumn[this.lowestIndex(dx, dz)] = (short)sourceCode;
+                lowestByColumn[this.lowestIndex(dx, dz)] = (short) sourceCode;
                 if (dx >= 0 && dx < 16 && dz >= 0 && dz < 16) {
                     innerMinSourceCode = Math.min(innerMinSourceCode, sourceCode);
                     innerMaxSourceCode = Math.max(innerMaxSourceCode, sourceCode);
@@ -162,7 +153,7 @@ public final class YASkyLightEngine extends YALightLayerEngine {
             return;
         }
 
-        int fromBlock = this.blocks.blockAt(x, y, z);
+        int fromBlock = Integer.MIN_VALUE;
         int directions = YALightMath.directions(meta);
         while (directions != 0) {
             int directionIndex = Integer.numberOfTrailingZeros(directions);
@@ -184,6 +175,9 @@ public final class YASkyLightEngine extends YALightLayerEngine {
             int target = level - this.blocks.opacityAt(toX, toY, toZ, toBlock);
             if (target <= current) {
                 continue;
+            }
+            if (fromBlock == Integer.MIN_VALUE) {
+                fromBlock = this.blocks.blockAt(x, y, z);
             }
             if ((fromBlock | toBlock) != 0
                     && this.blocks.shapeOccludes(x, y, z, fromBlock, toX, toY, toZ, toBlock, YALightMath.direction(directionIndex))) {

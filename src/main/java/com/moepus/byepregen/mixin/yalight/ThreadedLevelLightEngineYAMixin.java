@@ -24,11 +24,18 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(ThreadedLevelLightEngine.class)
 public abstract class ThreadedLevelLightEngineYAMixin {
     @Unique
-    private static final int BYEPREGEN_LIGHT_TASK_BATCH_SIZE = 128;
+    private static final int BYEPREGEN_LIGHT_TASK_MIN_BATCH = 8;
+
+    @Unique
+    private static final int BYEPREGEN_LIGHT_TASK_MAX_BATCH = 1000;
+
+    @Unique
+    private static final long BYEPREGEN_LIGHT_TASK_IDLE_RESET_MILLIS = 300L;
 
     @Shadow
     @Final
@@ -38,25 +45,65 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Final
     private ProcessorHandle<ChunkTaskPriorityQueueSorter.Message<Runnable>> sorterMailbox;
 
-    @Shadow
-    public abstract void tryScheduleUpdate();
+    @Unique
+    private int byepregen$lightTaskBatch = BYEPREGEN_LIGHT_TASK_MIN_BATCH;
+
+    @Unique
+    private int byepregen$forceDrainCount;
+
+    @Unique
+    private long byepregen$lastForceDrainMillis;
 
     @Unique
     private YALightEngine byepregen$yaEngine() {
         return ((YALightEngineHolder)this).byepregen$getYALightEngine();
     }
 
+    @Invoker("runUpdate")
+    protected abstract void byepregen$runUpdate();
+
     @ModifyConstant(
             method = "runUpdate",
             constant = @Constant(intValue = 1000)
     )
     private int byepregen$limitLightTaskBatch(int vanillaBatchSize) {
-        return BYEPREGEN_LIGHT_TASK_BATCH_SIZE;
+        return this.byepregen$lightTaskBatch;
+    }
+
+    @Unique
+    private void byepregen$resetAdaptiveLightTaskBatchIfIdle() {
+        if (this.byepregen$lightTaskBatch == BYEPREGEN_LIGHT_TASK_MIN_BATCH && this.byepregen$forceDrainCount == 0) {
+            return;
+        }
+        long lastDrainMillis = this.byepregen$lastForceDrainMillis;
+        if (lastDrainMillis != 0L && System.currentTimeMillis() - lastDrainMillis >= BYEPREGEN_LIGHT_TASK_IDLE_RESET_MILLIS) {
+            this.byepregen$resetAdaptiveLightTaskBatch();
+        }
+    }
+
+    @Unique
+    private void byepregen$recordForcedLightTaskDrain() {
+        this.byepregen$lastForceDrainMillis = System.currentTimeMillis();
+        if (this.byepregen$lightTaskBatch >= BYEPREGEN_LIGHT_TASK_MAX_BATCH) {
+            this.byepregen$forceDrainCount = 0;
+            return;
+        }
+        if (++this.byepregen$forceDrainCount >= 4) {
+            this.byepregen$lightTaskBatch = Math.min((this.byepregen$lightTaskBatch >> 1) + this.byepregen$lightTaskBatch, BYEPREGEN_LIGHT_TASK_MAX_BATCH);
+            this.byepregen$forceDrainCount = 0;
+        }
+    }
+
+    @Unique
+    private void byepregen$resetAdaptiveLightTaskBatch() {
+        this.byepregen$lightTaskBatch = BYEPREGEN_LIGHT_TASK_MIN_BATCH;
+        this.byepregen$forceDrainCount = 0;
+        this.byepregen$lastForceDrainMillis = 0L;
     }
 
     /**
      * @author MoePus
-     * @reason Wake the threaded light mailbox as soon as a sorter task reaches the light queue.
+     * @reason Preserve vanilla light-task backpressure while using YA's smaller update batches.
      */
     @Overwrite
     public void addTask(
@@ -67,8 +114,12 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             Runnable task
     ) {
         this.sorterMailbox.tell(ChunkTaskPriorityQueueSorter.message(() -> {
+            this.byepregen$resetAdaptiveLightTaskBatchIfIdle();
             this.lightTasks.add(Pair.of(type, task));
-            this.tryScheduleUpdate();
+            if (this.lightTasks.size() >= this.byepregen$lightTaskBatch) {
+                this.byepregen$runUpdate();
+                this.byepregen$recordForcedLightTaskDrain();
+            }
         }, ChunkPos.asLong(chunkX, chunkZ), queueLevelSupplier));
     }
 

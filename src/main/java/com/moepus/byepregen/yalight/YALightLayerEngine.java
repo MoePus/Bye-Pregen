@@ -68,8 +68,6 @@ abstract class YALightLayerEngine implements LayerLightEventListener {
         if (task.source) {
             this.propagateLightSourcesInternal(task.chunkX(), task.chunkZ());
             ++work;
-        } else if (task.hasSourceSections()) {
-            work += this.propagateLightSectionsInternal(task.chunkX(), task.maxSourceSection, task.sourceSectionCount, task.chunkZ());
         }
         while (!task.checks.isEmpty()) {
             this.checkBlockInternal(task.pollCheckPos());
@@ -83,7 +81,6 @@ abstract class YALightLayerEngine implements LayerLightEventListener {
         if (!isEmpty) {
             this.storage.getOrCreateSection(pos.x(), pos.y(), pos.z());
         }
-        this.queue.queueSourceSection(pos);
     }
 
     @Override
@@ -146,13 +143,6 @@ abstract class YALightLayerEngine implements LayerLightEventListener {
     protected abstract void checkBlockInternal(long pos);
 
     protected abstract void propagateLightSourcesInternal(int chunkX, int chunkZ);
-
-    protected abstract void propagateLightSectionInternal(int chunkX, int sectionY, int chunkZ);
-
-    protected int propagateLightSectionsInternal(int chunkX, int maxSectionY, int sectionCount, int chunkZ) {
-        this.propagateLightSectionInternal(chunkX, maxSectionY, chunkZ);
-        return sectionCount;
-    }
 
     protected abstract int getSourceLight(long pos, BlockState state);
 

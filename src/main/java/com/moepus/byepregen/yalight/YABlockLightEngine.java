@@ -1,7 +1,6 @@
 package com.moepus.byepregen.yalight;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
@@ -78,22 +77,6 @@ public final class YABlockLightEngine extends YALightLayerEngine {
             this.setCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ(), emitted);
             this.enqueueIncrease(pos.asLong(), emitted, YALightMath.ALL_DIRECTIONS, 0L);
         });
-    }
-
-    @Override
-    protected void propagateLightSectionInternal(int chunkX, int sectionY, int chunkZ) {
-        // Vanilla updateSectionStatus only changes storage availability for block light.
-        // Block sources are collected by propagateLightSources(chunk), using
-        // ChunkAccess.findBlockLightSources. Scanning the whole section here finds
-        // additional dynamic emitters that vanilla intentionally does not collect
-        // during chunk lighting, which changes saved light results.
-    }
-
-    @Override
-    public void updateSectionStatus(SectionPos pos, boolean isEmpty) {
-        if (!isEmpty) {
-            this.storage.getOrCreateSection(pos.x(), pos.y(), pos.z());
-        }
     }
 
     @Override

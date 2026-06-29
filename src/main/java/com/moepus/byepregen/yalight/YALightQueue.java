@@ -1,7 +1,6 @@
 package com.moepus.byepregen.yalight;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import net.minecraft.core.SectionPos;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 
@@ -19,10 +18,6 @@ final class YALightQueue {
         this.task(pos.toLong()).source = true;
     }
 
-    void queueSourceSection(SectionPos pos) {
-        this.task(ChunkPos.asLong(pos.x(), pos.z())).queueSourceSection(pos.y());
-    }
-
     void removeChunk(ChunkPos pos) {
         ChunkTask task = this.tasks.remove(pos.toLong());
         if (task != null) {
@@ -36,7 +31,7 @@ final class YALightQueue {
 
     void enableSourceChunks(YALightStorage storage) {
         for (ChunkTask task : this.tasks.values()) {
-            if (task.source || task.hasSourceSections()) {
+            if (task.source) {
                 int chunkX = task.chunkX();
                 int chunkZ = task.chunkZ();
                 // Source propagation can leave a chunk and re-enter it through a neighbor.
@@ -84,16 +79,12 @@ final class YALightQueue {
 
         final YAIntQueue checks = new YAIntQueue(16);
         long chunkKey;
-        int maxSourceSection;
-        int sourceSectionCount;
         boolean source;
         ChunkTask nextPooled;
 
         void reset(long chunkKey) {
             this.chunkKey = chunkKey;
             this.source = false;
-            this.maxSourceSection = Integer.MIN_VALUE;
-            this.sourceSectionCount = 0;
             this.clearChecks();
         }
 
@@ -103,15 +94,6 @@ final class YALightQueue {
 
         long pollCheckPos() {
             return unpackCheck(this.chunkKey, this.checks.poll());
-        }
-
-        void queueSourceSection(int sectionY) {
-            this.maxSourceSection = Math.max(this.maxSourceSection, sectionY);
-            ++this.sourceSectionCount;
-        }
-
-        boolean hasSourceSections() {
-            return this.sourceSectionCount != 0;
         }
 
         int chunkX() {
