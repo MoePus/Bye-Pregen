@@ -1,2 +1,1 @@
-com.moepus.byepregen.compat.C2MEMixinAdjuster
-com.moepus.byepregen.compat.LithiumMixinAdjuster
+com.moepus.byepregen.compat.FastTickChunksMixinAdjuster
