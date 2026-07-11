@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.compat.C2MECompat;
 import com.moepus.byepregen.optimization.FastNaturalSpawner;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
@@ -27,6 +28,7 @@ import org.spongepowered.asm.mixin.Unique;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
+@MixinGate(config = "enableFastTickChunks")
 @Mixin(value = ServerChunkCache.class, remap = false)
 public abstract class ServerChunkCacheTickChunksMixin {
     @Shadow

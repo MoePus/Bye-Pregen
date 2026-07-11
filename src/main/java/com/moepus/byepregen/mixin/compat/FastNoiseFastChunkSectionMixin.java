@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.compat;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -11,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+@MixinGate(requiredMods = "zfastnoise")
 @Mixin(targets = "org.codeberg.zenxarch.fastnoise.noise.FastChunkSection", remap = false)
 public abstract class FastNoiseFastChunkSectionMixin {
     @Shadow

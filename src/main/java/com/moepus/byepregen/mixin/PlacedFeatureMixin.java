@@ -1,6 +1,7 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.Feature.FastPlacementContext;
+import com.moepus.byepregen.MixinGate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -14,6 +15,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(config = "enablePlacedFeatureMixin")
 @Mixin(value = PlacedFeature.class, remap = false)
 public abstract class PlacedFeatureMixin {
     @Shadow

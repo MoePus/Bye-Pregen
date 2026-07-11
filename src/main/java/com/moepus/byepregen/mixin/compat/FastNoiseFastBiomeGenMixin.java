@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.compat;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PaletteContainer.FastPalette.FastPalettedContainerAccess;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.Biome;
@@ -13,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+@MixinGate(requiredMods = "zfastnoise")
 @Mixin(targets = "org.codeberg.zenxarch.fastnoise.noise.FastBiomeGen", remap = false)
 public abstract class FastNoiseFastBiomeGenMixin {
     @Inject(

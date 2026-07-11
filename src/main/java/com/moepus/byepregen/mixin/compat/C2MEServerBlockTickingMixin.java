@@ -3,6 +3,7 @@ package com.moepus.byepregen.mixin.compat;
 import com.ishland.c2me.rewrites.chunksystem.common.ChunkLoadingContext;
 import com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking;
 import com.ishland.flowsched.scheduler.Cancellable;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.objectweb.asm.Opcodes;
@@ -12,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@MixinGate(requiredMods = "c2me_rewrites_chunk_system")
 @Mixin(value = ServerBlockTicking.class, remap = false)
 public abstract class C2MEServerBlockTickingMixin {
     @Inject(method = "upgradeToThis(Lcom/ishland/c2me/rewrites/chunksystem/common/ChunkLoadingContext;Lcom/ishland/flowsched/scheduler/Cancellable;)Lio/reactivex/rxjava3/core/Completable;", at = @At("HEAD"), require = 0, remap = false)

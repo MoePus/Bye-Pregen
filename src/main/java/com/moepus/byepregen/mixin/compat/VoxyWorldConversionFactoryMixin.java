@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.compat;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -19,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@MixinGate(requiredMods = "voxy")
 @Pseudo
 @Mixin(targets = "me.cortex.voxy.common.voxelization.WorldConversionFactory", remap = false)
 public abstract class VoxyWorldConversionFactoryMixin {

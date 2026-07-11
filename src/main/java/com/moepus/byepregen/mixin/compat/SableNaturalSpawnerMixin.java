@@ -2,6 +2,7 @@ package com.moepus.byepregen.mixin.compat;
 
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalDoubleRef;
+import com.moepus.byepregen.MixinGate;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -12,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 
+@MixinGate(requiredMods = "sable")
 @Mixin(value = NaturalSpawner.class, remap = false)
 public abstract class SableNaturalSpawnerMixin {
     @Redirect(

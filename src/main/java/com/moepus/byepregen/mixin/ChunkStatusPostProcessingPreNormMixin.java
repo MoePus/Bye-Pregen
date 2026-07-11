@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.util.StaticCache2D;
@@ -14,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.concurrent.CompletableFuture;
 
+@MixinGate(conflictingMods = "c2me_rewrites_chunk_system")
 @Mixin(ChunkStatusTasks.class)
 public abstract class ChunkStatusPostProcessingPreNormMixin {
     @Inject(method = "full", at = @At("HEAD"))
