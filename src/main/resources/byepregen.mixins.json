@@ -12,6 +12,7 @@
     "ChunkHolderAccessor",
     "ChunkMapAccessor",
     "ChunkSerializerArenaReadMixin",
+    "ChunkSerializerLowStatusHeightmapMixin",
     "ChunkStatusPostProcessingPreNormMixin",
     "LeavesBlockWorldgenTickMixin",
     "LevelChunkArenaMixin",
@@ -67,10 +68,13 @@
     "yalight.ImposterProtoChunkYALightDataMixin",
     "yalight.EmptyLevelChunkYALightDataMixin",
     "yalight.ChunkAccessYASkyLightSourcesMixin",
+    "yalight.ChunkSkyLightSourcesDirtyMixin",
     "yalight.ChunkSkyLightSourcesStorageMixin",
     "yalight.ClientPacketListenerYALightMixin",
     "yalight.ClientboundLightUpdatePacketDataYALightMixin",
-    "yalight.compat.SableServerLevelPlotYALightMixin",
+    "yalight.LightEngineYASuperMixin",
+    "yalight.BlockLightEngineYASuperMixin",
+    "yalight.SkyLightEngineYASuperMixin",
     "yalight.LevelLightEngineYAMixin",
     "yalight.ThreadedLevelLightEngineYAMixin",
     "yalight.WorldGenRegionYALightMixin",
@@ -86,7 +90,7 @@
     "placement.RepeatingPlacementMixin"
   ],
   "client": [
-    "client.gcfree.RegistryDataLoaderRetainedReaderMixin",
+    "yalight.ClientChunkCacheYALightMixin",
     "yalight.LevelRendererYALightMixin"
   ],
   "injectors": {

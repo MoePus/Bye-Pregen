@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.Unique;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
-@MixinGate(config = "enableFastTickChunks")
+@MixinGate(config = "enableFastTickChunks", conflictingMods = "servercore")
 @Mixin(value = ServerChunkCache.class, remap = false)
 public abstract class ServerChunkCacheTickChunksMixin {
     @Shadow

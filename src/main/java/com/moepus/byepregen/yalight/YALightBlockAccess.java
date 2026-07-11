@@ -66,10 +66,6 @@ final class YALightBlockAccess {
         return block == FULL_BLOCK;
     }
 
-    boolean isShaped(int block) {
-        return block < 0 && (block & SLOW_BIT) == 0;
-    }
-
     boolean isSlow(int block) {
         return block < 0 && (block & SLOW_BIT) != 0;
     }
@@ -84,27 +80,13 @@ final class YALightBlockAccess {
         return Block.stateById(this.rawId(block));
     }
 
-    int opacityAt(int x, int y, int z, int block) {
-        if (block == EMPTY_BLOCK) {
-            return 1;
+    // Callers must reject FULL_BLOCK before reaching this hot-path helper.
+    int attenuatedLevel(int level, int x, int y, int z, int block) {
+        if (!this.isSlow(block)) {
+            return level - 1;
         }
-        if (block == FULL_BLOCK) {
-            return 15;
-        }
-        if (this.isShaped(block)) {
-            return 1;
-        }
-        return Math.max(1, this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z)));
-    }
-
-    int lightBlockAt(int x, int y, int z, int block) {
-        if (block == EMPTY_BLOCK || this.isShaped(block)) {
-            return 0;
-        }
-        if (block == FULL_BLOCK) {
-            return 15;
-        }
-        return this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z));
+        int opacity = Math.max(1, this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z)));
+        return Math.max(0, level - opacity);
     }
 
     boolean shapeOccludes(

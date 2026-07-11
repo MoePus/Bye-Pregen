@@ -1,5 +1,6 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.yalight.YALightEngineHolder;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -69,6 +70,10 @@ final class ChunkyWorldGenDriver {
     private static final int STRESS_CLEAR_COLUMNS = 56;
     private static final int STRESS_INITIAL_UPDATES = 520;
     private static final int STRESS_MUTATION_UPDATES = 420;
+    private static final int DIRTY_COLUMN_MIN = -8;
+    private static final int DIRTY_COLUMN_MAX = 7;
+    private static final int DIRTY_COLUMN_HEIGHT_MARGIN = 96;
+    private static final int DIRTY_COLUMN_ROUNDS = 64;
     private static final long PROGRESS_LOG_NANOS = TimeUnit.SECONDS.toNanos(30L);
     private static final long SHUTDOWN_WATCHDOG_SECONDS = 60L;
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
@@ -164,11 +169,21 @@ final class ChunkyWorldGenDriver {
         }
 
         LOGGER.info("Started light golden relight: world={} chunks={} list={}", WORLD, chunks.size(), chunkList);
+        YALightEngineHolder yaLight = yaLightEngineHolder(level);
+        if (yaLight != null) {
+            yaLight.byepregen$getYALightEngine().setDeclaredFreshOwnerDomain(chunks);
+        }
         int completed = 0;
         long startedNanos = System.nanoTime();
+        long getChunkCompletedNanos = startedNanos;
+        long cleanupStartedNanos = startedNanos;
+        long cleanupCompletedNanos = startedNanos;
         try {
             for (ChunkPos pos : chunks) {
                 level.getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FULL, true);
+                if (completed + 1 == chunks.size()) {
+                    getChunkCompletedNanos = System.nanoTime();
+                }
                 ++completed;
                 logRelightProgress(completed, chunks.size(), pos);
             }
@@ -176,13 +191,34 @@ final class ChunkyWorldGenDriver {
             LOGGER.error("Light golden relight failed after {}/{} chunks", completed, chunks.size(), throwable);
             failAndStop(server, "Relight failed after " + completed + "/" + chunks.size() + " chunks");
             return;
+        } finally {
+            cleanupStartedNanos = System.nanoTime();
+            if (yaLight != null) {
+                yaLight.byepregen$getYALightEngine().clearDeclaredFreshOwnerDomain();
+            }
+            cleanupCompletedNanos = System.nanoTime();
         }
 
-        double seconds = (System.nanoTime() - startedNanos) / 1_000_000_000.0D;
-        LOGGER.info("Light golden relight completed: world={} chunks={} seconds={}", WORLD, chunks.size(), seconds);
+        long lifecycleCompletedNanos = System.nanoTime();
+        double getChunkSeconds = (getChunkCompletedNanos - startedNanos) / 1_000_000_000.0D;
+        double cleanupSeconds = (cleanupCompletedNanos - cleanupStartedNanos) / 1_000_000_000.0D;
+        double lifecycleSeconds = (lifecycleCompletedNanos - startedNanos) / 1_000_000_000.0D;
+        LOGGER.info(
+                "Light golden relight completed: world={} chunks={} getChunkSeconds={} cleanupSeconds={} lifecycleSeconds={}",
+                WORLD,
+                chunks.size(),
+                getChunkSeconds,
+                cleanupSeconds,
+                lifecycleSeconds
+        );
         if (STOPPING.compareAndSet(false, true)) {
             server.executeIfPossible(() -> stopServer(server));
         }
+    }
+
+    private static YALightEngineHolder yaLightEngineHolder(ServerLevel level) {
+        Object lightEngine = level.getChunkSource().getLightEngine();
+        return lightEngine instanceof YALightEngineHolder holder ? holder : null;
     }
 
     private static List<ChunkPos> readRelightChunkList(Path chunkList) throws IOException {
@@ -253,6 +289,9 @@ final class ChunkyWorldGenDriver {
         if (runsStressLightFuzz()) {
             clearStressFuzzVolume(level);
         }
+        if (runsDirtyColumnLightFuzz()) {
+            clearDirtyColumnFuzzVolume(level);
+        }
     }
 
     private static void clearDefaultFuzzVolume(ServerLevel level) {
@@ -274,6 +313,9 @@ final class ChunkyWorldGenDriver {
         }
         if (runsStressLightFuzz()) {
             buildStressFuzzFixture(level);
+        }
+        if (runsDirtyColumnLightFuzz()) {
+            buildDirtyColumnFuzzFixture(level);
         }
     }
 
@@ -319,6 +361,9 @@ final class ChunkyWorldGenDriver {
         }
         if (runsStressLightFuzz()) {
             mutateStressFuzzFixture(level);
+        }
+        if (runsDirtyColumnLightFuzz()) {
+            mutateDirtyColumnFuzzFixture(level, 0);
         }
     }
 
@@ -525,6 +570,43 @@ final class ChunkyWorldGenDriver {
         applyStressUpdates(level, random, STRESS_MUTATION_UPDATES, true);
     }
 
+    private static void clearDirtyColumnFuzzVolume(ServerLevel level) {
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int z = DIRTY_COLUMN_MIN; z <= DIRTY_COLUMN_MAX; ++z) {
+            for (int x = DIRTY_COLUMN_MIN; x <= DIRTY_COLUMN_MAX; ++x) {
+                for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); ++y) {
+                    put(level, x, y, z, air);
+                }
+            }
+        }
+    }
+
+    private static void buildDirtyColumnFuzzFixture(ServerLevel level) {
+        int lowY = level.getMinBuildHeight() + DIRTY_COLUMN_HEIGHT_MARGIN;
+        int highY = level.getMaxBuildHeight() - DIRTY_COLUMN_HEIGHT_MARGIN;
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        for (int z = DIRTY_COLUMN_MIN; z <= DIRTY_COLUMN_MAX; ++z) {
+            for (int x = DIRTY_COLUMN_MIN; x <= DIRTY_COLUMN_MAX; ++x) {
+                put(level, x, lowY, z, stone);
+                if (((x ^ z) & 1) == 0) {
+                    put(level, x, highY, z, stone);
+                }
+            }
+        }
+    }
+
+    private static void mutateDirtyColumnFuzzFixture(ServerLevel level, int round) {
+        int highY = level.getMaxBuildHeight() - DIRTY_COLUMN_HEIGHT_MARGIN;
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        int highParity = (round + 1) & 1;
+        for (int z = DIRTY_COLUMN_MIN; z <= DIRTY_COLUMN_MAX; ++z) {
+            for (int x = DIRTY_COLUMN_MIN; x <= DIRTY_COLUMN_MAX; ++x) {
+                put(level, x, highY, z, ((x ^ z) & 1) == highParity ? stone : air);
+            }
+        }
+    }
+
     private static BlockState stressBlockState(Random random) {
         return switch (random.nextInt(12)) {
             case 0 -> Blocks.AIR.defaultBlockState();
@@ -587,7 +669,10 @@ final class ChunkyWorldGenDriver {
     }
 
     private static boolean isKnownLightFuzzVariant() {
-        return runsDefaultLightFuzz() || runsEdgeLightFuzz() || runsStressLightFuzz();
+        return runsDefaultLightFuzz()
+                || runsEdgeLightFuzz()
+                || runsStressLightFuzz()
+                || runsDirtyColumnLightFuzz();
     }
 
     private static boolean runsDefaultLightFuzz() {
@@ -600,6 +685,10 @@ final class ChunkyWorldGenDriver {
 
     private static boolean runsStressLightFuzz() {
         return "stress".equals(LIGHT_FUZZ_VARIANT) || "all".equals(LIGHT_FUZZ_VARIANT);
+    }
+
+    private static boolean runsDirtyColumnLightFuzz() {
+        return "dirty_columns".equals(LIGHT_FUZZ_VARIANT);
     }
 
 
@@ -695,6 +784,7 @@ final class ChunkyWorldGenDriver {
         private CompletableFuture<Void> pendingLight;
         private String pendingStage;
         private int stage;
+        private int dirtyColumnRound;
 
         private LightFuzzRun(MinecraftServer server, ServerLevel level) {
             this.server = server;
@@ -734,9 +824,10 @@ final class ChunkyWorldGenDriver {
                     }
                     case 3 -> {
                         mutateFuzzFixture(this.level);
+                        this.dirtyColumnRound = 1;
                         this.waitForLight("mutated fixture");
                     }
-                    case 4 -> this.complete();
+                    case 4 -> this.runNextDirtyColumnRound();
                     default -> throw new IllegalStateException("Invalid light fuzz stage: " + this.stage);
                 }
             } catch (Throwable throwable) {
@@ -755,6 +846,17 @@ final class ChunkyWorldGenDriver {
             }
             this.pendingStage = stageName;
             this.pendingLight = CompletableFuture.allOf(futures);
+        }
+
+        private void runNextDirtyColumnRound() {
+            if (!runsDirtyColumnLightFuzz() || this.dirtyColumnRound >= DIRTY_COLUMN_ROUNDS) {
+                this.complete();
+                return;
+            }
+            int round = this.dirtyColumnRound++;
+            mutateDirtyColumnFuzzFixture(this.level, round);
+            --this.stage;
+            this.waitForLight("dirty column round " + round);
         }
 
         private void logPending() {

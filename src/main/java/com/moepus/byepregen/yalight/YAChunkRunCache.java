@@ -60,6 +60,20 @@ public class YAChunkRunCache {
         return nibble == null ? 0 : nibble.getUpdating(x, y, z);
     }
 
+    int getEnabledUpdatingLight(YALightStorage storage, int x, int y, int z) {
+        int storageIndex = storage.sectionIndex(y >> 4);
+        if (storageIndex < 0 || storageIndex >= storage.lightSectionCount()) {
+            return -1;
+        }
+        int index = this.chunkIndex(storage.chunkGetter(), x >> 4, z >> 4);
+        YAChunkLightData data = this.existingLightData(storage, index);
+        if (data == null || !data.lightEnabled()) {
+            return -1;
+        }
+        YANibbleArray nibble = data.getUpdatingSectionByIndex(storageIndex);
+        return nibble == null ? 0 : nibble.getUpdating(x, y, z);
+    }
+
     void setUpdatingLight(YALightStorage storage, int x, int y, int z, int value) {
         int sectionY = y >> 4;
         int index = this.chunkIndex(storage.chunkGetter(), x >> 4, z >> 4);
@@ -70,19 +84,21 @@ public class YAChunkRunCache {
         int storageIndex = storage.sectionIndex(sectionY);
         if (storageIndex >= 0 && storageIndex < storage.lightSectionCount()) {
             YANibbleArray nibble = data.getOrCreateUpdatingSectionByIndex(storageIndex);
-            nibble.setUpdating(x, y, z, value);
-            storage.markDirty(data, storageIndex);
+            int nibbleIndex = YANibbleArray.index(x, y, z);
+            if (nibble.setUpdatingAndGetDirtyTransition(nibbleIndex, value)) {
+                storage.markDirty(data, storageIndex);
+            }
         }
     }
 
-    boolean enabled(YALightStorage storage, LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
-        int index = this.chunkIndex(chunkGetter, chunkX, chunkZ);
+    LightChunk enabledChunk(YALightStorage storage, int chunkX, int chunkZ) {
+        int index = this.chunkIndex(storage.chunkGetter(), chunkX, chunkZ);
         this.existingLightData(storage, index);
-        return (this.chunkEnabledMask & (1 << index)) != 0;
+        return (this.chunkEnabledMask & (1 << index)) == 0 ? null : this.chunks[index];
     }
 
     boolean lightEnabled(YALightStorage storage, int chunkX, int chunkZ) {
-        return this.enabled(storage, storage.chunkGetter(), chunkX, chunkZ);
+        return this.enabledChunk(storage, chunkX, chunkZ) != null;
     }
 
     int getRawId(LightChunkGetter chunkGetter, int x, int y, int z) {

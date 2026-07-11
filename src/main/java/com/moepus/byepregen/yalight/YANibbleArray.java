@@ -19,13 +19,14 @@ public final class YANibbleArray {
     static final int STATE_ZERO = 1;
     static final int STATE_FULL = 2;
     static final int STATE_INIT = 3;
-    static final int STATE_HIDDEN = 4;
 
     // Updating is mutated by the light pass; visible is what readers see until dirty sections publish.
     private int updatingState;
     private volatile int visibleState;
     private byte[] updating;
     private volatile byte[] visible;
+    // Lazily cached per publication; copy-on-write keeps the wrapped visible bytes stable.
+    private volatile VisibleDataLayer visibleDataLayer;
     private boolean dirty;
 
     public YANibbleArray() {
@@ -89,8 +90,7 @@ public final class YANibbleArray {
     }
 
     public boolean hasVisibleLayer() {
-        int state = this.visibleState;
-        return state != STATE_NULL && state != STATE_HIDDEN;
+        return this.visibleState != STATE_NULL;
     }
 
     public boolean isNullUpdating() {
@@ -147,11 +147,30 @@ public final class YANibbleArray {
     }
 
     public void setUpdating(int index, int value) {
+        this.setUpdatingAndGetDirtyTransition(index, value);
+    }
+
+    boolean setUpdatingAndGetDirtyTransition(int index, int value) {
+        boolean dirtyTransition = !this.dirty;
         byte[] data = this.ensureUpdating();
         int byteIndex = index >>> 1;
         int shift = (index & 1) << 2;
         int packed = UnsafeIntArrayAccess.get(data, byteIndex) & 255;
         UnsafeIntArrayAccess.set(data, byteIndex, (byte)((packed & ~(15 << shift)) | ((value & 15) << shift)));
+        return dirtyTransition;
+    }
+
+    public void fillColumnRun(int localX, int localZ, int fromLocalY, int toLocalY, int value) {
+        byte[] data = this.ensureUpdating();
+        int shift = (localX & 1) << 2;
+        int mask = ~(15 << shift);
+        int packedValue = (value & 15) << shift;
+        int byteIndex = index(localX, fromLocalY, localZ) >>> 1;
+        for (int y = fromLocalY; y <= toLocalY; ++y) {
+            int packed = UnsafeIntArrayAccess.get(data, byteIndex) & 255;
+            UnsafeIntArrayAccess.set(data, byteIndex, (byte)((packed & mask) | packedValue));
+            byteIndex += 128;
+        }
     }
 
     public void publish() {
@@ -162,7 +181,7 @@ public final class YANibbleArray {
         if (state == STATE_NULL || state == STATE_ZERO || state == STATE_FULL) {
             int oldState = this.visibleState;
             this.visibleState = state;
-            if (oldState != STATE_INIT && oldState != STATE_HIDDEN) {
+            if (oldState != STATE_INIT) {
                 this.visible = null;
             }
         } else {
@@ -171,22 +190,25 @@ public final class YANibbleArray {
             this.updating = updatingData;
             this.visibleState = state;
         }
+        this.visibleDataLayer = null;
         this.dirty = false;
     }
 
     public DataLayer toVanilla() {
         int state = this.visibleState;
-        if (state == STATE_NULL || state == STATE_HIDDEN) {
+        if (state == STATE_NULL) {
             return null;
         }
-        if (state == STATE_ZERO) {
-            return new DataLayer();
-        }
-        if (state == STATE_FULL) {
-            return new DataLayer(15);
-        }
         byte[] data = this.visible;
-        return data == null ? new DataLayer() : new DataLayer(data.clone());
+        VisibleDataLayer layer = this.visibleDataLayer;
+        if (layer != null && layer.matches(state, data)) {
+            return layer;
+        }
+        layer = createVisibleDataLayer(state, data);
+        if (state == this.visibleState && data == this.visible) {
+            this.visibleDataLayer = layer;
+        }
+        return layer;
     }
 
     public int visibleSaveKind() {
@@ -214,6 +236,7 @@ public final class YANibbleArray {
         this.visible = null;
         this.updatingState = STATE_NULL;
         this.visibleState = STATE_NULL;
+        this.visibleDataLayer = null;
         this.dirty = false;
     }
 
@@ -221,17 +244,14 @@ public final class YANibbleArray {
         if (!this.dirty) {
             // Copy-on-write keeps visible stable while the same tick continues mutating updating light.
             byte[] next = new byte[SIZE];
-            if ((this.updatingState == STATE_INIT || this.updatingState == STATE_HIDDEN) && this.updating != null) {
+            if (this.updatingState == STATE_INIT && this.updating != null) {
                 System.arraycopy(this.updating, 0, next, 0, SIZE);
-            } else {
-                Arrays.fill(next, this.updatingState == STATE_FULL ? (byte)-1 : 0);
+            } else if (this.updatingState == STATE_FULL) {
+                Arrays.fill(next, (byte)-1);
             }
             this.updating = next;
             this.updatingState = STATE_INIT;
             this.dirty = true;
-        } else if (this.updating == null) {
-            this.updating = new byte[SIZE];
-            this.updatingState = STATE_INIT;
         }
         return this.updating;
     }
@@ -245,5 +265,70 @@ public final class YANibbleArray {
         byte[] data = new byte[YANibbleArray.SIZE];
         Arrays.fill(data, (byte)-1);
         return data;
+    }
+
+    private static VisibleDataLayer createVisibleDataLayer(int state, byte[] data) {
+        return switch (state) {
+            case STATE_ZERO -> new VisibleDataLayer(state, 0);
+            case STATE_FULL -> new VisibleDataLayer(state, 15);
+            case STATE_INIT -> data == null
+                    ? new VisibleDataLayer(state, 0)
+                    : new VisibleDataLayer(state, data);
+            default -> throw new IllegalStateException("Unexpected visible light state: " + state);
+        };
+    }
+
+    private static final class VisibleDataLayer extends DataLayer {
+        private static final String READ_ONLY_MESSAGE = "Published YA light data is read-only";
+        private final int visibleState;
+        private final byte[] visibleData;
+        private final int visibleDefault;
+
+        private VisibleDataLayer(int state, int defaultValue) {
+            super(defaultValue);
+            this.visibleState = state;
+            this.visibleData = null;
+            this.visibleDefault = defaultValue;
+        }
+
+        private VisibleDataLayer(int state, byte[] data) {
+            super(data);
+            this.visibleState = state;
+            this.visibleData = data;
+            this.visibleDefault = 0;
+        }
+
+        private boolean matches(int state, byte[] data) {
+            return this.visibleState == state && (state != STATE_INIT || this.visibleData == data);
+        }
+
+        @Override
+        public void set(int x, int y, int z, int value) {
+            throw new UnsupportedOperationException(READ_ONLY_MESSAGE);
+        }
+
+        @Override
+        public void fill(int defaultValue) {
+            throw new UnsupportedOperationException(READ_ONLY_MESSAGE);
+        }
+
+        @Override
+        public byte[] getData() {
+            if (this.visibleData != null) {
+                return this.visibleData.clone();
+            }
+            byte[] data = new byte[SIZE];
+            if (this.visibleDefault != 0) {
+                Arrays.fill(data, (byte)(this.visibleDefault | this.visibleDefault << 4));
+            }
+            return data;
+        }
+
+        @Override
+        public DataLayer copy() {
+            return this.visibleData == null
+                    ? new DataLayer(this.visibleDefault)
+                    : new DataLayer(this.visibleData.clone());
+        }
     }
 }

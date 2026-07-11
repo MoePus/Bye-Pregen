@@ -2,6 +2,8 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.yalight.YALightEngine;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
+import com.moepus.byepregen.yalight.YABlockLightEngine;
+import com.moepus.byepregen.yalight.YASkyLightEngine;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
@@ -12,26 +14,26 @@ import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.lighting.LayerLightSectionStorage;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.lighting.LightEngine;
+import net.minecraft.world.level.lighting.BlockLightEngine;
+import net.minecraft.world.level.lighting.SkyLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LevelLightEngine.class)
 public abstract class LevelLightEngineYAMixin implements YALightEngineHolder {
     @Shadow
     @Final
-    @Mutable
     private LightEngine<?, ?> blockEngine;
 
     @Shadow
     @Final
-    @Mutable
     private LightEngine<?, ?> skyEngine;
 
     @Unique
@@ -42,6 +44,28 @@ public abstract class LevelLightEngineYAMixin implements YALightEngineHolder {
         return this.byepregen$yaLightEngine;
     }
 
+    @Redirect(
+            method = "<init>",
+            at = @At(
+                    value = "NEW",
+                    target = "(Lnet/minecraft/world/level/chunk/LightChunkGetter;)Lnet/minecraft/world/level/lighting/BlockLightEngine;"
+            )
+    )
+    private BlockLightEngine byepregen$createYABlockLightEngine(LightChunkGetter chunkGetter) {
+        return new YABlockLightEngine(chunkGetter);
+    }
+
+    @Redirect(
+            method = "<init>",
+            at = @At(
+                    value = "NEW",
+                    target = "(Lnet/minecraft/world/level/chunk/LightChunkGetter;)Lnet/minecraft/world/level/lighting/SkyLightEngine;"
+            )
+    )
+    private SkyLightEngine byepregen$createYASkyLightEngine(LightChunkGetter chunkGetter) {
+        return new YASkyLightEngine(chunkGetter);
+    }
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void byepregen$initYALightEngine(
             LightChunkGetter chunkGetter,
@@ -49,9 +73,11 @@ public abstract class LevelLightEngineYAMixin implements YALightEngineHolder {
             boolean skyLight,
             CallbackInfo ci
     ) {
-        this.byepregen$yaLightEngine = new YALightEngine(chunkGetter, blockLight, skyLight);
-        this.blockEngine = null;
-        this.skyEngine = null;
+        this.byepregen$yaLightEngine = new YALightEngine(
+                chunkGetter,
+                (YABlockLightEngine)this.blockEngine,
+                (YASkyLightEngine)this.skyEngine
+        );
     }
 
     /**

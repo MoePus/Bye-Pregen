@@ -2,71 +2,65 @@ package com.moepus.byepregen.yalight;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 
-abstract class YALightLayerEngine implements LayerLightEventListener {
-    protected final LightChunkGetter chunkGetter;
-    protected final BlockGetter levelReader;
-    protected final LightLayer layer;
-    protected final YALightStorage storage;
-    protected final int minLightSection;
-    protected final int maxLightSection;
-    private final YALightQueue queue = new YALightQueue();
-    private final YALongQueue decreaseQueue = new YALongQueue();
-    private final YALongQueue increaseQueue = new YALongQueue();
-    protected final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+interface YALightLayerEngine extends LayerLightEventListener {
+    LightChunkGetter chunkGetter();
 
-    YALightLayerEngine(LightChunkGetter chunkGetter, LevelHeightAccessor level, LightLayer layer) {
-        this.chunkGetter = chunkGetter;
-        this.levelReader = chunkGetter.getLevel();
-        this.layer = layer;
-        this.storage = new YALightStorage(chunkGetter, level, layer);
-        this.minLightSection = this.storage.minLightSection();
-        this.maxLightSection = this.storage.maxLightSection();
+    LightLayer lightLayer();
+
+    YALightStorage storage();
+
+    YAChunkRunCache runCache();
+
+    YALightQueue lightQueue();
+
+    YADLongQueue decreaseQueue();
+
+    YADLongQueue increaseQueue();
+
+    @Override
+    default void checkBlock(BlockPos pos) {
+        this.lightQueue().queueCheck(pos);
     }
 
     @Override
-    public final void checkBlock(BlockPos pos) {
-        this.queue.queueCheck(pos);
+    default boolean hasLightWork() {
+        return !this.lightQueue().isEmpty()
+                || !this.decreaseQueue().isEmpty()
+                || !this.increaseQueue().isEmpty();
     }
 
     @Override
-    public final boolean hasLightWork() {
-        return !this.queue.isEmpty() || !this.decreaseQueue.isEmpty() || !this.increaseQueue.isEmpty();
-    }
-
-    @Override
-    public final int runLightUpdates() {
+    default int runLightUpdates() {
+        int work = 0;
         try {
-            int work = 0;
-            this.queue.enableSourceChunks(this.storage);
-            this.clearRunCache();
             YALightQueue.ChunkTask task;
-            while ((task = this.queue.poll()) != null) {
+            while ((task = this.lightQueue().poll()) != null) {
                 work += this.runTask(task);
-                this.queue.recycle(task);
+                this.lightQueue().recycle(task);
             }
             // Removal is processed before additions so stale light is cleared before sources re-add it.
             work += this.propagateDecreases();
             work += this.propagateIncreases();
-            work += this.storage.publishDirty(this.chunkGetter, this.layer);
+            work += this.storage().publishDirty(this.chunkGetter(), this.lightLayer());
             return work;
         } finally {
+            this.finishRun();
             this.clearRunCache();
         }
     }
 
     private int runTask(YALightQueue.ChunkTask task) {
         int work = 0;
-        if (task.source) {
-            this.propagateLightSourcesInternal(task.chunkX(), task.chunkZ());
+        if (task.hasSource()) {
+            boolean fresh = task.freshSource && !task.normalSource && task.checks.isEmpty();
+            this.propagateLightSourcesInternal(task.chunkX(), task.chunkZ(), fresh);
             ++work;
         }
         while (!task.checks.isEmpty()) {
@@ -77,121 +71,167 @@ abstract class YALightLayerEngine implements LayerLightEventListener {
     }
 
     @Override
-    public void updateSectionStatus(SectionPos pos, boolean isEmpty) {
+    default void updateSectionStatus(SectionPos pos, boolean isEmpty) {
+        this.updateSectionStatus(this.storage().chunkAccess(pos.x(), pos.z()), pos.y(), isEmpty);
+    }
+
+    default void updateSectionStatus(ChunkAccess chunk, int sectionY, boolean isEmpty) {
         if (!isEmpty) {
-            this.storage.getOrCreateSection(pos.x(), pos.y(), pos.z());
+            this.storage().getOrCreateSection(chunk, sectionY);
         }
     }
 
     @Override
-    public void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
-        this.storage.setLightEnabled(pos, lightEnabled);
+    default void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
+        this.setLightEnabled(this.storage().chunkAccess(pos.x, pos.z), lightEnabled);
+    }
+
+    default void setLightEnabled(ChunkAccess chunk, boolean lightEnabled) {
+        this.storage().setLightEnabled(chunk, lightEnabled);
         this.clearRunCache();
     }
 
-    @Override
-    public void propagateLightSources(ChunkPos pos) {
-        this.queue.queueSource(pos);
+    default void collectSourceHalo(YASourceHalo halo, byte layerMask) {
+        this.lightQueue().collectSourceHalo(halo, layerMask);
+    }
+
+    default void enableSourceChunk(ChunkAccess chunk) {
+        this.storage().setLightEnabled(chunk, true);
     }
 
     @Override
-    public DataLayer getDataLayerData(SectionPos pos) {
+    default void propagateLightSources(ChunkPos pos) {
+        this.lightQueue().queueSource(pos, false);
+    }
+
+    default void propagateFreshLightSources(ChunkPos pos) {
+        this.lightQueue().queueSource(pos, true);
+    }
+
+    @Override
+    default DataLayer getDataLayerData(SectionPos pos) {
         YANibbleArray nibble = this.getNibble(pos.x(), pos.y(), pos.z());
-        return nibble == null ? null : nibble.toVanilla();
+        if (nibble != null) {
+            DataLayer layer = nibble.toVanilla();
+            if (layer != null) {
+                return layer;
+            }
+        }
+        // Light-enabled chunks use an explicit empty layer because some vanilla-shaped readers
+        // substitute fully-lit sky data for null. Keep null for chunks that are not lit yet.
+        return this.storage().lightEnabled(pos.x(), pos.z()) ? new DataLayer() : null;
     }
 
-    @Override
-    public abstract int getLightValue(BlockPos pos);
-
-    public final void queueSectionData(SectionPos pos, DataLayer dataLayer) {
+    default void queueSectionData(SectionPos pos, DataLayer dataLayer) {
         this.queueNibble(pos, YANibbleArray.fromVanilla(dataLayer));
     }
 
-    public final void queueOwnedSectionBytes(SectionPos pos, byte[] data) {
+    default void queueOwnedSectionBytes(SectionPos pos, byte[] data) {
         this.queueNibble(pos, YANibbleArray.fromOwnedBytes(data));
     }
 
-    public final void queueZeroSectionData(SectionPos pos) {
+    default void queueZeroSectionData(SectionPos pos) {
         this.queueNibble(pos, new YANibbleArray());
     }
 
     private void queueNibble(SectionPos pos, YANibbleArray nibble) {
-        this.storage.setSection(pos, nibble);
+        this.storage().setSection(pos, nibble);
     }
 
-    public String getDebugData(SectionPos pos) {
+    default String getDebugData(SectionPos pos) {
         YANibbleArray nibble = this.getNibble(pos.x(), pos.y(), pos.z());
         return nibble == null || !nibble.hasVisibleLayer() ? "n/a" : "YA";
     }
 
-    public boolean lightOnInSection(SectionPos pos) {
-        return this.storage.lightOnInSection(pos);
+    default boolean lightOnInSection(SectionPos pos) {
+        return this.storage().lightOnInSection(pos);
     }
 
-    public void clearChunk(ChunkPos pos) {
-        this.queue.removeChunk(pos);
-        this.storage.removeChunk(pos);
+    default void clearChunk(ChunkPos pos) {
+        this.lightQueue().removeChunk(pos);
+        this.storage().removeChunk(pos);
     }
 
-    public void retainData(ChunkPos pos, boolean retainData) {
-        // YA light data is chunk-owned; retainData is a vanilla storage side channel.
+    default void clearRunCache() {
+        this.runCache().clear();
     }
 
-    protected void clearRunCache() {
+    default void finishRun() {
     }
 
-    protected abstract void checkBlockInternal(long pos);
-
-    protected abstract void propagateLightSourcesInternal(int chunkX, int chunkZ);
-
-    protected abstract int getSourceLight(long pos, BlockState state);
-
-    protected abstract void propagateIncrease(long pos, long meta);
-
-    protected abstract void propagateDecrease(long pos, long meta);
-
-    protected boolean canUseSection(int chunkX, int sectionY, int chunkZ) {
-        return sectionY >= this.minLightSection
-                && sectionY <= this.maxLightSection
-                && this.storage.lightEnabled(chunkX, chunkZ);
+    default int propagateAfterIncreases() {
+        return 0;
     }
 
-    protected final YANibbleArray getNibble(int chunkX, int sectionY, int chunkZ) {
-        return this.storage.getSection(chunkX, sectionY, chunkZ);
+    void checkBlockInternal(long pos);
+
+    void propagateLightSourcesInternal(int chunkX, int chunkZ, boolean fresh);
+
+    void propagateIncrease(long pos, long meta);
+
+    void propagateDecrease(long pos, long meta);
+
+    default boolean canUseSection(int chunkX, int sectionY, int chunkZ) {
+        return sectionY >= this.storage().minLightSection()
+                && sectionY <= this.storage().maxLightSection()
+                && this.runCache().lightEnabled(this.storage(), chunkX, chunkZ);
     }
 
-    protected final void enqueueDecrease(long pos, int level, int directions) {
-        this.decreaseQueue.add(pos);
-        this.decreaseQueue.add(YALightMath.meta(level, directions, 0L));
+    default int getCachedUpdatingLight(int x, int y, int z) {
+        return this.runCache().getUpdatingLight(this.storage(), x, y, z);
     }
 
-    protected final void enqueueIncrease(long pos, int level, int directions, long flags) {
-        this.increaseQueue.add(pos);
-        this.increaseQueue.add(YALightMath.meta(level, directions, flags));
+    default int getEnabledCachedUpdatingLight(int x, int y, int z) {
+        return this.runCache().getEnabledUpdatingLight(this.storage(), x, y, z);
+    }
+
+    default void setCachedUpdatingLight(int x, int y, int z, int value) {
+        this.runCache().setUpdatingLight(this.storage(), x, y, z, value);
+    }
+
+    default YANibbleArray getNibble(int chunkX, int sectionY, int chunkZ) {
+        return this.storage().getSection(chunkX, sectionY, chunkZ);
+    }
+
+    default void enqueueDecrease(long pos, int level, int directions) {
+        this.decreaseQueue().add(pos, YALightMath.meta(level, directions, 0L));
+    }
+
+    default void enqueueIncrease(long pos, int level, int directions, long flags) {
+        if (directions == 0) {
+            return;
+        }
+        this.increaseQueue().add(pos, YALightMath.meta(level, directions, flags));
     }
 
     private int propagateDecreases() {
         int work = 0;
-        while (!this.decreaseQueue.isEmpty()) {
-            long pos = this.decreaseQueue.poll();
-            long meta = this.decreaseQueue.poll();
+        while (!this.decreaseQueue().isEmpty()) {
+            long pos = this.decreaseQueue().first();
+            long meta = this.decreaseQueue().second();
+            this.decreaseQueue().remove();
             this.propagateDecrease(pos, meta);
             ++work;
         }
-        this.decreaseQueue.clear();
+        this.decreaseQueue().clear();
         return work;
     }
 
     private int propagateIncreases() {
         int work = 0;
-        while (!this.increaseQueue.isEmpty()) {
-            long pos = this.increaseQueue.poll();
-            long meta = this.increaseQueue.poll();
-            this.propagateIncrease(pos, meta);
-            ++work;
-        }
-        this.increaseQueue.clear();
+        int afterWork;
+        do {
+            while (!this.increaseQueue().isEmpty()) {
+                long pos = this.increaseQueue().first();
+                long meta = this.increaseQueue().second();
+                this.increaseQueue().remove();
+                this.propagateIncrease(pos, meta);
+                ++work;
+            }
+            this.increaseQueue().clear();
+            afterWork = this.propagateAfterIncreases();
+            work += afterWork;
+        } while (!this.increaseQueue().isEmpty() || afterWork > 0);
         return work;
     }
-
 }

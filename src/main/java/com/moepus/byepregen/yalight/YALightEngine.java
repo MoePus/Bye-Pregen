@@ -3,8 +3,8 @@ package com.moepus.byepregen.yalight;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
@@ -14,28 +14,16 @@ public final class YALightEngine {
     private final LightChunkGetter chunkGetter;
     private final YASkyLightEngine skyEngine;
     private final YABlockLightEngine blockEngine;
-    private final boolean hasBlockLight;
-    private final boolean hasSkyLight;
-    private final int minLightSection;
-    private final int maxLightSection;
+    private final YASourceHalo sourceHalo = new YASourceHalo();
 
-    public YALightEngine(LightChunkGetter chunkGetter, boolean hasBlockLight, boolean hasSkyLight) {
+    public YALightEngine(
+            LightChunkGetter chunkGetter,
+            YABlockLightEngine blockEngine,
+            YASkyLightEngine skyEngine
+    ) {
         this.chunkGetter = chunkGetter;
-        this.hasBlockLight = hasBlockLight;
-        this.hasSkyLight = hasSkyLight;
-        LevelHeightAccessor level = chunkGetter.getLevel();
-        this.minLightSection = YALightStorage.minLightSection(level);
-        this.maxLightSection = this.minLightSection + YALightStorage.lightSectionCount(level) - 1;
-        this.skyEngine = hasSkyLight ? new YASkyLightEngine(chunkGetter, level) : null;
-        this.blockEngine = hasBlockLight ? new YABlockLightEngine(chunkGetter, level) : null;
-    }
-
-    public boolean hasBlockLight() {
-        return this.hasBlockLight;
-    }
-
-    public boolean hasSkyLight() {
-        return this.hasSkyLight;
+        this.blockEngine = blockEngine;
+        this.skyEngine = skyEngine;
     }
 
     public void checkBlock(BlockPos pos) {
@@ -53,6 +41,7 @@ public final class YALightEngine {
     }
 
     public int runLightUpdates() {
+        this.prepareSourceChunks();
         int ret = 0;
         if (this.blockEngine != null) {
             ret += this.blockEngine.runLightUpdates();
@@ -63,21 +52,68 @@ public final class YALightEngine {
         return ret;
     }
 
+    private void prepareSourceChunks() {
+        try {
+            if (this.blockEngine != null) {
+                this.blockEngine.collectSourceHalo(this.sourceHalo, YASourceHalo.BLOCK_MASK);
+            }
+            if (this.skyEngine != null) {
+                this.skyEngine.collectSourceHalo(this.sourceHalo, YASourceHalo.SKY_MASK);
+            }
+            for (int i = 0; i < this.sourceHalo.size(); ++i) {
+                long chunkKey = this.sourceHalo.keyAt(i);
+                ChunkAccess chunk = (ChunkAccess)this.chunkGetter.getChunkForLighting(
+                        ChunkPos.getX(chunkKey), ChunkPos.getZ(chunkKey));
+                byte layerMask = this.sourceHalo.layerMaskAt(i);
+                if (this.blockEngine != null && (layerMask & YASourceHalo.BLOCK_MASK) != 0) {
+                    this.blockEngine.enableSourceChunk(chunk);
+                }
+                if (this.skyEngine != null && (layerMask & YASourceHalo.SKY_MASK) != 0) {
+                    this.skyEngine.enableSourceChunk(chunk);
+                }
+            }
+        } finally {
+            this.sourceHalo.clear();
+        }
+    }
+
+    public void setDeclaredFreshOwnerDomain(Iterable<ChunkPos> owners) {
+        if (this.skyEngine != null) {
+            this.skyEngine.setDeclaredFreshOwnerDomain(owners);
+        }
+    }
+
+    public void clearDeclaredFreshOwnerDomain() {
+        if (this.skyEngine != null) {
+            this.skyEngine.clearDeclaredFreshOwnerDomain();
+        }
+    }
+
     public void updateSectionStatus(SectionPos pos, boolean isEmpty) {
+        ChunkAccess chunk = (ChunkAccess)this.chunkGetter.getChunkForLighting(pos.x(), pos.z());
+        this.updateSectionStatus(chunk, pos.y(), isEmpty);
+    }
+
+    public void updateSectionStatus(ChunkAccess chunk, int sectionY, boolean isEmpty) {
         if (this.blockEngine != null) {
-            this.blockEngine.updateSectionStatus(pos, isEmpty);
+            this.blockEngine.updateSectionStatus(chunk, sectionY, isEmpty);
         }
         if (this.skyEngine != null) {
-            this.skyEngine.updateSectionStatus(pos, isEmpty);
+            this.skyEngine.updateSectionStatus(chunk, sectionY, isEmpty);
         }
     }
 
     public void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
+        ChunkAccess chunk = (ChunkAccess)this.chunkGetter.getChunkForLighting(pos.x, pos.z);
+        this.setLightEnabled(chunk, lightEnabled);
+    }
+
+    public void setLightEnabled(ChunkAccess chunk, boolean lightEnabled) {
         if (this.blockEngine != null) {
-            this.blockEngine.setLightEnabled(pos, lightEnabled);
+            this.blockEngine.setLightEnabled(chunk, lightEnabled);
         }
         if (this.skyEngine != null) {
-            this.skyEngine.setLightEnabled(pos, lightEnabled);
+            this.skyEngine.setLightEnabled(chunk, lightEnabled);
         }
     }
 
@@ -99,6 +135,21 @@ public final class YALightEngine {
         }
     }
 
+    public void propagateFreshLightSources(ChunkPos pos) {
+        if (this.blockEngine != null) {
+            this.blockEngine.propagateLightSources(pos);
+        }
+        if (this.skyEngine != null) {
+            this.skyEngine.propagateFreshLightSources(pos);
+        }
+    }
+
+    public void restoreSavedSkyLight(ChunkAccess chunk) {
+        if (this.skyEngine != null) {
+            this.skyEngine.restoreSavedSkyLight(chunk);
+        }
+    }
+
     public LayerLightEventListener getLayerListener(LightLayer layer) {
         if (layer == LightLayer.BLOCK) {
             return this.blockEngine != null ? this.blockEngine : LayerLightEventListener.DummyLightLayerEventListener.INSTANCE;
@@ -107,38 +158,38 @@ public final class YALightEngine {
     }
 
     public void queueSectionData(LightLayer layer, SectionPos pos, DataLayer dataLayer) {
-        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        YALightLayerEngine engine = this.layerEngine(layer);
         if (engine != null) {
             engine.queueSectionData(pos, dataLayer);
         }
     }
 
     public void queueOwnedSectionBytes(LightLayer layer, SectionPos pos, byte[] data) {
-        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        YALightLayerEngine engine = this.layerEngine(layer);
         if (engine != null) {
             engine.queueOwnedSectionBytes(pos, data);
         }
     }
 
     public void queueZeroSectionData(LightLayer layer, SectionPos pos) {
-        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        YALightLayerEngine engine = this.layerEngine(layer);
         if (engine != null) {
             engine.queueZeroSectionData(pos);
         }
     }
 
     public YANibbleArray getVisibleSection(LightLayer layer, SectionPos pos) {
-        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        YALightLayerEngine engine = this.layerEngine(layer);
         return engine == null ? null : engine.getNibble(pos.x(), pos.y(), pos.z());
     }
 
     public String getDebugData(LightLayer layer, SectionPos pos) {
-        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        YALightLayerEngine engine = this.layerEngine(layer);
         return engine == null ? "n/a" : engine.getDebugData(pos);
     }
 
     public LayerLightSectionStorage.SectionType getDebugSectionType(LightLayer layer, SectionPos pos) {
-        YALightLayerEngine engine = layer == LightLayer.BLOCK ? this.blockEngine : this.skyEngine;
+        YALightLayerEngine engine = this.layerEngine(layer);
         return engine != null && engine.lightOnInSection(pos)
                 ? LayerLightSectionStorage.SectionType.LIGHT_AND_DATA
                 : LayerLightSectionStorage.SectionType.EMPTY;
@@ -149,85 +200,65 @@ public final class YALightEngine {
     }
 
     public int getRawBrightness(BlockPos pos, int ambientDarkness) {
-        int x = pos.getX();
-        int y = pos.getY();
-        int z = pos.getZ();
-        int sectionY = y >> 4;
-        int sectionIndex = sectionY - this.minLightSection;
-        boolean sectionInRange = sectionIndex >= 0 && sectionY <= this.maxLightSection;
-        YAChunkLightAccess access = this.brightnessData(x >> 4, z >> 4);
-        int sky = 0;
+        return this.getRawBrightness(pos, ambientDarkness, this.brightnessData(pos));
+    }
+
+    public int getRawBrightness(BlockPos pos, int ambientDarkness, YAChunkLightAccess access) {
+        int sky = this.getVisibleSkyLight(pos, access);
         if (this.skyEngine != null) {
-            if (sectionInRange && access != null) {
-                YAChunkLightData skyData = access.byepregen$skyLightData();
-                if (skyData == null) {
-                    sky = 15;
-                } else {
-                    YANibbleArray nibble = skyData.getVisibleSectionByIndex(sectionIndex);
-                    sky = nibble == null ? (skyData.lightEnabled() ? 0 : 15) : nibble.getVisible(x, y, z);
-                }
-            } else if (sectionY > this.maxLightSection || sectionInRange) {
-                sky = 15;
-            }
             sky -= ambientDarkness;
         }
         if (sky == 15) {
             return 15;
         }
-        int block = 0;
-        if (this.blockEngine != null && sectionInRange && access != null) {
-            YAChunkLightData blockData = access.byepregen$blockLightData();
-            if (blockData != null) {
-                YANibbleArray nibble = blockData.getVisibleSectionByIndex(sectionIndex);
-                if (nibble != null) {
-                    block = nibble.getVisible(x, y, z);
-                }
-            }
-        }
-        return Math.max(sky, block);
+        return Math.max(sky, this.getVisibleBlockLight(pos, access));
+    }
+
+    public int getBrightness(LightLayer layer, BlockPos pos, YAChunkLightAccess access) {
+        return layer == LightLayer.BLOCK
+                ? this.getVisibleBlockLight(pos, access)
+                : this.getVisibleSkyLight(pos, access);
     }
 
     public int getLightColor(BlockPos pos) {
-        int x = pos.getX();
-        int y = pos.getY();
-        int z = pos.getZ();
-        int sectionY = y >> 4;
-        int sectionIndex = sectionY - this.minLightSection;
-        boolean sectionInRange = sectionIndex >= 0 && sectionY <= this.maxLightSection;
-        YAChunkLightAccess access = this.brightnessData(x >> 4, z >> 4);
-        int sky = 0;
-        if (this.skyEngine != null) {
-            if (sectionInRange && access != null) {
-                YAChunkLightData skyData = access.byepregen$skyLightData();
-                if (skyData == null) {
-                    sky = 15;
-                } else {
-                    YANibbleArray nibble = skyData.getVisibleSectionByIndex(sectionIndex);
-                    sky = nibble == null ? (skyData.lightEnabled() ? 0 : 15) : nibble.getVisible(x, y, z);
-                }
-            } else if (sectionY > this.maxLightSection || sectionInRange) {
-                sky = 15;
-            }
-        }
-        int block = 0;
-        if (this.blockEngine != null && sectionInRange && access != null) {
-            YAChunkLightData blockData = access.byepregen$blockLightData();
-            if (blockData != null) {
-                YANibbleArray nibble = blockData.getVisibleSectionByIndex(sectionIndex);
-                if (nibble != null) {
-                    block = nibble.getVisible(x, y, z);
-                }
-            }
-        }
+        return this.getLightColor(pos, this.brightnessData(pos));
+    }
+
+    public int getLightColor(BlockPos pos, YAChunkLightAccess access) {
+        int sky = this.getVisibleSkyLight(pos, access);
+        int block = this.getVisibleBlockLight(pos, access);
         return sky << 20 | block << 4;
     }
 
-    private YAChunkLightAccess brightnessData(int chunkX, int chunkZ) {
-        return (YAChunkLightAccess) this.chunkGetter.getChunkForLighting(chunkX, chunkZ);
+    private int getVisibleSkyLight(BlockPos pos, YAChunkLightAccess access) {
+        if (this.skyEngine == null) {
+            return 0;
+        }
+        YAChunkLightData skyData = access == null ? null : access.byepregen$skyLightData();
+        return this.skyEngine.getVisibleLightValue(pos, skyData);
+    }
+
+    private int getVisibleBlockLight(BlockPos pos, YAChunkLightAccess access) {
+        if (this.blockEngine == null) {
+            return 0;
+        }
+        YAChunkLightData blockData = access == null ? null : access.byepregen$blockLightData();
+        return this.blockEngine.getVisibleLightValue(pos, blockData);
+    }
+
+    private YAChunkLightAccess brightnessData(BlockPos pos) {
+        return (YAChunkLightAccess)this.chunkGetter.getChunkForLighting(pos.getX() >> 4, pos.getZ() >> 4);
     }
 
     public boolean lightOnInSection(SectionPos pos) {
         boolean block = this.blockEngine == null || this.blockEngine.lightOnInSection(pos);
         return block && (this.skyEngine == null || this.skyEngine.lightOnInSection(pos));
+    }
+
+    private YALightLayerEngine layerEngine(LightLayer layer) {
+        if (layer == LightLayer.BLOCK) {
+            return this.blockEngine;
+        }
+        return this.skyEngine;
     }
 }

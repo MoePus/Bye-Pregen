@@ -1,27 +1,45 @@
 package com.moepus.byepregen.yalight;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 
-final class YALightQueue {
+public final class YALightQueue {
+    private static final int INITIAL_TASK_CAPACITY = 16;
+    private static final int MAX_RETAINED_TASKS = 256;
+    private static final int MAX_POOLED_TASKS = 256;
+
     // Coalesce source propagation and block checks by chunk so warm caches stay useful for the whole task.
-    private final Long2ObjectLinkedOpenHashMap<ChunkTask> tasks = new Long2ObjectLinkedOpenHashMap<>();
+    private final Long2ObjectOpenHashMap<ChunkTask> tasks =
+            new Long2ObjectOpenHashMap<>(INITIAL_TASK_CAPACITY);
+    private ChunkTask firstTask;
+    private ChunkTask lastTask;
     // ChunkTasks are drained fully every run and never escape, so a simple intrusive free-list is enough.
     private ChunkTask pooledTask;
+    private int pooledTaskCount;
 
     void queueCheck(BlockPos pos) {
         this.task(ChunkPos.asLong(pos)).addCheck(pos);
     }
 
-    void queueSource(ChunkPos pos) {
-        this.task(pos.toLong()).source = true;
+    void queueSource(ChunkPos pos, boolean fresh) {
+        ChunkTask task = this.task(pos.toLong());
+        if (fresh) {
+            task.freshSource = true;
+        } else {
+            task.normalSource = true;
+        }
     }
 
     void removeChunk(ChunkPos pos) {
         ChunkTask task = this.tasks.remove(pos.toLong());
         if (task != null) {
+            this.unlink(task);
             this.recycle(task);
+            if (this.tasks.isEmpty()) {
+                this.tasks.trim(MAX_RETAINED_TASKS);
+            }
         }
     }
 
@@ -29,16 +47,16 @@ final class YALightQueue {
         return this.tasks.isEmpty();
     }
 
-    void enableSourceChunks(YALightStorage storage) {
-        for (ChunkTask task : this.tasks.values()) {
-            if (task.source) {
+    void collectSourceHalo(YASourceHalo halo, byte layerMask) {
+        for (ChunkTask task = this.firstTask; task != null; task = task.nextQueued) {
+            if (task.hasSource()) {
                 int chunkX = task.chunkX();
                 int chunkZ = task.chunkZ();
                 // Source propagation can leave a chunk and re-enter it through a neighbor.
                 // Pre-enabling a one-chunk halo keeps correctness independent of task order.
                 for (int dz = -1; dz <= 1; ++dz) {
                     for (int dx = -1; dx <= 1; ++dx) {
-                        storage.setLightEnabled(chunkX + dx, chunkZ + dz, true);
+                        halo.add(ChunkPos.asLong(chunkX + dx, chunkZ + dz), layerMask);
                     }
                 }
             }
@@ -46,12 +64,26 @@ final class YALightQueue {
     }
 
     ChunkTask poll() {
-        return this.tasks.isEmpty() ? null : this.tasks.removeFirst();
+        ChunkTask task = this.firstTask;
+        if (task == null) {
+            return null;
+        }
+        this.unlink(task);
+        this.tasks.remove(task.chunkKey);
+        if (this.tasks.isEmpty()) {
+            this.tasks.trim(MAX_RETAINED_TASKS);
+        }
+        return task;
     }
 
     void recycle(ChunkTask task) {
+        if (this.pooledTaskCount >= MAX_POOLED_TASKS) {
+            return;
+        }
+        task.clearForReuse();
         task.nextPooled = this.pooledTask;
         this.pooledTask = task;
+        ++this.pooledTaskCount;
     }
 
     private ChunkTask task(long chunkKey) {
@@ -63,11 +95,38 @@ final class YALightQueue {
             } else {
                 this.pooledTask = task.nextPooled;
                 task.nextPooled = null;
+                --this.pooledTaskCount;
             }
             task.reset(chunkKey);
+            this.append(task);
             this.tasks.put(chunkKey, task);
         }
         return task;
+    }
+
+    private void append(ChunkTask task) {
+        task.previousQueued = this.lastTask;
+        if (this.lastTask == null) {
+            this.firstTask = task;
+        } else {
+            this.lastTask.nextQueued = task;
+        }
+        this.lastTask = task;
+    }
+
+    private void unlink(ChunkTask task) {
+        if (task.previousQueued == null) {
+            this.firstTask = task.nextQueued;
+        } else {
+            task.previousQueued.nextQueued = task.nextQueued;
+        }
+        if (task.nextQueued == null) {
+            this.lastTask = task.previousQueued;
+        } else {
+            task.nextQueued.previousQueued = task.previousQueued;
+        }
+        task.previousQueued = null;
+        task.nextQueued = null;
     }
 
     static final class ChunkTask {
@@ -76,20 +135,31 @@ final class YALightQueue {
         private static final int Z_SHIFT = LOCAL_BITS;
         private static final int Y_SHIFT = LOCAL_BITS * 2;
         private static final int Y_MASK = (1 << 24) - 1;
+        private static final int INITIAL_CHECK_CAPACITY = 16;
+        private static final int MAX_RETAINED_CHECKS = 256;
 
-        final YAIntQueue checks = new YAIntQueue(16);
+        final YAIntQueue checks = new YAIntQueue(INITIAL_CHECK_CAPACITY, MAX_RETAINED_CHECKS);
+        // Vanilla dedupes repeated checkBlock calls through a LongOpenHashSet; without this a
+        // batch touching the same position twice would repeat the whole column update.
+        private final IntOpenHashSet queuedChecks = new IntOpenHashSet(INITIAL_CHECK_CAPACITY);
         long chunkKey;
-        boolean source;
+        boolean freshSource;
+        boolean normalSource;
+        ChunkTask previousQueued;
+        ChunkTask nextQueued;
         ChunkTask nextPooled;
 
         void reset(long chunkKey) {
             this.chunkKey = chunkKey;
-            this.source = false;
-            this.clearChecks();
+            this.freshSource = false;
+            this.normalSource = false;
         }
 
         void addCheck(BlockPos pos) {
-            this.checks.add(packCheck(pos));
+            int packed = packCheck(pos);
+            if (this.queuedChecks.add(packed)) {
+                this.checks.add(packed);
+            }
         }
 
         long pollCheckPos() {
@@ -104,8 +174,14 @@ final class YALightQueue {
             return ChunkPos.getZ(this.chunkKey);
         }
 
-        private void clearChecks() {
+        boolean hasSource() {
+            return this.freshSource || this.normalSource;
+        }
+
+        private void clearForReuse() {
             this.checks.clear();
+            this.queuedChecks.clear();
+            this.queuedChecks.trim(MAX_RETAINED_CHECKS);
         }
 
         private static int packCheck(BlockPos pos) {

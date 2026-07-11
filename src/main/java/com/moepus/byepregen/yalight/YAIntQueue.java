@@ -8,10 +8,10 @@ final class YAIntQueue {
     private int readIndex;
     private int writeIndex;
 
-    YAIntQueue(int initialCapacity) {
+    YAIntQueue(int initialCapacity, int maxRetainedCapacity) {
         int capacity = Math.max(initialCapacity, 1);
         this.values = new int[capacity];
-        this.maxRetainedCapacity = capacity;
+        this.maxRetainedCapacity = Math.max(maxRetainedCapacity, capacity);
     }
 
     void add(int value) {

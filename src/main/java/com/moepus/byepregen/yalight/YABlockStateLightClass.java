@@ -41,10 +41,21 @@ public final class YABlockStateLightClass {
         int size = Block.BLOCK_STATE_REGISTRY.size();
         int[] packed = new int[(size + VALUES_PER_WORD - 1) / VALUES_PER_WORD];
         for (int rawId = 0; rawId < size; ++rawId) {
-            int lightClass = classify(Block.stateById(rawId));
+            int lightClass = classifySafely(Block.stateById(rawId));
             packed[rawId / VALUES_PER_WORD] |= lightClass << ((rawId % VALUES_PER_WORD) * BITS_PER_VALUE);
         }
         return packed;
+    }
+
+    private static int classifySafely(BlockState state) {
+        if (state == null) {
+            return SLOW;
+        }
+        try {
+            return classify(state);
+        } catch (Throwable throwable) {
+            return SLOW;
+        }
     }
 
     private static int classify(BlockState state) {

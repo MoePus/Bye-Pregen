@@ -1,5 +1,8 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.yalight.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.YALightEngine;
+import com.moepus.byepregen.yalight.YALightEngineHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.LightLayer;
@@ -27,7 +30,8 @@ public abstract class WorldGenRegionYALightMixin implements WorldGenLevel {
         if (!chunk.isLightCorrect()) {
             return 0;
         }
-        return this.getLightEngine().getLayerListener(layer).getLightValue(pos);
+        YALightEngine engine = ((YALightEngineHolder)this.getLightEngine()).byepregen$getYALightEngine();
+        return engine.getBrightness(layer, pos, (YAChunkLightAccess)chunk);
     }
 
     /**
@@ -40,6 +44,7 @@ public abstract class WorldGenRegionYALightMixin implements WorldGenLevel {
         if (!chunk.isLightCorrect()) {
             return 0;
         }
-        return this.getLightEngine().getRawBrightness(pos, ambientDarkness);
+        YALightEngine engine = ((YALightEngineHolder)this.getLightEngine()).byepregen$getYALightEngine();
+        return engine.getRawBrightness(pos, ambientDarkness, (YAChunkLightAccess)chunk);
     }
 }

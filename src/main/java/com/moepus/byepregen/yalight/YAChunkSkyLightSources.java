@@ -40,6 +40,10 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         return this.sourceCodeAt(index(x, z));
     }
 
+    public boolean consumeSourceDirty(int x, int z) {
+        return ((YASkySourceDirtyAccess)(Object)this).byepregen$consumeSourceDirty(index(x, z));
+    }
+
     public int decodeSourceCode(int code) {
         if (code == NO_SOURCE_CODE) {
             return Integer.MAX_VALUE;
@@ -87,27 +91,6 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         BlockPos belowPos = this.mutablePos1.set(x, y - 1, z);
         BlockState belowState = level.getBlockState(belowPos);
         return this.updateEdge(level, index, lowestY, pos, state, belowPos, belowState);
-    }
-
-    boolean update(YALightBlockAccess blocks, int x, int y, int z) {
-        int aboveY = y + 1;
-        int index = index(x, z);
-        int lowestY = this.storedSourceY(index);
-        if (aboveY < lowestY) {
-            return false;
-        }
-
-        int aboveBlock = blocks.blockAt(x, aboveY, z);
-        int block = blocks.blockAt(x, y, z);
-        // This is the light-engine path. It must not call Level.getBlockState(), because
-        // that can join chunk futures from the light mailbox thread during worldgen.
-        if (this.updateEdge(blocks, index, lowestY, x, aboveY, z, aboveBlock, x, y, z, block)) {
-            return true;
-        }
-
-        int belowY = y - 1;
-        int belowBlock = blocks.blockAt(x, belowY, z);
-        return this.updateEdge(blocks, index, lowestY, x, y, z, block, x, belowY, z, belowBlock);
     }
 
     @Override
@@ -170,37 +153,11 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         int y = pos1.getY();
         if (isEdgeOccluded(level, pos1, state1, pos2, state2)) {
             if (y > lowestY) {
-                this.set(index, y);
+                this.setUpdatedSource(index, y);
                 return true;
             }
         } else if (y == lowestY) {
-            this.set(index, this.findLowestSourceBelow(level, pos2, state2));
-            return true;
-        }
-
-        return false;
-    }
-
-    private boolean updateEdge(
-            YALightBlockAccess blocks,
-            int index,
-            int lowestY,
-            int x1,
-            int y1,
-            int z1,
-            int block1,
-            int x2,
-            int y2,
-            int z2,
-            int block2
-    ) {
-        if (isEdgeOccluded(blocks, x1, y1, z1, block1, x2, y2, z2, block2)) {
-            if (y1 > lowestY) {
-                this.set(index, y1);
-                return true;
-            }
-        } else if (y1 == lowestY) {
-            this.set(index, this.findLowestSourceBelow(blocks, x2, y2, z2, block2));
+            this.setUpdatedSource(index, this.findLowestSourceBelow(level, pos2, state2));
             return true;
         }
 
@@ -226,25 +183,6 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         return this.minY;
     }
 
-    private int findLowestSourceBelow(YALightBlockAccess blocks, int x, int y, int z, int block) {
-        int aboveY = y;
-        int belowY = y - 1;
-        int aboveBlock = block;
-
-        while (belowY >= this.minY) {
-            int belowBlock = blocks.blockAt(x, belowY, z);
-            if (isEdgeOccluded(blocks, x, aboveY, z, aboveBlock, x, belowY, z, belowBlock)) {
-                return aboveY;
-            }
-
-            aboveY = belowY;
-            aboveBlock = belowBlock;
-            --belowY;
-        }
-
-        return this.minY;
-    }
-
     private int storedSourceY(int index) {
         return this.minY + this.sourceCodeAt(index);
     }
@@ -261,6 +199,11 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         this.lowest[index] = (short)code;
     }
 
+    private void setUpdatedSource(int index, int value) {
+        this.set(index, value);
+        ((YASkySourceDirtyAccess)(Object)this).byepregen$markSourceDirty(index);
+    }
+
     private static boolean isEdgeOccluded(BlockGetter level, BlockPos pos1, BlockState state1, BlockPos pos2, BlockState state2) {
         if (state2.getLightBlock(level, pos2) != 0) {
             return true;
@@ -269,24 +212,6 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
         VoxelShape fromShape = LightEngine.getOcclusionShape(level, pos1, state1, Direction.DOWN);
         VoxelShape toShape = LightEngine.getOcclusionShape(level, pos2, state2, Direction.UP);
         return Shapes.faceShapeOccludes(fromShape, toShape);
-    }
-
-    private static boolean isEdgeOccluded(
-            YALightBlockAccess blocks,
-            int x1,
-            int y1,
-            int z1,
-            int block1,
-            int x2,
-            int y2,
-            int z2,
-            int block2
-    ) {
-        if (blocks.lightBlockAt(x2, y2, z2, block2) != 0) {
-            return true;
-        }
-
-        return blocks.shapeOccludes(x1, y1, z1, block1, x2, y2, z2, block2, Direction.DOWN);
     }
 
     private static int index(int x, int z) {

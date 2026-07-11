@@ -17,7 +17,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Stream;
 
 public final class LightGoldenPrepareRelight {
@@ -35,23 +37,27 @@ public final class LightGoldenPrepareRelight {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) {
-            System.err.println("Usage: LightGoldenPrepareRelight <source-world-dir> <vanilla-world-dir> <ya-world-dir>");
+        if (args.length < 3) {
+            System.err.println("Usage: LightGoldenPrepareRelight <source-world-dir> <target-world-dir> <target-world-dir>...");
             System.exit(2);
         }
 
         Path sourceWorld = Paths.get(args[0]).toAbsolutePath().normalize();
-        Path vanillaWorld = Paths.get(args[1]).toAbsolutePath().normalize();
-        Path yaWorld = Paths.get(args[2]).toAbsolutePath().normalize();
         if (!Files.isDirectory(sourceWorld)) {
             throw new IOException("Source world directory does not exist: " + sourceWorld);
         }
 
-        copyWorldForRelight(sourceWorld, vanillaWorld);
-        copyWorldForRelight(sourceWorld, yaWorld);
+        List<Path> targetWorlds = new ArrayList<>(args.length - 1);
+        for (int i = 1; i < args.length; ++i) {
+            Path targetWorld = Paths.get(args[i]).toAbsolutePath().normalize();
+            copyWorldForRelight(sourceWorld, targetWorld);
+            targetWorlds.add(targetWorld);
+        }
+
         System.out.println("Prepared relight worlds from " + sourceWorld);
-        System.out.println("  vanilla: " + vanillaWorld);
-        System.out.println("  ya:      " + yaWorld);
+        for (Path targetWorld : targetWorlds) {
+            System.out.println("  target: " + targetWorld);
+        }
     }
 
     private static void copyWorldForRelight(Path sourceWorld, Path targetWorld) throws IOException {

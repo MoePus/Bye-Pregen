@@ -12,6 +12,7 @@ final class YALightMath {
     // RECHECK drops stale re-propagation work; WRITE_LEVEL lets source re-additions publish first.
     static final long FLAG_RECHECK = 1L << 62;
     static final long FLAG_WRITE_LEVEL = 1L << 61;
+    static final long FLAG_FRESH_OWNER_TRANSFER = 1L << 58;
 
     private static final int LEVEL_SHIFT = 0;
     private static final int DIRECTIONS_SHIFT = 4;

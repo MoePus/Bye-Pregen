@@ -2,16 +2,15 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.yalight.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YALightEngine;
-import com.mojang.datafixers.util.Pair;
-import it.unimi.dsi.fastutil.objects.ObjectList;
+import com.moepus.byepregen.yalight.YAThreadedLightScheduler;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntSupplier;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.SectionPos;
-import net.minecraft.server.level.ChunkTaskPriorityQueueSorter;
 import net.minecraft.server.level.ThreadedLevelLightEngine;
-import net.minecraft.util.thread.ProcessorHandle;
+import net.minecraft.util.thread.ProcessorMailbox;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -22,88 +21,77 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.Constant;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
-import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(ThreadedLevelLightEngine.class)
 public abstract class ThreadedLevelLightEngineYAMixin {
     @Unique
-    private static final int BYEPREGEN_LIGHT_TASK_MIN_BATCH = 8;
+    private static final String BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY = "byepregen.yaLightSchedulerWakeOnAdd";
 
     @Unique
-    private static final int BYEPREGEN_LIGHT_TASK_MAX_BATCH = 1000;
-
-    @Unique
-    private static final long BYEPREGEN_LIGHT_TASK_IDLE_RESET_MILLIS = 300L;
+    private static final boolean BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD =
+            Boolean.parseBoolean(System.getProperty(BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY, "true"));
 
     @Shadow
     @Final
-    private ObjectList<Pair<ThreadedLevelLightEngine.TaskType, Runnable>> lightTasks;
+    private ProcessorMailbox<Runnable> taskMailbox;
 
     @Shadow
     @Final
-    private ProcessorHandle<ChunkTaskPriorityQueueSorter.Message<Runnable>> sorterMailbox;
+    private AtomicBoolean scheduled;
 
     @Unique
-    private int byepregen$lightTaskBatch = BYEPREGEN_LIGHT_TASK_MIN_BATCH;
-
-    @Unique
-    private int byepregen$forceDrainCount;
-
-    @Unique
-    private long byepregen$lastForceDrainMillis;
+    private final YAThreadedLightScheduler byepregen$lightScheduler = new YAThreadedLightScheduler();
 
     @Unique
     private YALightEngine byepregen$yaEngine() {
         return ((YALightEngineHolder)this).byepregen$getYALightEngine();
     }
 
-    @Invoker("runUpdate")
-    protected abstract void byepregen$runUpdate();
-
-    @ModifyConstant(
-            method = "runUpdate",
-            constant = @Constant(intValue = 1000)
-    )
-    private int byepregen$limitLightTaskBatch(int vanillaBatchSize) {
-        return this.byepregen$lightTaskBatch;
+    @Unique
+    private boolean byepregen$scheduleDrain() {
+        if (!this.byepregen$hasScheduledWork() || !this.scheduled.compareAndSet(false, true)) {
+            return false;
+        }
+        this.byepregen$tellDrainTask();
+        return true;
     }
 
     @Unique
-    private void byepregen$resetAdaptiveLightTaskBatchIfIdle() {
-        if (this.byepregen$lightTaskBatch == BYEPREGEN_LIGHT_TASK_MIN_BATCH && this.byepregen$forceDrainCount == 0) {
-            return;
+    private boolean byepregen$scheduleDrainWithKnownWork() {
+        if (!this.scheduled.compareAndSet(false, true)) {
+            return false;
         }
-        long lastDrainMillis = this.byepregen$lastForceDrainMillis;
-        if (lastDrainMillis != 0L && System.currentTimeMillis() - lastDrainMillis >= BYEPREGEN_LIGHT_TASK_IDLE_RESET_MILLIS) {
-            this.byepregen$resetAdaptiveLightTaskBatch();
-        }
+        this.byepregen$tellDrainTask();
+        return true;
     }
 
     @Unique
-    private void byepregen$recordForcedLightTaskDrain() {
-        this.byepregen$lastForceDrainMillis = System.currentTimeMillis();
-        if (this.byepregen$lightTaskBatch >= BYEPREGEN_LIGHT_TASK_MAX_BATCH) {
-            this.byepregen$forceDrainCount = 0;
-            return;
-        }
-        if (++this.byepregen$forceDrainCount >= 4) {
-            this.byepregen$lightTaskBatch = Math.min((this.byepregen$lightTaskBatch >> 1) + this.byepregen$lightTaskBatch, BYEPREGEN_LIGHT_TASK_MAX_BATCH);
-            this.byepregen$forceDrainCount = 0;
-        }
+    private void byepregen$tellDrainTask() {
+        this.taskMailbox.tell(() -> {
+            try {
+                this.byepregen$drainUntilIdle();
+            } finally {
+                this.scheduled.set(false);
+                this.byepregen$scheduleDrain();
+            }
+        });
     }
 
     @Unique
-    private void byepregen$resetAdaptiveLightTaskBatch() {
-        this.byepregen$lightTaskBatch = BYEPREGEN_LIGHT_TASK_MIN_BATCH;
-        this.byepregen$forceDrainCount = 0;
-        this.byepregen$lastForceDrainMillis = 0L;
+    private boolean byepregen$hasScheduledWork() {
+        return this.byepregen$lightScheduler.hasWork() || this.byepregen$yaEngine().hasLightWork();
+    }
+
+    @Unique
+    private void byepregen$drainUntilIdle() {
+        while (this.byepregen$hasScheduledWork()) {
+            this.byepregen$lightScheduler.drain(this.byepregen$yaEngine(), YAThreadedLightScheduler.BATCH_SIZE);
+        }
     }
 
     /**
      * @author MoePus
-     * @reason Preserve vanilla light-task backpressure while using YA's smaller update batches.
+     * @reason Route accepted light tasks through YA's top-level scheduler.
      */
     @Overwrite
     public void addTask(
@@ -113,14 +101,34 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             ThreadedLevelLightEngine.TaskType type,
             Runnable task
     ) {
-        this.sorterMailbox.tell(ChunkTaskPriorityQueueSorter.message(() -> {
-            this.byepregen$resetAdaptiveLightTaskBatchIfIdle();
-            this.lightTasks.add(Pair.of(type, task));
-            if (this.lightTasks.size() >= this.byepregen$lightTaskBatch) {
-                this.byepregen$runUpdate();
-                this.byepregen$recordForcedLightTaskDrain();
-            }
-        }, ChunkPos.asLong(chunkX, chunkZ), queueLevelSupplier));
+        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
+        this.byepregen$lightScheduler.enqueue(chunkKey, type, task);
+        if (BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD) {
+            this.byepregen$scheduleDrainWithKnownWork();
+        }
+    }
+
+    @Unique
+    private void byepregen$addLightChunkTask(
+            int chunkX,
+            int chunkZ,
+            Runnable prepare,
+            Runnable complete
+    ) {
+        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
+        this.byepregen$lightScheduler.enqueueLightChunk(chunkKey, prepare, complete);
+        if (BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD) {
+            this.byepregen$scheduleDrainWithKnownWork();
+        }
+    }
+
+    /**
+     * @author MoePus
+     * @reason YA has its own top-level scheduler and still runs on vanilla's light executor.
+     */
+    @Overwrite
+    public void tryScheduleUpdate() {
+        this.byepregen$scheduleDrain();
     }
 
     /**
@@ -136,9 +144,6 @@ public abstract class ThreadedLevelLightEngineYAMixin {
                 SectionPos sectionPos = SectionPos.of(chunkPos, sectionY);
                 this.byepregen$yaEngine().queueSectionData(LightLayer.BLOCK, sectionPos, null);
                 this.byepregen$yaEngine().queueSectionData(LightLayer.SKY, sectionPos, null);
-            }
-            for (int sectionY = self.getMinLightSection() + 1; sectionY < self.getMaxLightSection() - 1; ++sectionY) {
-                this.byepregen$yaEngine().updateSectionStatus(SectionPos.of(chunkPos, sectionY), true);
             }
         }, () -> "YA updateChunkStatus " + chunkPos + " true"));
     }
@@ -183,24 +188,42 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Overwrite
     public CompletableFuture<ChunkAccess> lightChunk(ChunkAccess chunk, boolean isLighted) {
         ChunkPos chunkPos = chunk.getPos();
+        CompletableFuture<ChunkAccess> future = new CompletableFuture<>();
         chunk.setLightCorrect(false);
-        this.addTask(chunkPos.x, chunkPos.z, () -> 0, ThreadedLevelLightEngine.TaskType.PRE_UPDATE, Util.name(() -> {
+        Runnable prepare = Util.name(() -> {
+            YALightEngine engine = this.byepregen$yaEngine();
             LevelChunkSection[] sections = chunk.getSections();
             for (int i = 0; i < chunk.getSectionsCount(); ++i) {
                 LevelChunkSection section = sections[i];
                 if (!section.hasOnlyAir()) {
-                    this.byepregen$yaEngine().updateSectionStatus(SectionPos.of(chunkPos, chunk.getSectionYFromSectionIndex(i)), false);
+                    engine.updateSectionStatus(chunk, chunk.getSectionYFromSectionIndex(i), false);
                 }
             }
-            this.byepregen$yaEngine().setLightEnabled(chunkPos, true);
+            engine.setLightEnabled(chunk, true);
             if (!isLighted) {
-                this.byepregen$yaEngine().propagateLightSources(chunkPos);
+                engine.propagateFreshLightSources(chunkPos);
+            } else {
+                // Light saved by other engines omits the all-15 sky sections above the surface.
+                engine.restoreSavedSkyLight(chunk);
             }
-        }, () -> "YA lightChunk " + chunkPos + " " + isLighted));
-        return CompletableFuture.supplyAsync(() -> {
+        }, () -> "YA lightChunk " + chunkPos + " " + isLighted);
+        Runnable complete = () -> {
             chunk.setLightCorrect(true);
-            return chunk;
-        }, task -> this.addTask(chunkPos.x, chunkPos.z, () -> 0, ThreadedLevelLightEngine.TaskType.POST_UPDATE, task));
+            future.complete(chunk);
+        };
+        this.byepregen$addLightChunkTask(chunkPos.x, chunkPos.z, prepare, complete);
+        return future;
+    }
+
+    /**
+     * @author MoePus
+     * @reason Complete pending-task barriers through YA's scheduler instead of vanilla lightTasks.
+     */
+    @Overwrite
+    public CompletableFuture<?> waitForPendingTasks(int x, int z) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        this.addTask(x, z, () -> 0, ThreadedLevelLightEngine.TaskType.POST_UPDATE, () -> future.complete(null));
+        return future;
     }
 
 }

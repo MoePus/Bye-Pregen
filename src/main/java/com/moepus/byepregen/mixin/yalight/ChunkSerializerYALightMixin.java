@@ -102,8 +102,6 @@ public abstract class ChunkSerializerYALightMixin {
 
         YAChunkLightData blockData = null;
         YAChunkLightData skyData = null;
-        boolean blockLoaded = false;
-        boolean skyLoaded = false;
         boolean hasSkyLight = level.dimensionType().hasSkyLight();
         for (int i = 0; i < sections.size(); ++i) {
             CompoundTag sectionTag = sections.getCompound(i);
@@ -113,20 +111,18 @@ public abstract class ChunkSerializerYALightMixin {
                     blockData = access.byepregen$yaLightData(LightLayer.BLOCK);
                 }
                 blockData.loadInitialSection(sectionY, YANibbleArray.fromOwnedBytes(sectionTag.getByteArray("BlockLight")));
-                blockLoaded = true;
             }
             if (hasSkyLight && sectionTag.contains("SkyLight", 7)) {
                 if (skyData == null) {
                     skyData = access.byepregen$yaLightData(LightLayer.SKY);
                 }
                 skyData.loadInitialSection(sectionY, YANibbleArray.fromOwnedBytes(sectionTag.getByteArray("SkyLight")));
-                skyLoaded = true;
             }
         }
-        if (blockLoaded) {
+        if (blockData != null) {
             blockData.finishInitialLoad();
         }
-        if (skyLoaded) {
+        if (skyData != null) {
             skyData.finishInitialLoad();
         }
     }

@@ -1,40 +1,151 @@
 package com.moepus.byepregen.yalight;
 
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LightChunk;
 import net.minecraft.world.level.chunk.LightChunkGetter;
+import net.minecraft.world.level.lighting.BlockLightEngine;
+import net.minecraft.world.level.lighting.LayerLightSectionStorage;
 
-public final class YABlockLightEngine extends YALightLayerEngine {
-    private final YABlockRunCache runCache = new YABlockRunCache();
+public final class YABlockLightEngine extends BlockLightEngine implements YALightLayerEngine {
+    final LightChunkGetter chunkGetter;
+    final BlockGetter levelReader;
+    final YALightStorage storage;
+    final YAChunkRunCache runCache = new YAChunkRunCache();
+    final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+    private final YALightQueue lightQueue = new YALightQueue();
+    private final YADLongQueue decreaseQueue = new YADLongQueue();
+    private final YADLongQueue increaseQueue = new YADLongQueue();
     private final YALightBlockAccess blocks;
 
-    YABlockLightEngine(LightChunkGetter chunkGetter, LevelHeightAccessor level) {
-        super(chunkGetter, level, LightLayer.BLOCK);
-        this.blocks = new YALightBlockAccess(this.runCache, this.chunkGetter, this.levelReader, this.mutablePos);
+    public YABlockLightEngine(LightChunkGetter chunkGetter) {
+        super(chunkGetter, null);
+        this.chunkGetter = chunkGetter;
+        this.levelReader = chunkGetter.getLevel();
+        this.storage = new YALightStorage(chunkGetter, chunkGetter.getLevel(), LightLayer.BLOCK);
+        this.blocks = new YALightBlockAccess(this.runCache, chunkGetter, this.levelReader, this.mutablePos);
     }
 
     @Override
-    protected void clearRunCache() {
-        this.runCache.clear();
+    public LightChunkGetter chunkGetter() {
+        return this.chunkGetter;
+    }
+
+    @Override
+    public LightLayer lightLayer() {
+        return LightLayer.BLOCK;
+    }
+
+    @Override
+    public YALightStorage storage() {
+        return this.storage;
+    }
+
+    @Override
+    public YAChunkRunCache runCache() {
+        return this.runCache;
+    }
+
+    @Override
+    public YALightQueue lightQueue() {
+        return this.lightQueue;
+    }
+
+    @Override
+    public YADLongQueue decreaseQueue() {
+        return this.decreaseQueue;
+    }
+
+    @Override
+    public YADLongQueue increaseQueue() {
+        return this.increaseQueue;
+    }
+
+    @Override
+    public void checkBlock(BlockPos pos) {
+        YALightLayerEngine.super.checkBlock(pos);
+    }
+
+    @Override
+    public boolean hasLightWork() {
+        return YALightLayerEngine.super.hasLightWork();
+    }
+
+    @Override
+    public int runLightUpdates() {
+        return YALightLayerEngine.super.runLightUpdates();
+    }
+
+    @Override
+    public void updateSectionStatus(SectionPos pos, boolean isEmpty) {
+        YALightLayerEngine.super.updateSectionStatus(pos, isEmpty);
+    }
+
+    @Override
+    public void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
+        YALightLayerEngine.super.setLightEnabled(pos, lightEnabled);
+    }
+
+    @Override
+    public void propagateLightSources(ChunkPos pos) {
+        YALightLayerEngine.super.propagateLightSources(pos);
+    }
+
+    @Override
+    public DataLayer getDataLayerData(SectionPos pos) {
+        return YALightLayerEngine.super.getDataLayerData(pos);
     }
 
     @Override
     public int getLightValue(BlockPos pos) {
-        int sectionY = pos.getY() >> 4;
-        YANibbleArray nibble = this.getNibble(pos.getX() >> 4, sectionY, pos.getZ() >> 4);
-        return nibble == null ? 0 : nibble.getVisible(pos.getX(), pos.getY(), pos.getZ());
+        int chunkX = pos.getX() >> 4;
+        int chunkZ = pos.getZ() >> 4;
+        YAChunkLightData data = this.storage.existingData(this.storage.chunkAccess(chunkX, chunkZ));
+        return this.getVisibleLightValue(pos, data);
+    }
+
+    int getVisibleLightValue(BlockPos pos, YAChunkLightData data) {
+        YANibbleArray[] sections = data == null
+                ? YAVisibleLightReader.EMPTY_SECTIONS
+                : data.visibleSections();
+        int sectionIndex = this.storage.sectionIndex(pos.getY() >> 4);
+        return YAVisibleLightReader.blockLight(sections, sectionIndex, pos);
     }
 
     @Override
-    protected void checkBlockInternal(long pos) {
+    public void queueSectionData(long sectionPos, @Nullable DataLayer data) {
+        this.queueSectionData(SectionPos.of(sectionPos), data);
+    }
+
+    @Override
+    public void retainData(ChunkPos pos, boolean retainData) {
+        // YA light data is chunk-owned.
+    }
+
+    @Override
+    public String getDebugData(long sectionPos) {
+        return this.getDebugData(SectionPos.of(sectionPos));
+    }
+
+    @Override
+    public LayerLightSectionStorage.SectionType getDebugSectionType(long sectionPos) {
+        return this.lightOnInSection(SectionPos.of(sectionPos))
+                ? LayerLightSectionStorage.SectionType.LIGHT_AND_DATA
+                : LayerLightSectionStorage.SectionType.EMPTY;
+    }
+
+    @Override
+    public void checkBlockInternal(long pos) {
         int x = BlockPos.getX(pos);
         int y = BlockPos.getY(pos);
         int z = BlockPos.getZ(pos);
-        if (!this.canUseCachedSection(x >> 4, y >> 4, z >> 4)) {
+        if (!this.canUseSection(x >> 4, y >> 4, z >> 4)) {
             return;
         }
 
@@ -43,7 +154,7 @@ public final class YABlockLightEngine extends YALightLayerEngine {
         // Fast classes are guaranteed non-emissive; only slow blocks need a BlockState source query.
         if (this.blocks.isSlow(block)) {
             BlockState state = this.blocks.toState(block);
-            emitted = this.getSourceLight(pos, state);
+            emitted = state.getLightEmission(this.levelReader, this.mutablePos.set(pos));
         }
         int current = this.getCachedUpdatingLight(x, y, z);
         if (current > emitted) {
@@ -58,20 +169,14 @@ public final class YABlockLightEngine extends YALightLayerEngine {
     }
 
     @Override
-    protected void propagateLightSourcesInternal(int chunkX, int chunkZ) {
+    public void propagateLightSourcesInternal(int chunkX, int chunkZ, boolean fresh) {
         LightChunk chunk = this.runCache.chunk(this.chunkGetter, chunkX, chunkZ);
         if (chunk == null) {
             return;
         }
-        ChunkAccess access = (ChunkAccess)chunk;
         chunk.findBlockLightSources((pos, state) -> {
-            int sectionY = pos.getY() >> 4;
-            this.storage.getOrCreateSection(access, sectionY);
             int emitted = state.getLightEmission(this.levelReader, pos);
-            if (emitted <= 0) {
-                return;
-            }
-            if (emitted <= this.getCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ())) {
+            if (emitted <= 0 || emitted <= this.getCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ())) {
                 return;
             }
             this.setCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ(), emitted);
@@ -80,24 +185,23 @@ public final class YABlockLightEngine extends YALightLayerEngine {
     }
 
     @Override
-    protected void propagateIncrease(long pos, long meta) {
+    public void propagateIncrease(long pos, long meta) {
         int level = YALightMath.level(meta);
         int x = BlockPos.getX(pos);
         int y = BlockPos.getY(pos);
         int z = BlockPos.getZ(pos);
         int stored = this.getCachedUpdatingLight(x, y, z);
-        if ((meta & YALightMath.FLAG_RECHECK) != 0L && stored != level) {
-            return;
-        }
-        if ((meta & YALightMath.FLAG_WRITE_LEVEL) != 0L && stored < level) {
-            this.setCachedUpdatingLight(x, y, z, level);
-            stored = level;
-        }
         if (stored != level) {
-            return;
+            boolean canWrite = (meta & (YALightMath.FLAG_RECHECK | YALightMath.FLAG_WRITE_LEVEL))
+                    == YALightMath.FLAG_WRITE_LEVEL && stored < level;
+            if (!canWrite) {
+                return;
+            }
+            this.setCachedUpdatingLight(x, y, z, level);
         }
 
-        int fromBlock = this.blocks.blockAt(x, y, z);
+        int fromBlock = 0;
+        boolean fromBlockLoaded = false;
         int directions = YALightMath.directions(meta);
         while (directions != 0) {
             int directionIndex = Integer.numberOfTrailingZeros(directions);
@@ -105,11 +209,8 @@ public final class YABlockLightEngine extends YALightLayerEngine {
             int toX = x + YALightMath.stepX(directionIndex);
             int toY = y + YALightMath.stepY(directionIndex);
             int toZ = z + YALightMath.stepZ(directionIndex);
-            if (!this.canUseCachedSection(toX >> 4, toY >> 4, toZ >> 4)) {
-                continue;
-            }
-            int current = this.getCachedUpdatingLight(toX, toY, toZ);
-            if (current >= level - 1) {
+            int current = this.getEnabledCachedUpdatingLight(toX, toY, toZ);
+            if (current < 0 || current >= level - 1) {
                 continue;
             }
             int toBlock = this.blocks.blockAt(toX, toY, toZ);
@@ -117,23 +218,28 @@ public final class YABlockLightEngine extends YALightLayerEngine {
                 continue;
             }
 
-            int target = level - this.blocks.opacityAt(toX, toY, toZ, toBlock);
+            int target = this.blocks.attenuatedLevel(level, toX, toY, toZ, toBlock);
             if (target <= current) {
                 continue;
             }
-            if ((fromBlock | toBlock) != 0
-                    && this.blocks.shapeOccludes(x, y, z, fromBlock, toX, toY, toZ, toBlock, YALightMath.direction(directionIndex))) {
+            if (!fromBlockLoaded) {
+                fromBlock = this.blocks.blockAt(x, y, z);
+                fromBlockLoaded = true;
+            }
+            if ((fromBlock | toBlock) != 0 && this.blocks.shapeOccludes(
+                    x, y, z, fromBlock, toX, toY, toZ, toBlock, YALightMath.direction(directionIndex))) {
                 continue;
             }
             this.setCachedUpdatingLight(toX, toY, toZ, target);
             if (target > 1) {
-                this.enqueueIncrease(BlockPos.asLong(toX, toY, toZ), target, YALightMath.withoutOpposite(directionIndex), 0L);
+                this.enqueueIncrease(
+                        BlockPos.asLong(toX, toY, toZ), target, YALightMath.withoutOpposite(directionIndex), 0L);
             }
         }
     }
 
     @Override
-    protected void propagateDecrease(long pos, long meta) {
+    public void propagateDecrease(long pos, long meta) {
         int level = YALightMath.level(meta);
         int x = BlockPos.getX(pos);
         int y = BlockPos.getY(pos);
@@ -145,11 +251,8 @@ public final class YABlockLightEngine extends YALightLayerEngine {
             int toX = x + YALightMath.stepX(directionIndex);
             int toY = y + YALightMath.stepY(directionIndex);
             int toZ = z + YALightMath.stepZ(directionIndex);
-            if (!this.canUseCachedSection(toX >> 4, toY >> 4, toZ >> 4)) {
-                continue;
-            }
-            int current = this.getCachedUpdatingLight(toX, toY, toZ);
-            if (current == 0) {
+            int current = this.getEnabledCachedUpdatingLight(toX, toY, toZ);
+            if (current <= 0) {
                 continue;
             }
             long toPos = BlockPos.asLong(toX, toY, toZ);
@@ -159,42 +262,22 @@ public final class YABlockLightEngine extends YALightLayerEngine {
                 continue;
             }
 
-            int target = Math.max(0, level - this.blocks.opacityAt(toX, toY, toZ, toBlock));
+            int target = this.blocks.attenuatedLevel(level, toX, toY, toZ, toBlock);
             if (current > target) {
-                // Neighbor still has more light than this removal explains; recheck it as another source path.
-                this.enqueueIncrease(toPos, current, YALightMath.oppositeMask(directionIndex), YALightMath.FLAG_RECHECK);
+                this.enqueueIncrease(
+                        toPos, current, YALightMath.oppositeMask(directionIndex), YALightMath.FLAG_RECHECK);
                 continue;
             }
             this.setCachedUpdatingLight(toX, toY, toZ, 0);
             if (this.blocks.isSlow(toBlock)) {
-                int source = this.getSourceLight(toPos, this.blocks.toState(toBlock));
+                int source = this.blocks.toState(toBlock).getLightEmission(
+                        this.levelReader, this.mutablePos.set(toPos));
                 if (source > 0) {
                     this.enqueueIncrease(toPos, source, YALightMath.ALL_DIRECTIONS, YALightMath.FLAG_WRITE_LEVEL);
                 }
             }
-            this.enqueueDecrease(toPos, target, YALightMath.withoutOpposite(directionIndex));
+            this.enqueueDecrease(toPos, current, YALightMath.withoutOpposite(directionIndex));
         }
     }
 
-    @Override
-    protected int getSourceLight(long pos, BlockState state) {
-        if (!this.runCache.enabled(this.storage, BlockPos.getX(pos) >> 4, BlockPos.getZ(pos) >> 4)) {
-            return 0;
-        }
-        return state.getLightEmission(this.levelReader, this.mutablePos.set(pos));
-    }
-
-    private boolean canUseCachedSection(int chunkX, int sectionY, int chunkZ) {
-        return sectionY >= this.minLightSection
-                && sectionY <= this.maxLightSection
-                && this.runCache.lightEnabled(this.storage, chunkX, chunkZ);
-    }
-
-    private int getCachedUpdatingLight(int x, int y, int z) {
-        return this.runCache.getUpdatingLight(this.storage, x, y, z);
-    }
-
-    private void setCachedUpdatingLight(int x, int y, int z, int value) {
-        this.runCache.setUpdatingLight(this.storage, x, y, z, value);
-    }
 }

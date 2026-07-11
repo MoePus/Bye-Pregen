@@ -3,6 +3,7 @@ package com.moepus.byepregen;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+
 import net.neoforged.fml.loading.LoadingModList;
 import net.neoforged.fml.loading.moddiscovery.ModFileInfo;
 import org.objectweb.asm.tree.ClassNode;
@@ -112,6 +113,9 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     private static boolean passesArenaGate(String mixinClassName, Config config) {
         if (!config.enableArenaPalette) {
+            return false;
+        }
+        if (isModExist("confluence")) {
             return false;
         }
         if (LEVEL_CHUNK_ARENA_MIXIN.equals(mixinClassName)) {

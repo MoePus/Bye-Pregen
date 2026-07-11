@@ -13,5 +13,15 @@ public interface YAChunkLightAccess {
 
     YAChunkLightData byepregen$blockLightData();
 
+    default YANibbleArray[] byepregen$visibleBlock() {
+        YAChunkLightData data = this.byepregen$blockLightData();
+        return data == null ? YAVisibleLightReader.EMPTY_SECTIONS : data.visibleSections();
+    }
+
+    default YANibbleArray[] byepregen$visibleSky() {
+        YAChunkLightData data = this.byepregen$skyLightData();
+        return data == null ? YAVisibleLightReader.EMPTY_SECTIONS : data.visibleSections();
+    }
+
     void byepregen$setYALightData(LightLayer layer, YAChunkLightData data);
 }

@@ -44,6 +44,10 @@ public final class YAChunkLightData {
         return this.getVisibleSectionByIndex(index);
     }
 
+    public YANibbleArray[] visibleSections() {
+        return this.visible;
+    }
+
     YANibbleArray getVisibleSectionByIndex(int index) {
         YANibbleArray[] visible = this.visible;
         return visible[index];

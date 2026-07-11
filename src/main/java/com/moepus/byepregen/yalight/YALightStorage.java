@@ -68,17 +68,11 @@ public final class YALightStorage {
         return data == null ? null : data.getVisibleSection(sectionY);
     }
 
-    YANibbleArray getVisibleSectionByIndex(ChunkAccess chunk, int sectionIndex) {
-        YAChunkLightData data = this.existingData(chunk);
-        return data == null ? null : data.getVisibleSectionByIndex(sectionIndex);
-    }
-
-    public YANibbleArray getOrCreateSection(int chunkX, int sectionY, int chunkZ) {
-        return this.getOrCreateSection(this.chunkAccess(chunkX, chunkZ), sectionY);
-    }
-
     public YANibbleArray getOrCreateSection(ChunkAccess chunk, int sectionY) {
-        YAChunkLightData data = this.data(chunk);
+        return this.getOrCreateSection(this.data(chunk), sectionY);
+    }
+
+    YANibbleArray getOrCreateSection(YAChunkLightData data, int sectionY) {
         return data == null ? null : data.getOrCreateUpdatingSection(sectionY);
     }
 
@@ -94,19 +88,17 @@ public final class YALightStorage {
         data.setSection(pos.y(), nibble, this);
     }
 
-    public void setFullSection(int chunkX, int sectionY, int chunkZ) {
-        YAChunkLightData data = this.data(this.chunkAccess(chunkX, chunkZ));
+    void setFullSection(YAChunkLightData data, int sectionY) {
         if (data != null) {
             data.setFullSection(sectionY, this);
         }
     }
 
-    public void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
-        this.setLightEnabled(pos.x, pos.z, lightEnabled);
-    }
-
-    public void setLightEnabled(int chunkX, int chunkZ, boolean lightEnabled) {
-        this.setLightEnabled(this.chunkAccess(chunkX, chunkZ), lightEnabled);
+    void markDirtySection(YAChunkLightData data, int sectionY) {
+        int index = this.sectionIndex(sectionY);
+        if (data != null && index >= 0 && index < this.lightSectionCount) {
+            this.markDirty(data, index);
+        }
     }
 
     public void setLightEnabled(ChunkAccess chunk, boolean lightEnabled) {

@@ -20,6 +20,19 @@ public abstract class ImposterProtoChunkYALightDataMixin implements YAChunkLight
         return ((YAChunkLightAccess)this.wrapped).byepregen$yaLightData(layer, create);
     }
 
+    // getChunkForLighting returns an imposter for every full chunk (replaceProtoChunk swaps the
+    // pre-full futures), so the fast getters must follow the wrapped chunk like the layer
+    // accessor does or server-side getRawBrightness/getLightColor read no data at all.
+    @Override
+    public YAChunkLightData byepregen$skyLightData() {
+        return ((YAChunkLightAccess)this.wrapped).byepregen$skyLightData();
+    }
+
+    @Override
+    public YAChunkLightData byepregen$blockLightData() {
+        return ((YAChunkLightAccess)this.wrapped).byepregen$blockLightData();
+    }
+
     @Override
     public void byepregen$setYALightData(LightLayer layer, YAChunkLightData data) {
         ((YAChunkLightAccess)this.wrapped).byepregen$setYALightData(layer, data);
