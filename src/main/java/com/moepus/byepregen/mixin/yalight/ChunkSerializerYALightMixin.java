@@ -4,16 +4,20 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import com.moepus.byepregen.yalight.YANibbleArray;
+import javax.annotation.Nullable;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
+import net.minecraft.world.level.lighting.LayerLightEventListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,6 +28,46 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChunkSerializer.class)
 public abstract class ChunkSerializerYALightMixin {
+    @Redirect(
+            method = "write",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
+                    ordinal = 0
+            )
+    )
+    private static DataLayer byepregen$writeYABlockLight(
+            LayerLightEventListener listener,
+            SectionPos sectionPos,
+            @Local(argsOnly = true) ChunkAccess chunk
+    ) {
+        return byepregen$visibleLayer(chunk, LightLayer.BLOCK, sectionPos.y());
+    }
+
+    @Redirect(
+            method = "write",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
+                    ordinal = 1
+            )
+    )
+    private static DataLayer byepregen$writeYASkyLight(
+            LayerLightEventListener listener,
+            SectionPos sectionPos,
+            @Local(argsOnly = true) ChunkAccess chunk
+    ) {
+        return byepregen$visibleLayer(chunk, LightLayer.SKY, sectionPos.y());
+    }
+
+    @Unique
+    @Nullable
+    private static DataLayer byepregen$visibleLayer(ChunkAccess chunk, LightLayer layer, int sectionY) {
+        YAChunkLightData data = ((YAChunkLightAccess)chunk).byepregen$yaLightData(layer, false);
+        YANibbleArray nibble = data == null ? null : data.getVisibleSection(sectionY);
+        return nibble == null ? null : nibble.toVanilla();
+    }
+
     @Redirect(
             method = "read",
             at = @At(

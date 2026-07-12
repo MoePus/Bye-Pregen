@@ -1,14 +1,23 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.mixin.ChunkMapAccessor;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YALightEngine;
+import com.moepus.byepregen.yalight.YAImmediateChunkAccess;
 import com.moepus.byepregen.yalight.YAThreadedLightScheduler;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+
+import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntSupplier;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ChunkMap;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.util.thread.ProcessorMailbox;
 import net.minecraft.world.level.ChunkPos;
@@ -16,6 +25,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -24,6 +34,10 @@ import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(ThreadedLevelLightEngine.class)
 public abstract class ThreadedLevelLightEngineYAMixin {
+    @Unique
+    private static final TicketType<ChunkPos> YA_LIGHT_WORK =
+            TicketType.create("ya_light_work", Comparator.comparingLong(ChunkPos::toLong));
+
     @Unique
     private static final String BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY = "byepregen.yaLightSchedulerWakeOnAdd";
 
@@ -39,12 +53,89 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Final
     private AtomicBoolean scheduled;
 
+    @Shadow
+    @Final
+    private ChunkMap chunkMap;
+
     @Unique
-    private final YAThreadedLightScheduler byepregen$lightScheduler = new YAThreadedLightScheduler();
+    private final Long2IntOpenHashMap byepregen$ticketReferences = new Long2IntOpenHashMap();
+
+    @Unique
+    private final YAThreadedLightScheduler byepregen$lightScheduler = new YAThreadedLightScheduler(
+            this::byepregen$acquireTaskTicket,
+            this::byepregen$releaseTaskTicket
+    );
 
     @Unique
     private YALightEngine byepregen$yaEngine() {
         return ((YALightEngineHolder)this).byepregen$getYALightEngine();
+    }
+
+    @Unique
+    private ServerLevel byepregen$level() {
+        return ((ChunkMapAccessor)this.chunkMap).byepregen$getLevel();
+    }
+
+    @Unique
+    private void byepregen$acquireTaskTicket(long chunkKey) {
+        int previous = this.byepregen$ticketReferences.addTo(chunkKey, 1);
+        if (previous == 0) {
+            ChunkPos pos = new ChunkPos(chunkKey);
+            this.byepregen$level().getChunkSource().addRegionTicket(YA_LIGHT_WORK, pos, 0, pos);
+        }
+    }
+
+    @Unique
+    private void byepregen$releaseTaskTicket(long chunkKey) {
+        ServerLevel level = this.byepregen$level();
+        ((ChunkMapAccessor)this.chunkMap).byepregen$getMainThreadExecutor().execute(() -> {
+            int references = this.byepregen$ticketReferences.get(chunkKey);
+            if (references <= 1) {
+                this.byepregen$ticketReferences.remove(chunkKey);
+                ChunkPos pos = new ChunkPos(chunkKey);
+                level.getChunkSource().removeRegionTicket(YA_LIGHT_WORK, pos, 0, pos);
+            } else {
+                this.byepregen$ticketReferences.put(chunkKey, references - 1);
+            }
+        });
+    }
+
+    @Unique
+    private void byepregen$enqueueTask(
+            long chunkKey,
+            ThreadedLevelLightEngine.TaskType type,
+            Runnable task,
+            boolean ticketed
+    ) {
+        this.byepregen$lightScheduler.enqueue(chunkKey, type, task, ticketed);
+        if (BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD) {
+            this.byepregen$scheduleDrainWithKnownWork();
+        }
+    }
+
+    @Unique
+    private void byepregen$enqueueRuntimeTask(
+            int chunkX,
+            int chunkZ,
+            ThreadedLevelLightEngine.TaskType type,
+            Runnable task
+    ) {
+        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
+        ChunkAccess chunk = ((YAImmediateChunkAccess)this.byepregen$level().getChunkSource())
+                .byepregen$getAnyChunkNow(chunkX, chunkZ);
+        if (chunk == null || !chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
+            return;
+        }
+        if (chunk.getPersistedStatus() != ChunkStatus.FULL) {
+            this.byepregen$enqueueTask(chunkKey, type, task, false);
+            return;
+        }
+        var mainThreadExecutor = ((ChunkMapAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
+        if (!mainThreadExecutor.isSameThread()) {
+            mainThreadExecutor.execute(() -> this.byepregen$enqueueRuntimeTask(chunkX, chunkZ, type, task));
+            return;
+        }
+        this.byepregen$enqueueTask(chunkKey, type, task, true);
     }
 
     @Unique
@@ -101,11 +192,37 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             ThreadedLevelLightEngine.TaskType type,
             Runnable task
     ) {
-        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
-        this.byepregen$lightScheduler.enqueue(chunkKey, type, task);
-        if (BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD) {
-            this.byepregen$scheduleDrainWithKnownWork();
-        }
+        this.byepregen$enqueueTask(ChunkPos.asLong(chunkX, chunkZ), type, task, false);
+    }
+
+    /**
+     * @author MoePus
+     * @reason Protect runtime block-light work without ticketing chunk-load internals.
+     */
+    @Overwrite
+    public void checkBlock(BlockPos pos) {
+        BlockPos immutablePos = pos.immutable();
+        this.byepregen$enqueueRuntimeTask(
+                SectionPos.blockToSectionCoord(pos.getX()),
+                SectionPos.blockToSectionCoord(pos.getZ()),
+                ThreadedLevelLightEngine.TaskType.PRE_UPDATE,
+                Util.name(() -> this.byepregen$yaEngine().checkBlock(immutablePos), () -> "YA checkBlock " + immutablePos)
+        );
+    }
+
+    /**
+     * @author MoePus
+     * @reason Protect runtime section changes without ticketing chunk-load internals.
+     */
+    @Overwrite
+    public void updateSectionStatus(SectionPos pos, boolean isEmpty) {
+        this.byepregen$enqueueRuntimeTask(
+                pos.x(),
+                pos.z(),
+                ThreadedLevelLightEngine.TaskType.PRE_UPDATE,
+                Util.name(() -> this.byepregen$yaEngine().updateSectionStatus(pos, isEmpty),
+                        () -> "YA updateSectionStatus " + pos + " " + isEmpty)
+        );
     }
 
     @Unique
@@ -137,15 +254,8 @@ public abstract class ThreadedLevelLightEngineYAMixin {
      */
     @Overwrite
     public void updateChunkStatus(ChunkPos chunkPos) {
-        this.addTask(chunkPos.x, chunkPos.z, () -> 0, ThreadedLevelLightEngine.TaskType.PRE_UPDATE, Util.name(() -> {
-            this.byepregen$yaEngine().setLightEnabled(chunkPos, false);
-            ThreadedLevelLightEngine self = (ThreadedLevelLightEngine)(Object)this;
-            for (int sectionY = self.getMinLightSection(); sectionY < self.getMaxLightSection(); ++sectionY) {
-                SectionPos sectionPos = SectionPos.of(chunkPos, sectionY);
-                this.byepregen$yaEngine().queueSectionData(LightLayer.BLOCK, sectionPos, null);
-                this.byepregen$yaEngine().queueSectionData(LightLayer.SKY, sectionPos, null);
-            }
-        }, () -> "YA updateChunkStatus " + chunkPos + " true"));
+        // YA light data belongs to the chunk object. A delayed position-based unload task can
+        // otherwise disable a replacement chunk that has already loaded at the same position.
     }
 
     /**
@@ -154,12 +264,11 @@ public abstract class ThreadedLevelLightEngineYAMixin {
      */
     @Overwrite
     public void queueSectionData(LightLayer layer, SectionPos pos, @Nullable DataLayer dataLayer) {
-        this.addTask(
-                pos.x(),
-                pos.z(),
-                () -> 0,
+        this.byepregen$enqueueTask(
+                ChunkPos.asLong(pos.x(), pos.z()),
                 ThreadedLevelLightEngine.TaskType.PRE_UPDATE,
-                Util.name(() -> this.byepregen$yaEngine().queueSectionData(layer, pos, dataLayer), () -> "YA queueData " + pos)
+                Util.name(() -> this.byepregen$yaEngine().queueSectionData(layer, pos, dataLayer), () -> "YA queueData " + pos),
+                false
         );
     }
 
@@ -203,7 +312,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             if (!isLighted) {
                 engine.propagateFreshLightSources(chunkPos);
             } else {
-                // Light saved by other engines omits the all-15 sky sections above the surface.
+                // Light saves omit all-15 sky sections above the surface.
                 engine.restoreSavedSkyLight(chunk);
             }
         }, () -> "YA lightChunk " + chunkPos + " " + isLighted);
@@ -222,7 +331,13 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Overwrite
     public CompletableFuture<?> waitForPendingTasks(int x, int z) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        this.addTask(x, z, () -> 0, ThreadedLevelLightEngine.TaskType.POST_UPDATE, () -> future.complete(null));
+        var mainThreadExecutor = ((ChunkMapAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
+        this.byepregen$enqueueTask(
+                ChunkPos.asLong(x, z),
+                ThreadedLevelLightEngine.TaskType.POST_UPDATE,
+                () -> mainThreadExecutor.execute(() -> future.complete(null)),
+                false
+        );
         return future;
     }
 

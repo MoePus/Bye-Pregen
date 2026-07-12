@@ -269,8 +269,9 @@ final class ChunkyWorldGenDriver {
 
     private static List<ChunkPos> loadFuzzChunks(ServerLevel level) {
         List<ChunkPos> chunks = new ArrayList<>();
-        for (int chunkZ = -3; chunkZ <= 3; ++chunkZ) {
-            for (int chunkX = -3; chunkX <= 3; ++chunkX) {
+        int radius = runsBlackoutLightFuzz() ? LightBlackoutFuzz.LOAD_RADIUS : 3;
+        for (int chunkZ = -radius; chunkZ <= radius; ++chunkZ) {
+            for (int chunkX = -radius; chunkX <= radius; ++chunkX) {
                 level.setChunkForced(chunkX, chunkZ, true);
                 level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FULL, true);
                 chunks.add(new ChunkPos(chunkX, chunkZ));
@@ -280,6 +281,9 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void clearFuzzVolume(ServerLevel level) {
+        if (runsBlackoutLightFuzz()) {
+            lightFuzzRun.blackoutFuzz.clearVolume();
+        }
         if (runsDefaultLightFuzz()) {
             clearDefaultFuzzVolume(level);
         }
@@ -305,6 +309,9 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void buildInitialFuzzFixture(ServerLevel level) {
+        if (runsBlackoutLightFuzz()) {
+            lightFuzzRun.blackoutFuzz.buildFixture();
+        }
         if (runsDefaultLightFuzz()) {
             buildDefaultFuzzFixture(level);
         }
@@ -353,6 +360,9 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void mutateFuzzFixture(ServerLevel level) {
+        if (runsBlackoutLightFuzz()) {
+            lightFuzzRun.blackoutFuzz.applyUpdate();
+        }
         if (runsDefaultLightFuzz()) {
             mutateDefaultFuzzFixture(level);
         }
@@ -669,7 +679,8 @@ final class ChunkyWorldGenDriver {
     }
 
     private static boolean isKnownLightFuzzVariant() {
-        return runsDefaultLightFuzz()
+        return runsBlackoutLightFuzz()
+                || runsDefaultLightFuzz()
                 || runsEdgeLightFuzz()
                 || runsStressLightFuzz()
                 || runsDirtyColumnLightFuzz();
@@ -677,6 +688,10 @@ final class ChunkyWorldGenDriver {
 
     private static boolean runsDefaultLightFuzz() {
         return "default".equals(LIGHT_FUZZ_VARIANT) || "all".equals(LIGHT_FUZZ_VARIANT);
+    }
+
+    private static boolean runsBlackoutLightFuzz() {
+        return "blackout".equals(LIGHT_FUZZ_VARIANT);
     }
 
     private static boolean runsEdgeLightFuzz() {
@@ -785,10 +800,13 @@ final class ChunkyWorldGenDriver {
         private String pendingStage;
         private int stage;
         private int dirtyColumnRound;
+        private int blackoutRound;
+        private final LightBlackoutFuzz blackoutFuzz;
 
         private LightFuzzRun(MinecraftServer server, ServerLevel level) {
             this.server = server;
             this.level = level;
+            this.blackoutFuzz = runsBlackoutLightFuzz() ? new LightBlackoutFuzz(level, LIGHT_FUZZ_SEED) : null;
         }
 
         private void tick() {
@@ -803,6 +821,7 @@ final class ChunkyWorldGenDriver {
                     }
                     this.pendingLight.join();
                     LOGGER.info("Light fuzz stage completed: {}", this.pendingStage);
+                    this.verifyBlackoutRound();
                     this.logProbes();
                     this.pendingLight = null;
                     this.pendingStage = null;
@@ -823,11 +842,20 @@ final class ChunkyWorldGenDriver {
                         this.waitForLight("initial fixture");
                     }
                     case 3 -> {
-                        mutateFuzzFixture(this.level);
-                        this.dirtyColumnRound = 1;
-                        this.waitForLight("mutated fixture");
+                        if (runsBlackoutLightFuzz() && this.blackoutFuzz.reloadRoundTripWhenUnloaded()) {
+                            this.waitForLight("round-trip reload");
+                        } else if (!runsBlackoutLightFuzz()) {
+                            this.startMutationStage();
+                        }
                     }
-                    case 4 -> this.runNextDirtyColumnRound();
+                    case 4 -> {
+                        if (runsBlackoutLightFuzz()) {
+                            this.startMutationStage();
+                        } else {
+                            this.runNextUpdateRound();
+                        }
+                    }
+                    case 5 -> this.runNextUpdateRound();
                     default -> throw new IllegalStateException("Invalid light fuzz stage: " + this.stage);
                 }
             } catch (Throwable throwable) {
@@ -848,6 +876,13 @@ final class ChunkyWorldGenDriver {
             this.pendingLight = CompletableFuture.allOf(futures);
         }
 
+        private void startMutationStage() {
+            mutateFuzzFixture(this.level);
+            this.dirtyColumnRound = 1;
+            this.blackoutRound = 1;
+            this.waitForLight("mutated fixture");
+        }
+
         private void runNextDirtyColumnRound() {
             if (!runsDirtyColumnLightFuzz() || this.dirtyColumnRound >= DIRTY_COLUMN_ROUNDS) {
                 this.complete();
@@ -857,6 +892,36 @@ final class ChunkyWorldGenDriver {
             mutateDirtyColumnFuzzFixture(this.level, round);
             --this.stage;
             this.waitForLight("dirty column round " + round);
+        }
+
+        private void runNextUpdateRound() {
+            if (!runsBlackoutLightFuzz()) {
+                this.runNextDirtyColumnRound();
+                return;
+            }
+            if (this.blackoutRound >= LightBlackoutFuzz.ROUNDS) {
+                this.complete();
+                return;
+            }
+            int round = this.blackoutRound++;
+            this.blackoutFuzz.applyUpdate();
+            --this.stage;
+            this.waitForLight("blackout round " + round);
+        }
+
+        private void verifyBlackoutRound() {
+            if (!runsBlackoutLightFuzz()) {
+                return;
+            }
+            if (this.stage == 3) {
+                this.blackoutFuzz.verifyRoundTrip();
+                return;
+            }
+            if (this.stage < 4) {
+                return;
+            }
+            this.blackoutFuzz.verify(Math.max(0, this.blackoutRound - 1));
+            this.blackoutFuzz.releaseLoadedChunks();
         }
 
         private void logPending() {

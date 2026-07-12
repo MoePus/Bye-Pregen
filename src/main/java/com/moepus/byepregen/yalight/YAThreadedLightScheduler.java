@@ -3,6 +3,7 @@ package com.moepus.byepregen.yalight;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.level.ThreadedLevelLightEngine;
+import java.util.function.LongConsumer;
 
 public final class YAThreadedLightScheduler {
     // Fixed so one drain fits YASourceHalo's preallocated 8 * 3 * 3 entries.
@@ -13,15 +14,23 @@ public final class YAThreadedLightScheduler {
 
     private final Long2ObjectLinkedOpenHashMap<ChunkTask> tasks =
             new Long2ObjectLinkedOpenHashMap<>(INITIAL_TASK_CAPACITY);
+    private final LongConsumer taskCreated;
+    private final LongConsumer taskCompleted;
     private ChunkTask pooledTask;
     private int pooledTaskCount;
+
+    public YAThreadedLightScheduler(LongConsumer taskCreated, LongConsumer taskCompleted) {
+        this.taskCreated = taskCreated;
+        this.taskCompleted = taskCompleted;
+    }
 
     public synchronized void enqueue(
             long chunkKey,
             ThreadedLevelLightEngine.TaskType type,
-            Runnable runnable
+            Runnable runnable,
+            boolean ticketed
     ) {
-        ChunkTask task = this.task(chunkKey);
+        ChunkTask task = this.task(chunkKey, ticketed);
         if (type == ThreadedLevelLightEngine.TaskType.PRE_UPDATE) {
             task.preOps.add(runnable);
         } else {
@@ -34,8 +43,8 @@ public final class YAThreadedLightScheduler {
             Runnable preOp,
             Runnable postOp
     ) {
-        ChunkTask task = this.task(chunkKey);
-        task.preOps.add(preOp);
+        ChunkTask task = this.task(chunkKey, false);
+        task.lightPreOps.add(preOp);
         task.postOps.add(postOp);
     }
 
@@ -53,12 +62,22 @@ public final class YAThreadedLightScheduler {
                 task.runPreOps();
             }
             int work = engine.runLightUpdates();
+            this.releaseBatchTickets(firstTask);
             for (ChunkTask task = firstTask; task != null; task = task.nextPooled) {
                 task.runPostOps();
             }
             return work;
         } finally {
             this.recycleBatch(firstTask);
+        }
+    }
+
+    private void releaseBatchTickets(ChunkTask first) {
+        for (ChunkTask task = first; task != null; task = task.nextPooled) {
+            if (task.ticketed) {
+                task.ticketed = false;
+                this.taskCompleted.accept(task.chunkKey);
+            }
         }
     }
 
@@ -87,6 +106,9 @@ public final class YAThreadedLightScheduler {
         ChunkTask task = first;
         while (task != null) {
             ChunkTask next = task.nextPooled;
+            if (task.ticketed) {
+                this.taskCompleted.accept(task.chunkKey);
+            }
             if (this.pooledTaskCount < MAX_POOLED_TASKS) {
                 task.clearForReuse();
                 task.nextPooled = this.pooledTask;
@@ -97,9 +119,13 @@ public final class YAThreadedLightScheduler {
         }
     }
 
-    private ChunkTask task(long chunkKey) {
+    private ChunkTask task(long chunkKey, boolean ticketed) {
         ChunkTask task = this.tasks.get(chunkKey);
         if (task != null) {
+            if (ticketed && !task.ticketed) {
+                task.ticketed = true;
+                this.taskCreated.accept(chunkKey);
+            }
             return task;
         }
         task = this.pooledTask;
@@ -110,7 +136,12 @@ public final class YAThreadedLightScheduler {
             task.nextPooled = null;
             --this.pooledTaskCount;
         }
+        task.chunkKey = chunkKey;
+        task.ticketed = ticketed;
         this.tasks.put(chunkKey, task);
+        if (ticketed) {
+            this.taskCreated.accept(chunkKey);
+        }
         return task;
     }
 
@@ -118,13 +149,20 @@ public final class YAThreadedLightScheduler {
         private static final int INITIAL_OPERATION_CAPACITY = 4;
         private static final int MAX_RETAINED_OPERATIONS = 16;
 
+        private final ObjectArrayList<Runnable> lightPreOps =
+                new ObjectArrayList<>(INITIAL_OPERATION_CAPACITY);
         private final ObjectArrayList<Runnable> preOps =
                 new ObjectArrayList<>(INITIAL_OPERATION_CAPACITY);
         private final ObjectArrayList<Runnable> postOps =
                 new ObjectArrayList<>(INITIAL_OPERATION_CAPACITY);
+        private long chunkKey;
+        private boolean ticketed;
         private ChunkTask nextPooled;
 
         private void runPreOps() {
+            for (Runnable op : this.lightPreOps) {
+                op.run();
+            }
             for (Runnable op : this.preOps) {
                 op.run();
             }
@@ -137,8 +175,11 @@ public final class YAThreadedLightScheduler {
         }
 
         private void clearForReuse() {
+            this.lightPreOps.clear();
             this.preOps.clear();
             this.postOps.clear();
+            this.ticketed = false;
+            this.lightPreOps.trim(MAX_RETAINED_OPERATIONS);
             this.preOps.trim(MAX_RETAINED_OPERATIONS);
             this.postOps.trim(MAX_RETAINED_OPERATIONS);
         }

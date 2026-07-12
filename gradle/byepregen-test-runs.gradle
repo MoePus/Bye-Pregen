@@ -402,13 +402,13 @@ tasks.register('runLightGoldenDiff') {
         [
                 taskName: 'runLightFuzzVanilla',
                 reason  : 'Prepares a disposable vanilla-light fuzz world before launching the server',
-                prepare : [dir: lightFuzzConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: true],
+                prepare : [dir: lightFuzzConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout'],
         ],
         [
                 taskName    : 'runLightFuzzYA',
                 reason      : 'Prepares a disposable YA-light fuzz world before launching the server',
                 mustRunAfter: 'runLightFuzzVanilla',
-                prepare     : [dir: lightFuzzConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: true],
+                prepare     : [dir: lightFuzzConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout'],
         ],
 ].each { prepareRunTask(it.taskName, it) }
 
