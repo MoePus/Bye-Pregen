@@ -66,9 +66,11 @@ public abstract class LevelRendererYALightMixin {
 
     @Unique
     private static ChunkAccess byepregen$getChunkNow(Level level, int blockX, int blockZ) {
-        YAImmediateChunkAccess access = (YAImmediateChunkAccess) level.getChunkSource();
-        return access.byepregen$getAnyChunkNow(
-                SectionPos.blockToSectionCoord(blockX), SectionPos.blockToSectionCoord(blockZ));
+        if (level instanceof YAImmediateChunkAccess access) {
+            return access.byepregen$getAnyChunkNow(
+                    SectionPos.blockToSectionCoord(blockX), SectionPos.blockToSectionCoord(blockZ));
+        }
+        return level.getChunk(blockX, blockZ);
     }
 
     @Unique
@@ -77,7 +79,7 @@ public abstract class LevelRendererYALightMixin {
             int sky = level.dimensionType().hasSkyLight() ? 15 : 0;
             return sky << 20;
         }
-        YAChunkLightAccess access = (YAChunkLightAccess)chunk;
+        YAChunkLightAccess access = (YAChunkLightAccess) chunk;
         int sectionIndex = SectionPos.blockToSectionCoord(pos.getY()) - YALightStorage.minLightSection(level);
         int block = YAVisibleLightReader.blockLight(access.byepregen$visibleBlock(), sectionIndex, pos);
         int sky = level.dimensionType().hasSkyLight()
