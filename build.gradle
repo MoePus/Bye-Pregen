@@ -132,6 +132,51 @@ tasks.withType(Jar).configureEach {
     exclude 'com/moepus/byepregen/test/**'
 }
 
+def coordinatorClasses = 'com/moepus/byepregen/coordinator/**'
+def coordinatorService = 'META-INF/services/net.neoforged.neoforgespi.locating.IModFileCandidateLocator'
+
+def fullJar = tasks.named('jar', Jar) {
+    archiveClassifier = 'full'
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+}
+
+def payloadJar = tasks.register('payloadJar', Jar) {
+    dependsOn fullJar
+    archiveFileName = 'byepregen-payload.jar'
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({ zipTree(fullJar.get().archiveFile.get().asFile) }) {
+        exclude coordinatorClasses
+        exclude coordinatorService
+    }
+}
+
+def releaseJar = tasks.register('releaseJar', Jar) {
+    dependsOn payloadJar
+    archiveBaseName = mod_id
+    archiveVersion = version
+    archiveClassifier = ''
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Automatic-Module-Name': 'byepregen.bootstrap'
+    }
+    from(sourceSets.main.output) {
+        include coordinatorClasses
+    }
+    from('src/main/resources') {
+        include coordinatorService
+    }
+    from(payloadJar.flatMap { it.archiveFile }) {
+        into 'META-INF/byepregen'
+        rename { 'payload.jar' }
+    }
+}
+
+tasks.named('jar') {
+    finalizedBy releaseJar
+}
+
 def sodiumOuterRuntime = configurations.detachedConfiguration(
         dependencies.create("net.caffeinemc:sodium-neoforge:${sodium_version}+mc${minecraft_version}")
 )
@@ -222,7 +267,7 @@ neoForge.ideSyncTask generateModMetadata
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            from components.java
+            artifact(releaseJar)
         }
     }
     repositories {
