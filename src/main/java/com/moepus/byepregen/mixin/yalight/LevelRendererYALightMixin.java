@@ -66,11 +66,13 @@ public abstract class LevelRendererYALightMixin {
 
     @Unique
     private static ChunkAccess byepregen$getChunkNow(Level level, int blockX, int blockZ) {
-        if (level instanceof YAImmediateChunkAccess access) {
+        int chunkX = SectionPos.blockToSectionCoord(blockX);
+        int chunkZ = SectionPos.blockToSectionCoord(blockZ);
+        if (level.getChunkSource() instanceof YAImmediateChunkAccess access) {
             return access.byepregen$getAnyChunkNow(
-                    SectionPos.blockToSectionCoord(blockX), SectionPos.blockToSectionCoord(blockZ));
+                    chunkX, chunkZ);
         }
-        return level.getChunk(blockX, blockZ);
+        return level.getChunk(chunkX, chunkZ);
     }
 
     @Unique
