@@ -3,6 +3,7 @@ package com.moepus.byepregen.test;
 import com.moepus.byepregen.mixin.ChunkMapAccessor;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
+import com.moepus.byepregen.yalight.YALightEngineHolder;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -30,7 +31,6 @@ final class LightBlackoutFuzz {
     static final int LOAD_RADIUS = 9;
     private static final int UPDATES_PER_ROUND = 8;
     private static final int BOUNDARY_UPDATES_PER_ROUND = 4;
-
     private static final int MIN_CHUNK = -8;
     private static final int MAX_CHUNK = 8;
     private static final int TEST_HEIGHT_ABOVE_TERRAIN = 16;
@@ -42,13 +42,13 @@ final class LightBlackoutFuzz {
             new ChunkPos(MIN_CHUNK, MAX_CHUNK),
             new ChunkPos(MAX_CHUNK, MAX_CHUNK)
     );
-
     private final ServerLevel level;
     private final Random random;
     private ChunkPos lastChunk = new ChunkPos(0, 0);
     private final Set<ChunkPos> updatedThisRound = new HashSet<>();
     private final Map<ChunkPos, byte[]> expectedSky = new HashMap<>();
     private final Map<ChunkPos, LightChunkSnapshot> roundTripSnapshots = new HashMap<>();
+    private final LightEdgeRepairProbe edgeRepairProbe;
     private String lastBatch = "initial fixture";
     private int roofY;
     private int updateBatch;
@@ -59,8 +59,8 @@ final class LightBlackoutFuzz {
     LightBlackoutFuzz(ServerLevel level, long seed) {
         this.level = level;
         this.random = new Random(seed ^ 0xA54FF53A5F1D36F1L);
+        this.edgeRepairProbe = new LightEdgeRepairProbe(level);
     }
-
     void clearVolume() {
         this.roofY = this.findRoofY();
         BlockState air = Blocks.AIR.defaultBlockState();
@@ -112,27 +112,41 @@ final class LightBlackoutFuzz {
     }
 
     void verifyRoundTrip() {
+        boolean strictSnapshot = this.level.getChunkSource().getLightEngine() instanceof YALightEngineHolder;
         for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
             LightChunkSnapshot expected = this.roundTripSnapshots.get(chunk);
             LightChunkSnapshot actual = this.snapshot(chunk);
-            if (!expected.matches(actual)) {
+            if (strictSnapshot && !expected.matches(actual)) {
                 throw new IllegalStateException("Light round-trip mismatch in " + chunk
-                        + " expected=" + expected.summary() + " actual=" + actual.summary());
+                        + " expected=" + expected.summary() + " actual=" + actual.summary()
+                        + " difference=" + expected.differenceSummary(actual));
             }
         }
         this.releaseLoadedChunks();
     }
 
+    void acceptReconciledRoundTrip() {
+        this.edgeRepairProbe.verifyRepaired();
+        for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
+            this.verifyChunk(0, chunk);
+        }
+        this.releaseLoadedChunks();
+        this.unloadDeadline = 0L;
+    }
+
     private void captureRoundTripBaseline() {
-        for (int chunkZ = MIN_CHUNK; chunkZ <= MAX_CHUNK; ++chunkZ) {
-            for (int chunkX = MIN_CHUNK; chunkX <= MAX_CHUNK; ++chunkX) {
-                ChunkPos chunk = new ChunkPos(chunkX, chunkZ);
-                this.expectedSky.put(chunk, this.readSky(chunk));
+        if (this.expectedSky.isEmpty()) {
+            for (int chunkZ = MIN_CHUNK; chunkZ <= MAX_CHUNK; ++chunkZ) {
+                for (int chunkX = MIN_CHUNK; chunkX <= MAX_CHUNK; ++chunkX) {
+                    ChunkPos chunk = new ChunkPos(chunkX, chunkZ);
+                    this.expectedSky.put(chunk, this.readSky(chunk));
+                }
             }
         }
         for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
             this.roundTripSnapshots.put(chunk, this.snapshot(chunk));
         }
+        this.edgeRepairProbe.injectOnce(this.roofY);
     }
 
     private boolean roundTripChunksUnloaded() {
@@ -161,11 +175,15 @@ final class LightBlackoutFuzz {
             this.setInitialAreaForced(false);
             this.initialAreaForced = false;
         }
+        this.releaseForcedChunks();
+        this.updatedThisRound.clear();
+    }
+
+    private void releaseForcedChunks() {
         for (ChunkPos chunk : this.forcedThisRound) {
             this.level.setChunkForced(chunk.x, chunk.z, false);
         }
         this.forcedThisRound.clear();
-        this.updatedThisRound.clear();
     }
 
     void verify(int round) {
@@ -187,7 +205,7 @@ final class LightBlackoutFuzz {
         int expectedLitSky = nonZeroCount(expected);
         int actualLitSky = nonZeroCount(sky);
         int directSky = sky[17] & 15;
-        if (source == 15 && tail > 0 && directSky == 15 && actualLitSky * 2 >= expectedLitSky) {
+        if (source == 15 && tail > 0 && directSky == 15 && skyMismatches == 0) {
             return;
         }
         throw new IllegalStateException("blackout fuzz round=" + round + " chunk=" + chunk
@@ -357,7 +375,10 @@ final class LightBlackoutFuzz {
 
     private String diagnostics(BlockPos source) {
         var chunk = this.level.getChunkAt(source);
-        YAChunkLightAccess access = (YAChunkLightAccess)chunk;
+        if (!(chunk instanceof YAChunkLightAccess access)) {
+            return "{state=" + this.level.getBlockState(source)
+                    + ",lightCorrect=" + chunk.isLightCorrect() + "}";
+        }
         YAChunkLightData block = access.byepregen$blockLightData();
         YAChunkLightData sky = access.byepregen$skyLightData();
         return "{state=" + this.level.getBlockState(source)
@@ -369,7 +390,8 @@ final class LightBlackoutFuzz {
     }
 
     private LightChunkSnapshot snapshot(ChunkPos pos) {
-        return LightChunkSnapshot.capture(this.level.getChunk(pos.x, pos.z));
+        this.level.getChunk(pos.x, pos.z);
+        return LightChunkSnapshot.capture(this.level, pos);
     }
 
     private void put(BlockPos pos, BlockState state) {

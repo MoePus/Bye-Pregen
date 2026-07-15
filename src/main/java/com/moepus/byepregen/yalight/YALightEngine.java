@@ -150,6 +150,24 @@ public final class YALightEngine {
         }
     }
 
+    public void checkChunkEdges(ChunkAccess chunk) {
+        if (this.blockEngine != null) {
+            this.blockEngine.checkChunkEdges(chunk);
+        }
+        if (this.skyEngine != null) {
+            this.skyEngine.checkChunkEdges(chunk);
+        }
+    }
+
+    public void setEdgeCheckReady(ChunkAccess chunk, boolean ready) {
+        if (this.blockEngine != null) {
+            this.blockEngine.storage().data(chunk).setEdgeCheckReady(ready);
+        }
+        if (this.skyEngine != null) {
+            this.skyEngine.storage().data(chunk).setEdgeCheckReady(ready);
+        }
+    }
+
     public LayerLightEventListener getLayerListener(LightLayer layer) {
         if (layer == LightLayer.BLOCK) {
             return this.blockEngine != null ? this.blockEngine : LayerLightEventListener.DummyLightLayerEventListener.INSTANCE;

@@ -24,6 +24,10 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     YADLongQueue increaseQueue();
 
+    YALightBlockAccess blockAccess();
+
+    int sourceLight(long pos, int block);
+
     @Override
     default void checkBlock(BlockPos pos) {
         this.lightQueue().queueCheck(pos);
@@ -93,6 +97,10 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     default void collectSourceHalo(YASourceHalo halo, byte layerMask) {
         this.lightQueue().collectSourceHalo(halo, layerMask);
+    }
+
+    default void checkChunkEdges(ChunkAccess chunk) {
+        YAChunkEdgeChecker.check(this, chunk);
     }
 
     default void enableSourceChunk(ChunkAccess chunk) {
@@ -183,6 +191,41 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     default int getEnabledCachedUpdatingLight(int x, int y, int z) {
         return this.runCache().getEnabledUpdatingLight(this.storage(), x, y, z);
+    }
+
+    default int calculateLightValue(long pos, int expected) {
+        int x = BlockPos.getX(pos);
+        int y = BlockPos.getY(pos);
+        int z = BlockPos.getZ(pos);
+        YALightBlockAccess blocks = this.blockAccess();
+        int centerBlock = blocks.blockAt(x, y, z);
+        int level = this.sourceLight(pos, centerBlock);
+        if (level > expected || level == 15 || blocks.isFull(centerBlock)) {
+            return level;
+        }
+
+        for (int directionIndex = 0; directionIndex < 6; ++directionIndex) {
+            int neighborX = x + YALightMath.stepX(directionIndex);
+            int neighborY = y + YALightMath.stepY(directionIndex);
+            int neighborZ = z + YALightMath.stepZ(directionIndex);
+            int neighborLevel = this.getEnabledCachedUpdatingLight(neighborX, neighborY, neighborZ);
+            if (neighborLevel <= level + 1) {
+                continue;
+            }
+            int neighborBlock = blocks.blockAt(neighborX, neighborY, neighborZ);
+            int candidate = blocks.attenuatedLevel(neighborLevel, x, y, z, centerBlock);
+            if (candidate <= level || blocks.shapeOccludes(
+                    neighborX, neighborY, neighborZ, neighborBlock,
+                    x, y, z, centerBlock,
+                    YALightMath.direction(directionIndex ^ 1))) {
+                continue;
+            }
+            level = candidate;
+            if (level > expected) {
+                return level;
+            }
+        }
+        return level;
     }
 
     default void setCachedUpdatingLight(int x, int y, int z, int value) {

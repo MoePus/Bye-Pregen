@@ -74,10 +74,10 @@ def lightFuzzConfig = [
         seed      : prop('byepregenLightFuzzSeed', '0x59A11E71C0DE'),
         variant   : prop('byepregenLightFuzzVariant', 'default'),
         probes    : prop('byepregenLightFuzzProbes', 'false'),
-        minChunkX : prop('byepregenLightFuzzDiffMinChunkX', '-2'),
-        maxChunkX : prop('byepregenLightFuzzDiffMaxChunkX', '2'),
-        minChunkZ : prop('byepregenLightFuzzDiffMinChunkZ', '-2'),
-        maxChunkZ : prop('byepregenLightFuzzDiffMaxChunkZ', '2'),
+        minChunkX : prop('byepregenLightFuzzDiffMinChunkX', '-8'),
+        maxChunkX : prop('byepregenLightFuzzDiffMaxChunkX', '8'),
+        minChunkZ : prop('byepregenLightFuzzDiffMinChunkZ', '-8'),
+        maxChunkZ : prop('byepregenLightFuzzDiffMaxChunkZ', '8'),
 ]
 
 def configureWorldgenRun = { run, Map options ->
@@ -402,13 +402,13 @@ tasks.register('runLightGoldenDiff') {
         [
                 taskName: 'runLightFuzzVanilla',
                 reason  : 'Prepares a disposable vanilla-light fuzz world before launching the server',
-                prepare : [dir: lightFuzzConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout'],
+                prepare : [dir: lightFuzzConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout', serverRuntimeArenaPalette: 'false'],
         ],
         [
                 taskName    : 'runLightFuzzYA',
                 reason      : 'Prepares a disposable YA-light fuzz world before launching the server',
                 mustRunAfter: 'runLightFuzzVanilla',
-                prepare     : [dir: lightFuzzConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout'],
+                prepare     : [dir: lightFuzzConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout', serverRuntimeArenaPalette: 'false'],
         ],
 ].each { prepareRunTask(it.taskName, it) }
 

@@ -3,6 +3,7 @@ package com.moepus.byepregen.yalight;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 
 public final class YALightQueue {
@@ -21,6 +22,12 @@ public final class YALightQueue {
 
     void queueCheck(BlockPos pos) {
         this.task(ChunkPos.asLong(pos)).addCheck(pos);
+    }
+
+    void queueCheck(long pos) {
+        this.task(ChunkPos.asLong(
+                SectionPos.blockToSectionCoord(BlockPos.getX(pos)),
+                SectionPos.blockToSectionCoord(BlockPos.getZ(pos)))).addCheck(pos);
     }
 
     void queueSource(ChunkPos pos, boolean fresh) {
@@ -156,7 +163,14 @@ public final class YALightQueue {
         }
 
         void addCheck(BlockPos pos) {
-            int packed = packCheck(pos);
+            this.addPackedCheck(packCheck(pos.getX(), pos.getY(), pos.getZ()));
+        }
+
+        void addCheck(long pos) {
+            this.addPackedCheck(packCheck(BlockPos.getX(pos), BlockPos.getY(pos), BlockPos.getZ(pos)));
+        }
+
+        private void addPackedCheck(int packed) {
             if (this.queuedChecks.add(packed)) {
                 this.checks.add(packed);
             }
@@ -184,10 +198,10 @@ public final class YALightQueue {
             this.queuedChecks.trim(MAX_RETAINED_CHECKS);
         }
 
-        private static int packCheck(BlockPos pos) {
-            return ((pos.getY() & Y_MASK) << Y_SHIFT)
-                    | ((pos.getZ() & LOCAL_MASK) << Z_SHIFT)
-                    | (pos.getX() & LOCAL_MASK);
+        private static int packCheck(int x, int y, int z) {
+            return ((y & Y_MASK) << Y_SHIFT)
+                    | ((z & LOCAL_MASK) << Z_SHIFT)
+                    | (x & LOCAL_MASK);
         }
 
         private static long unpackCheck(long chunkKey, int packed) {

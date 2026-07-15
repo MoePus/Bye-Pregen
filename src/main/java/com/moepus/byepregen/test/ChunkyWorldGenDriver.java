@@ -843,19 +843,26 @@ final class ChunkyWorldGenDriver {
                     }
                     case 3 -> {
                         if (runsBlackoutLightFuzz() && this.blackoutFuzz.reloadRoundTripWhenUnloaded()) {
-                            this.waitForLight("round-trip reload");
+                            this.waitForLight("round-trip reconciliation");
                         } else if (!runsBlackoutLightFuzz()) {
                             this.startMutationStage();
                         }
                     }
                     case 4 -> {
+                        if (runsBlackoutLightFuzz() && this.blackoutFuzz.reloadRoundTripWhenUnloaded()) {
+                            this.waitForLight("reconciled round-trip reload");
+                        } else if (!runsBlackoutLightFuzz()) {
+                            this.runNextUpdateRound();
+                        }
+                    }
+                    case 5 -> {
                         if (runsBlackoutLightFuzz()) {
                             this.startMutationStage();
                         } else {
                             this.runNextUpdateRound();
                         }
                     }
-                    case 5 -> this.runNextUpdateRound();
+                    case 6 -> this.runNextUpdateRound();
                     default -> throw new IllegalStateException("Invalid light fuzz stage: " + this.stage);
                 }
             } catch (Throwable throwable) {
@@ -914,10 +921,14 @@ final class ChunkyWorldGenDriver {
                 return;
             }
             if (this.stage == 3) {
+                this.blackoutFuzz.acceptReconciledRoundTrip();
+                return;
+            }
+            if (this.stage == 4) {
                 this.blackoutFuzz.verifyRoundTrip();
                 return;
             }
-            if (this.stage < 4) {
+            if (this.stage < 5) {
                 return;
             }
             this.blackoutFuzz.verify(Math.max(0, this.blackoutRound - 1));

@@ -18,6 +18,7 @@ public final class YAChunkLightData {
     private boolean queuedDirty;
     private volatile YANibbleArray[] visible;
     private volatile boolean lightEnabled;
+    private boolean edgeCheckReady;
 
     public YAChunkLightData(ChunkPos pos, LevelHeightAccessor level) {
         this.pos = pos;
@@ -36,6 +37,14 @@ public final class YAChunkLightData {
         this.lightEnabled = lightEnabled;
     }
 
+    boolean edgeCheckReady() {
+        return this.edgeCheckReady;
+    }
+
+    void setEdgeCheckReady(boolean edgeCheckReady) {
+        this.edgeCheckReady = edgeCheckReady;
+    }
+
     public YANibbleArray getVisibleSection(int sectionY) {
         int index = this.index(sectionY);
         if (index < 0) {
@@ -46,6 +55,10 @@ public final class YAChunkLightData {
 
     public YANibbleArray[] visibleSections() {
         return this.visible;
+    }
+
+    int minLightSection() {
+        return this.minLightSection;
     }
 
     YANibbleArray getVisibleSectionByIndex(int index) {
@@ -187,6 +200,7 @@ public final class YAChunkLightData {
         this.dirtyCount = 0;
         this.queuedDirty = false;
         this.lightEnabled = false;
+        this.edgeCheckReady = false;
     }
 
     private void replacePublished(int index, YANibbleArray nibble) {

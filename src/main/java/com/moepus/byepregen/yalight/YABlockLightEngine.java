@@ -68,6 +68,20 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     }
 
     @Override
+    public YALightBlockAccess blockAccess() {
+        return this.blocks;
+    }
+
+    @Override
+    public int sourceLight(long pos, int block) {
+        if (!this.blocks.isSlow(block)) {
+            return 0;
+        }
+        BlockState state = this.blocks.toState(block);
+        return state.getLightEmission(this.levelReader, this.mutablePos.set(pos));
+    }
+
+    @Override
     public void checkBlock(BlockPos pos) {
         YALightLayerEngine.super.checkBlock(pos);
     }

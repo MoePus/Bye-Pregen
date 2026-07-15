@@ -74,6 +74,16 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
         return this.increaseQueue;
     }
 
+    @Override
+    public YALightBlockAccess blockAccess() {
+        return this.blocks;
+    }
+
+    @Override
+    public int sourceLight(long pos, int block) {
+        return this.blocks.isFull(block) ? 0 : this.getSourceLight(pos);
+    }
+
     void setDeclaredFreshOwnerDomain(Iterable<ChunkPos> owners) {
         this.ownerTransfers.setDeclaredDomain(owners);
     }

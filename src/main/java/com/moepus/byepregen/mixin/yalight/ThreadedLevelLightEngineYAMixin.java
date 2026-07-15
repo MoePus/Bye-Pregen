@@ -301,6 +301,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
         chunk.setLightCorrect(false);
         Runnable prepare = Util.name(() -> {
             YALightEngine engine = this.byepregen$yaEngine();
+            engine.setEdgeCheckReady(chunk, false);
             LevelChunkSection[] sections = chunk.getSections();
             for (int i = 0; i < chunk.getSectionsCount(); ++i) {
                 LevelChunkSection section = sections[i];
@@ -314,9 +315,12 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             } else {
                 // Light saves omit all-15 sky sections above the surface.
                 engine.restoreSavedSkyLight(chunk);
+                engine.setEdgeCheckReady(chunk, true);
+                engine.checkChunkEdges(chunk);
             }
         }, () -> "YA lightChunk " + chunkPos + " " + isLighted);
         Runnable complete = () -> {
+            this.byepregen$yaEngine().setEdgeCheckReady(chunk, true);
             chunk.setLightCorrect(true);
             future.complete(chunk);
         };
