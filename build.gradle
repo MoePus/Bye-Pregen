@@ -173,7 +173,7 @@ dependencies {
     compileOnly "curse.maven:c2me-ocl-1563823:8295231"
     compileOnly "com.ibm.async:asyncutil:0.1.0"
     compileOnly files("libs/voxy-0.2.15-beta-3.jar")
-    runtimeOnly "curse.maven:c2me-533097:8313886"
+    runtimeOnly "curse.maven:c2me-533097:8436420"
     runtimeOnly "curse.maven:lithium-360438:7740400"
     runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"
     runtimeOnly files(sodiumDevRuntimeMod.flatMap { it.archiveFile }) {
