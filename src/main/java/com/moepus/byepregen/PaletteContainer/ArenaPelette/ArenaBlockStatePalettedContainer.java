@@ -341,8 +341,8 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         setLocalPaletteIndex(arena, base, local, paletteIndex);
     }
 
-    public void c2me$setUnsafe(int x, int y, int z, BlockState state) {
-        this.setRawId(localIndex(x, y, z), rawId(state));
+    public void c2me$setUnsafe(int x, int y, int z, Object state) {
+        this.setRawId(localIndex(x, y, z), rawId((BlockState) state));
     }
 
     public int[] ensureArena() {
