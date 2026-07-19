@@ -8,8 +8,6 @@ import com.moepus.byepregen.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NbtReader;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateCodec;
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStateNbtReader;
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
@@ -78,11 +76,6 @@ public abstract class ChunkSerializerArenaReadMixin {
                 if (arena != null) {
                     return DataResult.success(arena);
                 }
-            } else if (byepregen$shouldReadFast(config, chunkType)) {
-                FastBlockStatePalettedContainer fast = FastBlockStateNbtReader.read(blockStatesTag);
-                if (fast != null) {
-                    return DataResult.success(fast);
-                }
             }
         }
 
@@ -98,13 +91,6 @@ public abstract class ChunkSerializerArenaReadMixin {
             return true;
         }
         return config.enableServerRuntimeArenaPalette;
-    }
-
-    @Unique
-    private static boolean byepregen$shouldReadFast(Config config, ChunkType chunkType) {
-        return config.enableArenaPalette
-                && chunkType != ChunkType.PROTOCHUNK
-                && !config.enableServerRuntimeArenaPalette;
     }
 
     @Unique

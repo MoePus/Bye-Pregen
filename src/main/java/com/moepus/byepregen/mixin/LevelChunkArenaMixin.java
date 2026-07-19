@@ -26,7 +26,7 @@ public abstract class LevelChunkArenaMixin {
         }
 
         if (!config.enableServerRuntimeArenaPalette) {
-            ArenaSectionMaterializer.materializeChunkToFast((LevelChunk) (Object) this);
+            ArenaSectionMaterializer.materializeChunk((LevelChunk) (Object) this);
         }
     }
 }

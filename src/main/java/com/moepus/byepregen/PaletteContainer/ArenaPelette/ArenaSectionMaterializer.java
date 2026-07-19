@@ -3,7 +3,6 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
 import com.moepus.byepregen.mixin.LevelChunkSectionAccessor;
 import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.Block;
@@ -25,10 +24,6 @@ public final class ArenaSectionMaterializer {
     }
 
     public static void materializeChunk(ChunkAccess chunk) {
-        materializeChunkToFast(chunk);
-    }
-
-    public static void materializeChunkToFast(ChunkAccess chunk) {
         for (LevelChunkSection section : chunk.getSections()) {
             PalettedContainer<BlockState> states = section.getStates();
             if (states instanceof ArenaBlockStatePalettedContainer arenaContainer) {
@@ -38,39 +33,7 @@ public final class ArenaSectionMaterializer {
         }
     }
 
-    public static void materializeChunkToVanilla(ChunkAccess chunk) {
-        for (LevelChunkSection section : chunk.getSections()) {
-            PalettedContainer<BlockState> states = section.getStates();
-            if (states instanceof ArenaBlockStatePalettedContainer arenaContainer) {
-                ((LevelChunkSectionAccessor) section).byepregen$setStates(materializeVanilla(arenaContainer));
-                arenaContainer.releaseRawIds();
-            }
-        }
-    }
-
-    public static FastBlockStatePalettedContainer materialize(ArenaBlockStatePalettedContainer container) {
-        if (container.isUniform()) {
-            return createFastSingle(Block.stateById(container.uniformRawId()));
-        }
-
-        SerializationScratch scratch = SerializationScratch.get();
-        try {
-            scratch.collect(container);
-            if (scratch.paletteSize() == 1) {
-                return createFastSingle(Block.stateById(scratch.paletteRawId(0)));
-            }
-
-            FastBlockStatePalettedContainer materialized = createFastSingle(AIR);
-            PalettedContainer.Data<BlockState> data = createMaterializedData(materialized, scratch, container);
-            materialized.data = data;
-            materialized.byepregen$updateFastData(data);
-            return materialized;
-        } finally {
-            scratch.clear();
-        }
-    }
-
-    private static PalettedContainer<BlockState> materializeVanilla(ArenaBlockStatePalettedContainer container) {
+    private static PalettedContainer<BlockState> materialize(ArenaBlockStatePalettedContainer container) {
         if (container.isUniform()) {
             return createVanillaSingle(Block.stateById(container.uniformRawId()));
         }
@@ -88,14 +51,6 @@ public final class ArenaSectionMaterializer {
         } finally {
             scratch.clear();
         }
-    }
-
-    private static FastBlockStatePalettedContainer createFastSingle(BlockState state) {
-        return new FastBlockStatePalettedContainer(
-                Block.BLOCK_STATE_REGISTRY,
-                state,
-                PalettedContainer.Strategy.SECTION_STATES
-        );
     }
 
     private static PalettedContainer<BlockState> createVanillaSingle(BlockState state) {

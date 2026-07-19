@@ -3,8 +3,9 @@ package com.moepus.byepregen.mixin;
 import com.moepus.byepregen.Config;
 import com.moepus.byepregen.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
+
 import javax.annotation.Nullable;
+
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.world.level.block.Block;
@@ -46,61 +47,43 @@ public abstract class ChunkAccessArenaMixin {
             @Nullable LevelChunkSection[] providedSections,
             @Nullable BlendingData blendingData
     ) {
-        if ((Object) this instanceof ProtoChunk && providedSections == null && ConfigParser.getConfig().enableArenaPalette) {
-            this.byepregen$replaceWithArenaSections(biomeRegistry, sections);
-            return;
-        }
-
-        this.byepregen$replaceWithNormalSections(biomeRegistry, sections, heightAccessor);
-    }
-
-    @Unique
-    private void byepregen$replaceWithArenaSections(Registry<Biome> biomeRegistry, LevelChunkSection[] sections) {
-        for (int i = 0; i < sections.length; ++i) {
-            if (sections[i] == null) {
-                sections[i] = new LevelChunkSection(
-                        new ArenaBlockStatePalettedContainer(),
-                        this.byepregen$createBiomeContainer(biomeRegistry)
-                );
-            }
-        }
-    }
-
-    @Unique
-    private void byepregen$replaceWithNormalSections(
-            Registry<Biome> biomeRegistry, LevelChunkSection[] sections, LevelHeightAccessor heightAccessor) {
-        for (int i = 0; i < sections.length; ++i) {
-            if (sections[i] == null) {
-                sections[i] = new LevelChunkSection(
-                        this.byepregen$createStateContainer(heightAccessor),
-                        this.byepregen$createBiomeContainer(biomeRegistry)
-                );
-            }
-        }
-    }
-
-    @Unique
-    private PalettedContainer<BlockState> byepregen$createStateContainer(LevelHeightAccessor heightAccessor) {
         Config config = ConfigParser.getConfig();
-        if (heightAccessor instanceof Level level && level.isClientSide()) {
-            if (config.enableArenaPalette && config.enableClientArenaPalette) {
-                return new ArenaBlockStatePalettedContainer();
+        boolean isNewProtoChunk = (Object) this instanceof ProtoChunk && providedSections == null;
+        for (int i = 0; i < sections.length; ++i) {
+            if (sections[i] == null) {
+                sections[i] = new LevelChunkSection(
+                        this.byepregen$createStateContainer(config, isNewProtoChunk, heightAccessor),
+                        this.byepregen$createBiomeContainer(biomeRegistry)
+                );
             }
-            return new FastBlockStatePalettedContainer(
-                    Block.BLOCK_STATE_REGISTRY,
-                    Blocks.AIR.defaultBlockState(),
-                    PalettedContainer.Strategy.SECTION_STATES
-            );
         }
+    }
 
-        if (config.enableArenaPalette && config.enableServerRuntimeArenaPalette) {
+    @Unique
+    private PalettedContainer<BlockState> byepregen$createStateContainer(
+            Config config, boolean isNewProtoChunk, LevelHeightAccessor heightAccessor) {
+        if (byepregen$shouldUseArena(config, isNewProtoChunk, heightAccessor)) {
             return new ArenaBlockStatePalettedContainer();
         }
-        return new FastBlockStatePalettedContainer(
+        return new PalettedContainer<>(
                 Block.BLOCK_STATE_REGISTRY,
                 Blocks.AIR.defaultBlockState(),
                 PalettedContainer.Strategy.SECTION_STATES
         );
+    }
+
+    @Unique
+    private boolean byepregen$shouldUseArena(Config config, boolean isNewProtoChunk, LevelHeightAccessor heightAccessor) {
+        if (!config.enableArenaPalette) {
+            return false;
+        }
+        if (isNewProtoChunk) {
+            return true;
+        }
+        if (heightAccessor instanceof Level level && level.isClientSide()) {
+            return config.enableClientArenaPalette;
+        }
+        return config.enableServerRuntimeArenaPalette;
     }
 
     @Unique

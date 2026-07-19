@@ -35,7 +35,7 @@ public final class NbtReader {
         return container.importVanillaPackedRawIds(paletteRawIds, packedStorage) ? container : null;
     }
 
-    public static int[] readPaletteRawIds(ListTag paletteTag) {
+    private static int[] readPaletteRawIds(ListTag paletteTag) {
         if (paletteTag.isEmpty()) {
             return null;
         }
