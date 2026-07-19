@@ -66,10 +66,6 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         this.denseRawIdCounts = null;
     }
 
-    public void importPackedPalette(BlockState[] paletteStates, long[] packedStorage) {
-        StateImporter.importPackedPalette(this, paletteStates, packedStorage);
-    }
-
     public boolean importVanillaPackedRawIds(int[] paletteRawIds, long[] packedStorage) {
         return StateImporter.importVanillaPackedRawIds(this, paletteRawIds, packedStorage);
     }

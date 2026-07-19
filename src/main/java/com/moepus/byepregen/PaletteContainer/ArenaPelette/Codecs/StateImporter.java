@@ -15,33 +15,6 @@ public final class StateImporter {
     private StateImporter() {
     }
 
-    public static void importPackedPalette(
-            ArenaBlockStatePalettedContainer container, BlockState[] paletteStates, long[] packedStorage) {
-        if (paletteStates == null || packedStorage == null) {
-            return;
-        }
-
-        container.releaseRawIds();
-        int[] rawIds = new int[paletteStates.length];
-        for (int i = 0; i < paletteStates.length; ++i) {
-            rawIds[i] = ArenaBlockStatePalettedContainer.rawId(paletteStates[i]);
-        }
-        if (tryImportPacked4BitPalette(container, rawIds, packedStorage, rawIds.length)) {
-            return;
-        }
-
-        int[] pageRawIds = new int[PAGE_PALETTE_SIZE + 1];
-        RawIdSource source = index -> packedRawIdAt(rawIds, packedStorage, index);
-        for (int page = 0; page < PAGE_COUNT; ++page) {
-            if (!importPage(container, page, source, pageRawIds)) {
-                importPagesToDense(container, page, source);
-                return;
-            }
-        }
-
-        container.tryPromoteFullUniformSection();
-    }
-
     public static boolean importVanillaPackedRawIds(
             ArenaBlockStatePalettedContainer container, int[] paletteRawIds, long[] packedStorage) {
         if (paletteRawIds == null || paletteRawIds.length == 0) {
@@ -353,13 +326,6 @@ public final class StateImporter {
             localToRaw[localId] = rawId + 1;
         }
         return rawId;
-    }
-
-    private static int packedRawIdAt(int[] rawIds, long[] packedStorage, int sectionIndex) {
-        int yz = sectionIndex >> 4;
-        int x = sectionIndex & 15;
-        int paletteIndex = (int) ((packedStorage[yz] >>> (x << 2)) & 15L);
-        return rawIds[paletteIndex];
     }
 
     private static int vanillaSerializedBits(int paletteSize) {
