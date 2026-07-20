@@ -53,17 +53,24 @@ public final class PostProcessGenerationOptimizer {
 
     public static BlockState updateFromNeighbourShapes(BlockState state, LevelAccessor level, BlockPos pos) {
         Block block = state.getBlock();
-
-        if (block instanceof SnowLayerBlock || block instanceof BushBlock || block instanceof CarpetBlock || block instanceof CactusBlock) {
+        if (block instanceof SnowLayerBlock
+                || block instanceof BushBlock
+                || block instanceof CarpetBlock
+                || block instanceof CactusBlock) {
             return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
         }
-        if (block instanceof SnowyDirtBlock || block instanceof MagmaBlock) {
+
+        if (block instanceof SnowyDirtBlock
+                || block instanceof MagmaBlock) {
             return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
         }
+
         if (block instanceof CocoaBlock) {
             return updateFromNeighbourShape(state, level, pos, state.getValue(CocoaBlock.FACING));
         }
-        if (block instanceof CaveVinesBlock || block instanceof CaveVinesPlantBlock) {
+
+        if (block instanceof CaveVinesBlock
+                || block instanceof CaveVinesPlantBlock) {
             return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
         }
 
@@ -75,12 +82,19 @@ public final class PostProcessGenerationOptimizer {
     }
 
     private static boolean hasCustomUpdateShape(Class<?> type) {
-        for (Class<?> current = type; current != null && current != Block.class; current = current.getSuperclass()) {
+        Class<?> current = type;
+        while (current != null && current != Block.class) {
             try {
                 current.getDeclaredMethod("updateShape", BlockState.class, Direction.class, BlockState.class, LevelAccessor.class, BlockPos.class, BlockPos.class);
                 return true;
             } catch (NoSuchMethodException ignored) {
-            } catch (RuntimeException | LinkageError ignored) {
+            } catch (RuntimeException | LinkageError exception) {
+                return true;
+            }
+
+            try {
+                current = current.getSuperclass();
+            } catch (RuntimeException | LinkageError exception) {
                 return true;
             }
         }

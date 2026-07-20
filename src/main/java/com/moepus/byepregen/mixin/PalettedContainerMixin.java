@@ -18,22 +18,4 @@ public abstract class PalettedContainerMixin {
     ThreadingDetector onInit(String p_199415_) {
         return c6c$dummy;
     }
-
-    /**
-     * @author ishland
-     * @reason removes locking
-     */
-    @Overwrite
-    public void acquire() {
-        // no-op
-    }
-
-    /**
-     * @author ishland
-     * @reason removes locking
-     */
-    @Overwrite
-    public void release() {
-        // no-op
-    }
 }

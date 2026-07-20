@@ -14,7 +14,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Pseudo
 @Mixin(targets = "com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking", remap = false)
 public abstract class C2MEServerBlockTickingMixin {
-    @Inject(method = "upgradeToThis(Lcom/ishland/c2me/rewrites/chunksystem/common/ChunkLoadingContext;Lcom/ishland/flowsched/scheduler/Cancellable;)Lio/reactivex/rxjava3/core/Completable;", at = @At("HEAD"), require = 0, remap = false)
+    @Inject(
+            method = "upgradeToThis(Lcom/ishland/c2me/rewrites/chunksystem/common/ChunkLoadingContext;Lcom/ishland/flowsched/scheduler/Cancellable;)Lio/reactivex/rxjava3/core/Completable;",
+            at = @At("HEAD"),
+            require = 0,
+            remap = false
+    )
     private void byepregen$preNormalizePostProcessingLists(
             Object context,
             Object cancellable,
@@ -22,7 +27,8 @@ public abstract class C2MEServerBlockTickingMixin {
     ) {
         ChunkAccess chunk = C2MEChunkAccess.getChunk(context);
         if (chunk != null) {
-            PostProcessGenerationOptimizer.preNormalizeAndFilterChunkLocalPostProcessingLists(chunk, chunk.getPostProcessing());
+            PostProcessGenerationOptimizer.preNormalizeAndFilterChunkLocalPostProcessingLists(
+                    chunk, chunk.getPostProcessing());
         }
     }
 

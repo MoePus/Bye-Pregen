@@ -1,0 +1,73 @@
+package com.moepus.byepregen.mixin.gcfree;
+
+import com.mojang.datafixers.util.Either;
+import com.moepus.byepregen.compat.C2MEDirectStorageCompat;
+import com.moepus.byepregen.gcfree.RawChunkData;
+import com.moepus.byepregen.gcfree.RawIoWorker;
+import com.moepus.byepregen.mixin.accessor.IOWorkerPendingStoreAccessor;
+import com.moepus.byepregen.mixin.accessor.RegionFileStorageAccessor;
+import java.io.DataOutputStream;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.storage.IOWorker;
+import net.minecraft.world.level.chunk.storage.RegionFile;
+import net.minecraft.world.level.chunk.storage.RegionFileStorage;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.gen.Invoker;
+
+@Mixin(IOWorker.class)
+public abstract class IOWorkerRawMixin implements RawIoWorker {
+    @Shadow
+    @Final
+    private RegionFileStorage storage;
+
+    @Shadow
+    @Final
+    private Map<ChunkPos, Object> pendingWrites;
+
+    @Invoker("submitTask")
+    protected abstract <T> CompletableFuture<T> byepregen$submitTask(Supplier<Either<T, Exception>> task);
+
+    @Override
+    public CompletableFuture<Void> byepregen$storeRawChunkData(ChunkPos pos, RawChunkData data) {
+        if (C2MEDirectStorageCompat.isDirectStorage(this)) {
+            return C2MEDirectStorageCompat.setRawChunkData(this, pos, data);
+        }
+        return this.byepregen$submitTask(() -> this.byepregen$writeRawNow(pos, data));
+    }
+
+    @Unique
+    private Either<Void, Exception> byepregen$writeRawNow(ChunkPos pos, RawChunkData data) {
+        Object pending = this.pendingWrites.remove(pos);
+        try {
+            RegionFile regionFile = ((RegionFileStorageAccessor) (Object) this.storage).byepregen$getRegionFile(pos);
+            try (DataOutputStream output = regionFile.getChunkDataOutputStream(pos)) {
+                output.write(data.bytes(), 0, data.length());
+            }
+            this.byepregen$completePending(pending, null);
+            return Either.left(null);
+        } catch (Exception exception) {
+            this.byepregen$completePending(pending, exception);
+            return Either.right(exception);
+        }
+    }
+
+    @Unique
+    private void byepregen$completePending(Object pending, Exception exception) {
+        if (pending == null) {
+            return;
+        }
+
+        CompletableFuture<Void> result = ((IOWorkerPendingStoreAccessor) pending).byepregen$result();
+        if (exception == null) {
+            result.complete(null);
+        } else {
+            result.completeExceptionally(exception);
+        }
+    }
+}

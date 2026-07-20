@@ -1,0 +1,33 @@
+package com.moepus.byepregen.mixin.compat;
+
+import com.moepus.byepregen.MixinGate;
+import com.moepus.byepregen.PaletteContainer.PaletteRawIdAccess;
+import net.minecraft.core.IdMap;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
+import org.spongepowered.asm.mixin.Shadow;
+
+@MixinGate(requiredMods = "lithium")
+@Pseudo
+@Mixin(targets = "net.caffeinemc.mods.lithium.common.world.chunk.LithiumHashPalette", remap = false)
+public abstract class LithiumHashPaletteMixin<T> implements PaletteRawIdAccess {
+    @Shadow
+    @Final
+    private IdMap<T> idList;
+
+    @Shadow
+    private T[] entries;
+
+    @Shadow
+    private int size;
+
+    @Override
+    public int byepregen$rawIdForLocalId(int localId) {
+        if (localId < 0 || localId >= this.size) {
+            return -1;
+        }
+        T value = this.entries[localId];
+        return value == null ? -1 : this.idList.getId(value);
+    }
+}

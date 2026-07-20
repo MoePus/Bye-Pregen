@@ -1,6 +1,7 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
+import com.moepus.byepregen.MixinGate;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -15,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@MixinGate(conflictingMods = "c2me_rewrites_chunk_system")
 @Mixin(ChunkStatus.class)
 public abstract class ChunkStatusPostProcessingPreNormMixin {
     @Inject(
@@ -25,7 +27,7 @@ public abstract class ChunkStatusPostProcessingPreNormMixin {
             Executor executor,
             ServerLevel level,
             ChunkGenerator generator,
-            StructureTemplateManager stm,
+            StructureTemplateManager structureTemplateManager,
             ThreadedLevelLightEngine lightEngine,
             Function<?, ?> function,
             List<ChunkAccess> chunks,
@@ -35,6 +37,7 @@ public abstract class ChunkStatusPostProcessingPreNormMixin {
             return;
         }
         ChunkAccess chunk = chunks.get(chunks.size() / 2);
-        PostProcessGenerationOptimizer.preNormalizeAndFilterChunkLocalPostProcessingLists(chunk, chunk.getPostProcessing());
+        PostProcessGenerationOptimizer.preNormalizeAndFilterChunkLocalPostProcessingLists(
+                chunk, chunk.getPostProcessing());
     }
 }

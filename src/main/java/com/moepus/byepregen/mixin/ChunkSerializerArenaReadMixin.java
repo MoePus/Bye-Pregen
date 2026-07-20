@@ -1,0 +1,114 @@
+package com.moepus.byepregen.mixin;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.moepus.byepregen.Config;
+import com.moepus.byepregen.ConfigParser;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NbtReader;
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateCodec;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStateNbtReader;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.storage.ChunkSerializer;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Slice;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(ChunkSerializer.class)
+public abstract class ChunkSerializerArenaReadMixin {
+    @Mutable
+    @Shadow
+    @Final
+    private static Codec<PalettedContainer<BlockState>> BLOCK_STATE_CODEC;
+
+    @Inject(method = "<clinit>", at = @At("RETURN"))
+    private static void byepregen$replaceBlockStateCodec(CallbackInfo ci) {
+        BLOCK_STATE_CODEC = new StateCodec(BLOCK_STATE_CODEC);
+    }
+
+    @Redirect(
+            method = "read",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lcom/mojang/serialization/Codec;parse(Lcom/mojang/serialization/DynamicOps;Ljava/lang/Object;)Lcom/mojang/serialization/DataResult;",
+                    ordinal = 0,
+                    remap = false
+            ),
+            slice = @Slice(
+                    from = @At(value = "CONSTANT", args = "stringValue=block_states", ordinal = 0),
+                    to = @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/world/level/chunk/LevelChunkSection;<init>(Lnet/minecraft/world/level/chunk/PalettedContainer;Lnet/minecraft/world/level/chunk/PalettedContainerRO;)V",
+                            remap = false
+                    )
+            ),
+            require = 1
+    )
+    private static DataResult<PalettedContainer<BlockState>> byepregen$readBlockStates(
+            Codec<PalettedContainer<BlockState>> codec,
+            DynamicOps<?> ops,
+            Object input,
+            ServerLevel level,
+            PoiManager poiManager,
+            ChunkPos chunkPos,
+            CompoundTag chunkTag
+    ) {
+        if (input instanceof CompoundTag blockStatesTag) {
+            Config config = ConfigParser.getConfig();
+            ChunkStatus.ChunkType chunkType = ChunkSerializer.getChunkTypeFromTag(chunkTag);
+            if (byepregen$shouldReadArena(config, chunkType)) {
+                ArenaBlockStatePalettedContainer arena = NbtReader.read(blockStatesTag);
+                if (arena != null) {
+                    return DataResult.success(arena);
+                }
+            } else if (byepregen$shouldReadFast(config, chunkType)) {
+                FastBlockStatePalettedContainer fast = FastBlockStateNbtReader.read(blockStatesTag);
+                if (fast != null) {
+                    return DataResult.success(fast);
+                }
+            }
+        }
+
+        return byepregen$parseFallback(codec, ops, input);
+    }
+
+    @Unique
+    private static boolean byepregen$shouldReadArena(Config config, ChunkStatus.ChunkType chunkType) {
+        if (!config.enableArenaPalette) {
+            return false;
+        }
+        if (chunkType == ChunkStatus.ChunkType.PROTOCHUNK) {
+            return true;
+        }
+        return config.enableServerRuntimeArenaPalette;
+    }
+
+    @Unique
+    private static boolean byepregen$shouldReadFast(Config config, ChunkStatus.ChunkType chunkType) {
+        return config.enableArenaPalette
+                && chunkType != ChunkStatus.ChunkType.PROTOCHUNK
+                && !config.enableServerRuntimeArenaPalette;
+    }
+
+    @Unique
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static DataResult<PalettedContainer<BlockState>> byepregen$parseFallback(
+            Codec<PalettedContainer<BlockState>> codec, DynamicOps<?> ops, Object input) {
+        return ((Codec) codec).parse((DynamicOps) ops, input);
+    }
+}
