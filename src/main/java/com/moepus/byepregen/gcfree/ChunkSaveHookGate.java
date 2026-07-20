@@ -3,6 +3,8 @@ package com.moepus.byepregen.gcfree;
 import com.mojang.logging.LogUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 
 public final class ChunkSaveHookGate {
@@ -15,11 +17,14 @@ public final class ChunkSaveHookGate {
 
     private static boolean computeCanUseRawSave() {
         try {
-            int forgeSaveListeners = forgeSaveListenerCount();
-            boolean canUseRawSave = forgeSaveListeners == 0;
+            List<String> forgeSaveListeners = forgeSaveListeners();
+            boolean canUseRawSave = forgeSaveListeners.isEmpty();
             if (!canUseRawSave) {
                 LOGGER.warn("ByePregen raw chunk save disabled by {} Forge ChunkDataEvent.Save listener(s)",
-                        forgeSaveListeners);
+                        forgeSaveListeners.size());
+                for (int index = 0; index < forgeSaveListeners.size(); ++index) {
+                    LOGGER.warn("ByePregen raw chunk save listener[{}]: {}", index, forgeSaveListeners.get(index));
+                }
             }
             LOGGER.info("ByePregen GC-free raw chunk save gate: CAN_USE_RAW_SAVE={}", canUseRawSave);
             return canUseRawSave;
@@ -33,7 +38,7 @@ public final class ChunkSaveHookGate {
         }
     }
 
-    private static int forgeSaveListenerCount() throws ReflectiveOperationException {
+    private static List<String> forgeSaveListeners() throws ReflectiveOperationException {
         ClassLoader loader = ChunkSaveHookGate.class.getClassLoader();
         Class<?> saveEventClass = Class.forName("net.minecraftforge.event.level.ChunkDataEvent$Save", false, loader);
         Class<?> listenerHelperClass =
@@ -48,7 +53,7 @@ public final class ChunkSaveHookGate {
 
         Method getListeners = listenerList.getClass().getMethod("getListeners", int.class);
         Object[] listeners = (Object[]) getListeners.invoke(listenerList, busId);
-        return nonPriorityListenerCount(listeners);
+        return nonPriorityListenerDescriptions(listeners);
     }
 
     private static int eventBusId(Object eventBus) throws ReflectiveOperationException {
@@ -65,13 +70,22 @@ public final class ChunkSaveHookGate {
         throw new NoSuchFieldException("busID");
     }
 
-    private static int nonPriorityListenerCount(Object[] listeners) {
-        int count = 0;
+    private static List<String> nonPriorityListenerDescriptions(Object[] listeners) {
+        List<String> descriptions = new ArrayList<>();
         for (Object listener : listeners) {
-            if (!"net.minecraftforge.eventbus.api.EventPriority".equals(listener.getClass().getName())) {
-                ++count;
+            if (listener != null
+                    && !"net.minecraftforge.eventbus.api.EventPriority".equals(listener.getClass().getName())) {
+                descriptions.add(listenerDescription(listener));
             }
         }
-        return count;
+        return descriptions;
+    }
+
+    private static String listenerDescription(Object listener) {
+        try {
+            return listener + " [" + listener.getClass().getName() + "]";
+        } catch (RuntimeException ignored) {
+            return listener.getClass().getName();
+        }
     }
 }
