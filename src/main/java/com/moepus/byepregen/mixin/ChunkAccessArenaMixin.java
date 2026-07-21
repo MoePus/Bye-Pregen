@@ -1,6 +1,8 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBiomePalettedContainer;
+import com.moepus.byepregen.PaletteContainer.FastPalette.FastBlockStatePalettedContainer;
 import javax.annotation.Nullable;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -95,7 +97,7 @@ public abstract class ChunkAccessArenaMixin {
 
     @Unique
     private PalettedContainer<BlockState> byepregen$createStateContainer() {
-        return new PalettedContainer<>(
+        return new FastBlockStatePalettedContainer(
                 Block.BLOCK_STATE_REGISTRY,
                 Blocks.AIR.defaultBlockState(),
                 PalettedContainer.Strategy.SECTION_STATES
@@ -104,7 +106,7 @@ public abstract class ChunkAccessArenaMixin {
 
     @Unique
     private PalettedContainer<Holder<Biome>> byepregen$createBiomeContainer(Registry<Biome> biomeRegistry) {
-        return new PalettedContainer<>(
+        return new FastBiomePalettedContainer(
                 biomeRegistry.asHolderIdMap(),
                 biomeRegistry.getHolderOrThrow(Biomes.PLAINS),
                 PalettedContainer.Strategy.SECTION_BIOMES

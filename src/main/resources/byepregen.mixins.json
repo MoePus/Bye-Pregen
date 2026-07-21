@@ -20,6 +20,7 @@
     "LevelChunkArenaMixin",
     "LevelChunkPostProcessMixin",
     "LevelChunkSectionAccessor",
+    "LevelChunkSectionMixin",
     "LinearPaletteMixin",
     "MatchingBlocksPredicateMixin",
     "nbt.CompoundTagFastRuntimeMixin",
