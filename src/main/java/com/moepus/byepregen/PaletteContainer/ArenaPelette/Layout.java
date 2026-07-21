@@ -3,7 +3,7 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 public final class Layout {
     public static final int SECTION_SIZE = 4096;
 
-    private static final int PAGE_HEIGHT = 4;
+    public static final int PAGE_HEIGHT = 4;
     public static final int PAGE_COUNT = 4;
     public static final int PAGE_SIZE = 16 * 16 * PAGE_HEIGHT;
 

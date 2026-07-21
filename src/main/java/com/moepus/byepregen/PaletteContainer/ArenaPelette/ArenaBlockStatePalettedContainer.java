@@ -288,6 +288,24 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         ArenaBlockStateQueries.forEachRawId(this, consumer);
     }
 
+    public void writePage(int page, ArenaPageBuildBuffer pageData) {
+        if (page < 0 || page >= PAGE_COUNT) {
+            throw new IndexOutOfBoundsException("Arena page index: " + page);
+        }
+
+        if (this.denseIds != null || pageData.hasDenseIds()) {
+            this.promoteToDense();
+            pageData.writeToDense(this.denseIds, page);
+            this.denseRawIdCounts = null;
+            return;
+        }
+        if (this.arena == null && pageData.isUniformRawId(this.uniformRawId)) {
+            return;
+        }
+
+        pageData.writeToArena(this.ensureArena(), pageBase(page));
+    }
+
     public void setRawId(int index, int rawId) {
         if (rawId < 0) {
             rawId = AIR_RAW_ID;
