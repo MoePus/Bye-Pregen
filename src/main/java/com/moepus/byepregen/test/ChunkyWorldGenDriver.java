@@ -802,11 +802,14 @@ final class ChunkyWorldGenDriver {
         private int dirtyColumnRound;
         private int blackoutRound;
         private final LightBlackoutFuzz blackoutFuzz;
+        private final LightTorchLifecycleProbe torchLifecycleProbe;
+        private boolean waitingForTorchLight;
 
         private LightFuzzRun(MinecraftServer server, ServerLevel level) {
             this.server = server;
             this.level = level;
             this.blackoutFuzz = runsBlackoutLightFuzz() ? new LightBlackoutFuzz(level, LIGHT_FUZZ_SEED) : null;
+            this.torchLifecycleProbe = runsBlackoutLightFuzz() ? new LightTorchLifecycleProbe(level) : null;
         }
 
         private void tick() {
@@ -821,11 +824,26 @@ final class ChunkyWorldGenDriver {
                     }
                     this.pendingLight.join();
                     LOGGER.info("Light fuzz stage completed: {}", this.pendingStage);
+                    if (this.waitingForTorchLight) {
+                        this.torchLifecycleProbe.lightWaitCompleted();
+                        this.waitingForTorchLight = false;
+                        this.pendingLight = null;
+                        this.pendingStage = null;
+                        return;
+                    }
                     this.verifyBlackoutRound();
                     this.logProbes();
                     this.pendingLight = null;
                     this.pendingStage = null;
                     ++this.stage;
+                }
+
+                if (this.torchLifecycleProbe != null && !this.torchLifecycleProbe.isComplete()) {
+                    if (this.torchLifecycleProbe.advance()) {
+                        this.waitingForTorchLight = true;
+                        this.waitForTorchLight();
+                    }
+                    return;
                 }
 
                 switch (this.stage) {
@@ -881,6 +899,12 @@ final class ChunkyWorldGenDriver {
             }
             this.pendingStage = stageName;
             this.pendingLight = CompletableFuture.allOf(futures);
+        }
+
+        private void waitForTorchLight() {
+            this.pendingStage = "torch lifecycle " + this.torchLifecycleProbe.pendingStage();
+            LOGGER.info("Waiting for light fuzz stage: {}", this.pendingStage);
+            this.pendingLight = this.torchLifecycleProbe.waitForLight();
         }
 
         private void startMutationStage() {

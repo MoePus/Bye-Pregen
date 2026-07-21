@@ -1,5 +1,4 @@
 package com.moepus.byepregen.test;
-
 import com.moepus.byepregen.mixin.ChunkMapAccessor;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
@@ -25,7 +24,6 @@ import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.levelgen.Heightmap;
-
 final class LightBlackoutFuzz {
     static final int ROUNDS = 1024;
     static final int LOAD_RADIUS = 9;
@@ -128,6 +126,8 @@ final class LightBlackoutFuzz {
     void acceptReconciledRoundTrip() {
         this.edgeRepairProbe.verifyRepaired();
         for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
+            LightChunkSnapshot expected = this.roundTripSnapshots.get(chunk);
+            expected.verifyNoBlockLightLoss(this.snapshot(chunk), chunk);
             this.verifyChunk(0, chunk);
         }
         this.releaseLoadedChunks();

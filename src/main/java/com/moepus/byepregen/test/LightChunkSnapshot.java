@@ -19,8 +19,47 @@ record LightChunkSnapshot(byte[][] block, byte[][] sky) {
         );
     }
 
+    static LightChunkSnapshot captureBlockSection(ServerLevel level, ChunkPos pos, int sectionY) {
+        LevelLightEngine engine = level.getChunkSource().getLightEngine();
+        byte[][] block = snapshotLayer(engine, LightLayer.BLOCK, pos);
+        int retained = sectionY - engine.getMinLightSection();
+        for (int i = 0; i < block.length; ++i) {
+            if (i != retained) {
+                block[i] = null;
+            }
+        }
+        return new LightChunkSnapshot(block, new byte[block.length][]);
+    }
+
     boolean matches(LightChunkSnapshot other) {
         return Arrays.deepEquals(this.block, other.block) && Arrays.deepEquals(this.sky, other.sky);
+    }
+
+    String blockLightLoss(LightChunkSnapshot other) {
+        for (int section = 0; section < this.block.length; ++section) {
+            for (int y = 0; y < 16; ++y) {
+                for (int z = 0; z < 16; ++z) {
+                    for (int x = 0; x < 16; ++x) {
+                        int index = y << 8 | z << 4 | x;
+                        int expected = nibbleAt(this.block[section], index);
+                        int actual = nibbleAt(other.block[section], index);
+                        if (actual < expected) {
+                            return "section=" + section + " local=" + x + "," + y + "," + z
+                                    + " expected=" + expected + " actual=" + actual;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    void verifyNoBlockLightLoss(LightChunkSnapshot other, ChunkPos pos) {
+        String difference = this.blockLightLoss(other);
+        if (difference != null) {
+            throw new IllegalStateException("Block light decreased after reconciliation in "
+                    + pos + ": " + difference);
+        }
     }
 
     String summary() {
@@ -103,5 +142,10 @@ record LightChunkSnapshot(byte[][] block, byte[][] sky) {
 
     private static int byteAt(byte[] data, int index) {
         return data == null || index < 0 ? 0 : data[index] & 255;
+    }
+
+    private static int nibbleAt(byte[] data, int index) {
+        int packed = byteAt(data, index >>> 1);
+        return packed >>> ((index & 1) << 2) & 15;
     }
 }
