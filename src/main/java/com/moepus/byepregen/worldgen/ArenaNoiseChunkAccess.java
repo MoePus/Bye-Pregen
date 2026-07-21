@@ -1,15 +1,25 @@
 package com.moepus.byepregen.worldgen;
 
 public interface ArenaNoiseChunkAccess {
-    void byepregen$initializeArenaInterpolation();
+    void byepregen$initializeArenaInterpolation(double inverseCellWidth);
 
-    void byepregen$selectArenaCell(int cellX, int cellY, int cellZ);
+    void byepregen$advanceArenaCellX(int cellX);
 
-    void byepregen$updateArenaForX(int blockX, double deltaX);
+    void byepregen$prepareArenaCellXZ(int cellZ, int blockX, double deltaX);
 
-    void byepregen$updateArenaForZ(int blockZ, double deltaZ);
+    void byepregen$beginArenaColumn(int blockZ);
 
-    void byepregen$updateArenaForY(int blockY, double deltaY);
+    void byepregen$selectArenaColumnCellY(int cellY);
+
+    void byepregen$startArenaPage();
+
+    void byepregen$advanceArenaPageY();
+
+    void byepregen$setArenaPageLowerStepY();
+
+    void byepregen$setArenaPageLowerY();
+
+    void byepregen$finishArenaCellX();
 
     void byepregen$releaseArenaInterpolation();
 }

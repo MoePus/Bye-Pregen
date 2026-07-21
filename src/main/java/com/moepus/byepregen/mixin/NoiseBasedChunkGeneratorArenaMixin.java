@@ -72,6 +72,9 @@ public abstract class NoiseBasedChunkGeneratorArenaMixin {
             if (SharedConstants.debugVoidTerrain(targetChunk.getPos())) {
                 return targetChunk;
             }
+            if (!ArenaNoiseFiller.hasFreshAirTargets(request, cellHeight)) {
+                return original.get();
+            }
             NoiseChunk noiseChunk = targetChunk.getOrCreateNoiseChunk(
                     target -> this.createNoiseChunk(target, structureManager, blender, randomState)
             );

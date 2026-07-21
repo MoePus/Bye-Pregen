@@ -237,6 +237,14 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         return this.arena == null && this.denseIds == null;
     }
 
+    public boolean isFreshAirForWorldgen() {
+        return this.arena == null
+                && this.denseIds == null
+                && this.denseRawIdCounts == null
+                && this.uniformRawId == AIR_RAW_ID
+                && this.uniformState == AIR;
+    }
+
     public int uniformRawId() {
         return this.uniformRawId;
     }
@@ -288,22 +296,26 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         ArenaBlockStateQueries.forEachRawId(this, consumer);
     }
 
-    public void writePage(int page, ArenaPageBuildBuffer pageData) {
-        if (page < 0 || page >= PAGE_COUNT) {
-            throw new IndexOutOfBoundsException("Arena page index: " + page);
+    public void batchWriteRawId(int page, int pageLocalIndex, int rawId) {
+        if (rawId < 0 || rawId == AIR_RAW_ID) {
+            return;
         }
 
-        if (this.denseIds != null || pageData.hasDenseIds()) {
+        int[] dense = this.denseIds;
+        int sectionIndex = sectionIndex(page, pageLocalIndex);
+        if (dense != null) {
+            UnsafeIntArrayAccess.set(dense, sectionIndex, rawId);
+            return;
+        }
+
+        int base = pageBase(page);
+        int paletteIndex = this.findOrAppendFreshPaletteIndex(base, rawId);
+        if (paletteIndex < 0) {
             this.promoteToDense();
-            pageData.writeToDense(this.denseIds, page);
-            this.denseRawIdCounts = null;
+            UnsafeIntArrayAccess.set(this.denseIds, sectionIndex, rawId);
             return;
         }
-        if (this.arena == null && pageData.isUniformRawId(this.uniformRawId)) {
-            return;
-        }
-
-        pageData.writeToArena(this.ensureArena(), pageBase(page));
+        setLocalPaletteIndex(this.arena, base, pageLocalIndex, paletteIndex);
     }
 
     public void setRawId(int index, int rawId) {
@@ -499,6 +511,27 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         for (int i = 0; i < EXTRA_PALETTE_SIZE; ++i) {
             if (this.arena[base + EXTRA_PALETTE_OFFSET + i] == 0) {
                 this.arena[base + EXTRA_PALETTE_OFFSET + i] = stored;
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
+    private int findOrAppendFreshPaletteIndex(int base, int rawId) {
+        int[] arena = this.ensureArena();
+        if (rawId == arena[base + PAGE_DEFAULT_OFFSET]) {
+            return 0;
+        }
+
+        int stored = rawId + 1;
+        for (int i = 0; i < EXTRA_PALETTE_SIZE; ++i) {
+            int paletteOffset = base + EXTRA_PALETTE_OFFSET + i;
+            int entry = arena[paletteOffset];
+            if (entry == stored) {
+                return i + 1;
+            }
+            if (entry == 0) {
+                arena[paletteOffset] = stored;
                 return i + 1;
             }
         }

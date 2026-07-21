@@ -1,6 +1,7 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.worldgen.ArenaNoiseInterpolatorAccess;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -8,62 +9,26 @@ import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(NoiseChunk.NoiseInterpolator.class)
 public abstract class NoiseInterpolatorArenaMixin implements ArenaNoiseInterpolatorAccess {
-    @Shadow private double noise000;
-    @Shadow private double noise001;
-    @Shadow private double noise100;
-    @Shadow private double noise101;
-    @Shadow private double noise010;
-    @Shadow private double noise011;
-    @Shadow private double noise110;
-    @Shadow private double noise111;
-    @Unique private double[] byepregen$arenaGrid;
-    @Unique private int byepregen$arenaPointCountXZ;
+    @Shadow
+    double[][] slice0;
+    @Shadow
+    double[][] slice1;
+    @Shadow public double valueXZ11;
 
     @Unique
     @Override
-    public void byepregen$allocateArenaGrid(int pointCountY, int pointCountXZ) {
-        this.byepregen$arenaPointCountXZ = pointCountXZ;
-        this.byepregen$arenaGrid = new double[pointCountY * pointCountXZ * pointCountXZ];
-    }
-
-    @Unique
-    @Override
-    public void byepregen$storeArenaColumn(int pointX, int pointZ, double[] values) {
-        double[] grid = this.byepregen$arenaGrid;
-        int pointCountXZ = this.byepregen$arenaPointCountXZ;
-        int planeStride = pointCountXZ * pointCountXZ;
-        int index = pointZ * pointCountXZ + pointX;
-        for (int pointY = 0; pointY < values.length; ++pointY) {
-            grid[index] = values[pointY];
-            index += planeStride;
+    public void byepregen$prepareArenaXZ(int cellZ, double deltaX, double[] zBaseSteps) {
+        double[] slice00 = this.slice0[cellZ];
+        double[] slice01 = this.slice0[cellZ + 1];
+        double[] slice10 = this.slice1[cellZ];
+        double[] slice11 = this.slice1[cellZ + 1];
+        double inverseCellWidth = this.valueXZ11;
+        for (int pointY = 0, edgeIndex = 0; pointY < slice00.length; ++pointY, edgeIndex += 2) {
+            double zBase = Mth.lerp(deltaX, slice00[pointY], slice10[pointY]);
+            double zEnd = Mth.lerp(deltaX, slice01[pointY], slice11[pointY]);
+            double zStep = (zEnd - zBase) * inverseCellWidth;
+            zBaseSteps[edgeIndex] = zBase;
+            zBaseSteps[edgeIndex + 1] = zStep;
         }
     }
-
-    @Unique
-    @Override
-    public void byepregen$selectArenaCell(int cellX, int cellY, int cellZ) {
-        double[] grid = this.byepregen$arenaGrid;
-        int pointCountXZ = this.byepregen$arenaPointCountXZ;
-        int planeStride = pointCountXZ * pointCountXZ;
-        int lower = cellY * planeStride + cellZ * pointCountXZ + cellX;
-        int upper = lower + planeStride;
-        int zOffset = pointCountXZ;
-
-        this.noise000 = grid[lower];
-        this.noise001 = grid[lower + zOffset];
-        this.noise100 = grid[lower + 1];
-        this.noise101 = grid[lower + zOffset + 1];
-        this.noise010 = grid[upper];
-        this.noise011 = grid[upper + zOffset];
-        this.noise110 = grid[upper + 1];
-        this.noise111 = grid[upper + zOffset + 1];
-    }
-
-    @Unique
-    @Override
-    public void byepregen$releaseArenaGrid() {
-        this.byepregen$arenaGrid = null;
-        this.byepregen$arenaPointCountXZ = 0;
-    }
-
 }
