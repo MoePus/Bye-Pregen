@@ -166,14 +166,14 @@ dependencies {
     annotationProcessor mixinSquaredCommon
     runtimeOnly mixinSquaredNeoForge
     jarJar mixinSquaredNeoForge
-    compileOnly files("libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.112-all.jar")
-    compileOnly files("libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.112.jar")
-    compileOnly files("libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.112.jar")
-    compileOnly files("libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.112.jar")
-    compileOnly "curse.maven:c2me-ocl-1563823:8295231"
+    compileOnly files("libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.116-all.jar")
+    compileOnly files("libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar")
+    compileOnly files("libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar")
+    compileOnly files("libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar")
+//    additionalRuntimeClasspath "curse.maven:c2me-ocl-1563823:8436419"
     compileOnly "com.ibm.async:asyncutil:0.1.0"
     compileOnly files("libs/voxy-0.2.15-beta-3.jar")
-    runtimeOnly "curse.maven:c2me-533097:8436420"
+    runtimeOnly "curse.maven:c2me-533097:8480771"
     runtimeOnly "curse.maven:lithium-360438:7740400"
     runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"
     runtimeOnly files(sodiumDevRuntimeMod.flatMap { it.archiveFile }) {
