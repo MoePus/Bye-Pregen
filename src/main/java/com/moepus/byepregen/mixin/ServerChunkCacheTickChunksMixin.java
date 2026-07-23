@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 
 @MixinGate(config = "enableFastTickChunks", conflictingMods = "servercore")
-@Mixin(value = ServerChunkCache.class, remap = false)
+@Mixin(value = ServerChunkCache.class, remap = false, priority = 900)
 public abstract class ServerChunkCacheTickChunksMixin {
     @Shadow
     @Final
@@ -135,13 +135,31 @@ public abstract class ServerChunkCacheTickChunksMixin {
                         continue;
                     }
 
-                    this.byepregen$spawnAndTickChunk(
-                            this.byepregen$activeTickingChunkIndices[activeIndex],
-                            inhabitedDelta,
-                            doMobSpawning,
-                            randomTickSpeed,
-                            tickPersistentMobs,
-                            spawnState);
+                    LevelChunk levelChunk = this.byepregen$tickingChunks[this.byepregen$activeTickingChunkIndices[activeIndex]];
+                    ChunkPos chunkPos = levelChunk.getPos();
+                    long chunkPosLong = chunkPos.toLong();
+                    levelChunk.incrementInhabitedTime(inhabitedDelta);
+                    if (doMobSpawning
+                            && (this.spawnEnemies || this.spawnFriendlies)
+                            && this.level.getWorldBorder().isWithinBounds(chunkPos)) {
+                        this.byepregen$seedChunkCache(levelChunk, ChunkStatus.BIOMES);
+                        this.byepregen$seedChunkCache(levelChunk, ChunkStatus.FULL);
+                        NaturalSpawner.spawnForChunk(
+                                this.level,
+                                levelChunk,
+                                spawnState,
+                                this.spawnFriendlies,
+                                this.spawnEnemies,
+                                tickPersistentMobs);
+                    }
+
+                    if (this.level.shouldTickBlocksAt(chunkPosLong)) {
+                        this.byepregen$seedChunkCache(levelChunk, ChunkStatus.FULL);
+                        if (C2MECompat.isC2MEInstalled()) {
+                            C2MECompat.executeTasksMidTick(this.level);
+                        }
+                        this.level.tickChunk(levelChunk, randomTickSpeed);
+                    }
                     remaining--;
                 }
             }
@@ -201,41 +219,6 @@ public abstract class ServerChunkCacheTickChunksMixin {
         if (broadcastChunkCount > 0) {
             Arrays.fill(this.byepregen$tickingChunks, 0, broadcastChunkCount, null);
             Arrays.fill(this.byepregen$broadcastHolders, 0, broadcastChunkCount, null);
-        }
-    }
-
-    @Unique
-    private void byepregen$spawnAndTickChunk(
-            int index,
-            long inhabitedDelta,
-            boolean doMobSpawning,
-            int randomTickSpeed,
-            boolean tickPersistentMobs,
-            NaturalSpawner.SpawnState spawnState) {
-        LevelChunk levelChunk = this.byepregen$tickingChunks[index];
-        ChunkPos chunkPos = levelChunk.getPos();
-        long chunkPosLong = chunkPos.toLong();
-        levelChunk.incrementInhabitedTime(inhabitedDelta);
-        if (doMobSpawning
-                && (this.spawnEnemies || this.spawnFriendlies)
-                && this.level.getWorldBorder().isWithinBounds(chunkPos)) {
-            this.byepregen$seedChunkCache(levelChunk, ChunkStatus.BIOMES);
-            this.byepregen$seedChunkCache(levelChunk, ChunkStatus.FULL);
-            NaturalSpawner.spawnForChunk(
-                    this.level,
-                    levelChunk,
-                    spawnState,
-                    this.spawnFriendlies,
-                    this.spawnEnemies,
-                    tickPersistentMobs);
-        }
-
-        if (this.level.shouldTickBlocksAt(chunkPosLong)) {
-            this.byepregen$seedChunkCache(levelChunk, ChunkStatus.FULL);
-            if (C2MECompat.isC2MEInstalled()) {
-                C2MECompat.executeTasksMidTick(this.level);
-            }
-            this.level.tickChunk(levelChunk, randomTickSpeed);
         }
     }
 
