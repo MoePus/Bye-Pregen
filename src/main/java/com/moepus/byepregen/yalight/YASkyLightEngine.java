@@ -206,10 +206,9 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
     }
 
     @Override
-    public void propagateLightSourcesInternal(int chunkX, int chunkZ, boolean fresh) {
-        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
-        if (this.sources.propagateLightSources(chunkX, chunkZ, fresh) && fresh) {
-            this.ownerTransfers.markInitialized(chunkKey);
+    public void propagateLightSourcesInternal(ChunkAccess chunk, boolean fresh) {
+        if (this.sources.propagateLightSources(chunk, fresh) && fresh) {
+            this.ownerTransfers.markInitialized(chunk.getPos().toLong());
         }
     }
 

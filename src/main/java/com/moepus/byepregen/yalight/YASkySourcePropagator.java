@@ -41,14 +41,12 @@ final class YASkySourcePropagator {
         this.addSourcesAbove(x, z, lowestY);
     }
 
-    boolean propagateLightSources(int chunkX, int chunkZ, boolean fresh) {
+    boolean propagateLightSources(ChunkAccess lightChunk, boolean fresh) {
+        int chunkX = lightChunk.getPos().x;
+        int chunkZ = lightChunk.getPos().z;
         this.sourceCache.centerChunks(chunkX, chunkZ);
-        LightChunk lightChunk = this.sourceCache.chunk(this.engine.chunkGetter, chunkX, chunkZ);
-        if (lightChunk == null) {
-            return false;
-        }
         long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
-        YAChunkLightData data = this.engine.storage.data((ChunkAccess)lightChunk);
+        YAChunkLightData data = this.engine.storage.data(lightChunk);
         this.propagateCachedLightSources(chunkKey, data, fresh);
         return true;
     }

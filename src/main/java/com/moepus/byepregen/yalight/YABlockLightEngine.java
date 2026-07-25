@@ -7,8 +7,8 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
-import net.minecraft.world.level.chunk.LightChunk;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.lighting.BlockLightEngine;
 import net.minecraft.world.level.lighting.LayerLightSectionStorage;
@@ -183,11 +183,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     }
 
     @Override
-    public void propagateLightSourcesInternal(int chunkX, int chunkZ, boolean fresh) {
-        LightChunk chunk = this.runCache.chunk(this.chunkGetter, chunkX, chunkZ);
-        if (chunk == null) {
-            return;
-        }
+    public void propagateLightSourcesInternal(ChunkAccess chunk, boolean fresh) {
         chunk.findBlockLightSources((pos, state) -> {
             int emitted = state.getLightEmission(this.levelReader, pos);
             if (emitted <= 0 || emitted <= this.getCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ())) {

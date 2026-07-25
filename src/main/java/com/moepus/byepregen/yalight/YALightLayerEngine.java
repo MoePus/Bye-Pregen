@@ -64,8 +64,11 @@ interface YALightLayerEngine extends LayerLightEventListener {
         int work = 0;
         if (task.hasSource()) {
             boolean fresh = task.freshSource && !task.normalSource && task.checks.isEmpty();
-            this.propagateLightSourcesInternal(task.chunkX(), task.chunkZ(), fresh);
-            ++work;
+            ChunkAccess sourceChunk = this.runCache().enableChunk(this.storage(), task.chunkX(), task.chunkZ());
+            if (sourceChunk != null) {
+                this.propagateLightSourcesInternal(sourceChunk, fresh);
+                ++work;
+            }
         }
         while (!task.checks.isEmpty()) {
             this.checkBlockInternal(task.pollCheckPos());
@@ -173,7 +176,7 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     void checkBlockInternal(long pos);
 
-    void propagateLightSourcesInternal(int chunkX, int chunkZ, boolean fresh);
+    void propagateLightSourcesInternal(ChunkAccess chunk, boolean fresh);
 
     void propagateIncrease(long pos, long meta);
 

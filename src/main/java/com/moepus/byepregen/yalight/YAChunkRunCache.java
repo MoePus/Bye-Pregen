@@ -46,6 +46,17 @@ public class YAChunkRunCache {
         this.loadChunkWindow(chunkX, chunkZ);
     }
 
+    ChunkAccess enableChunk(YALightStorage storage, int chunkX, int chunkZ) {
+        int index = this.chunkIndex(storage.chunkGetter(), chunkX, chunkZ);
+        YAChunkLightData data = this.writableLightData(storage, index);
+        if (data == null) {
+            return null;
+        }
+        data.setLightEnabled(true);
+        this.chunkEnabledMask |= 1 << index;
+        return this.chunks[index];
+    }
+
     int getUpdatingLight(YALightStorage storage, int x, int y, int z) {
         int index = this.chunkIndex(storage.chunkGetter(), x >> 4, z >> 4);
         YAChunkLightData data = this.existingLightData(storage, index);
