@@ -18,6 +18,9 @@ public abstract class WorldGenRegionYALightMixin implements WorldGenLevel {
     public abstract ChunkAccess getChunk(int chunkX, int chunkZ);
 
     @Shadow
+    public abstract boolean hasChunk(int chunkX, int chunkZ);
+
+    @Shadow
     public abstract LevelLightEngine getLightEngine();
 
     /**
@@ -26,11 +29,17 @@ public abstract class WorldGenRegionYALightMixin implements WorldGenLevel {
      */
     @Override
     public int getBrightness(LightLayer layer, BlockPos pos) {
-        ChunkAccess chunk = this.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
+        int chunkX = pos.getX() >> 4;
+        int chunkZ = pos.getZ() >> 4;
+        LevelLightEngine lightEngine = this.getLightEngine();
+        if (!this.hasChunk(chunkX, chunkZ)) {
+            return lightEngine.getLayerListener(layer).getLightValue(pos);
+        }
+        ChunkAccess chunk = this.getChunk(chunkX, chunkZ);
         if (!chunk.isLightCorrect()) {
             return 0;
         }
-        YALightEngine engine = ((YALightEngineHolder)this.getLightEngine()).byepregen$getYALightEngine();
+        YALightEngine engine = ((YALightEngineHolder)lightEngine).byepregen$getYALightEngine();
         return engine.getBrightness(layer, pos, (YAChunkLightAccess)chunk);
     }
 
@@ -40,11 +49,17 @@ public abstract class WorldGenRegionYALightMixin implements WorldGenLevel {
      */
     @Override
     public int getRawBrightness(BlockPos pos, int ambientDarkness) {
-        ChunkAccess chunk = this.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
+        int chunkX = pos.getX() >> 4;
+        int chunkZ = pos.getZ() >> 4;
+        LevelLightEngine lightEngine = this.getLightEngine();
+        if (!this.hasChunk(chunkX, chunkZ)) {
+            return lightEngine.getRawBrightness(pos, ambientDarkness);
+        }
+        ChunkAccess chunk = this.getChunk(chunkX, chunkZ);
         if (!chunk.isLightCorrect()) {
             return 0;
         }
-        YALightEngine engine = ((YALightEngineHolder)this.getLightEngine()).byepregen$getYALightEngine();
+        YALightEngine engine = ((YALightEngineHolder)lightEngine).byepregen$getYALightEngine();
         return engine.getRawBrightness(pos, ambientDarkness, (YAChunkLightAccess)chunk);
     }
 }

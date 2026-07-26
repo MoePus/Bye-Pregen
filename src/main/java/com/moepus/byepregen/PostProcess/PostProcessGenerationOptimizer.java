@@ -56,16 +56,16 @@ public final class PostProcessGenerationOptimizer {
 
         switch (block) {
             case SnowLayerBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
+                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
             }
             case BushBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
+                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
             }
             case CarpetBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
+                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
             }
             case CactusBlock ignored -> {
-                return updateShapeWithoutNeighbourLookup(state, level, pos, Direction.DOWN);
+                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
             }
             case SnowyDirtBlock ignored -> {
                 return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
@@ -123,10 +123,6 @@ public final class PostProcessGenerationOptimizer {
         }
 
         return updatedState;
-    }
-
-    private static BlockState updateShapeWithoutNeighbourLookup(BlockState state, LevelAccessor level, BlockPos pos, Direction direction) {
-        return state.updateShape(direction, state, level, pos, pos);
     }
 
     public static void preprocessPostProcessingLists(LevelChunk chunk, ShortList[] postProcessing) { // Main Thread

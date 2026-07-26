@@ -67,18 +67,19 @@ public abstract class NoiseBasedChunkGeneratorArenaMixin {
                 Math.floorDiv(noiseSettings.minY(), cellHeight),
                 Math.floorDiv(noiseSettings.height(), cellHeight)
         );
+        ArenaNoiseFiller.TargetSections targets = ArenaNoiseFiller.targetSections(request, cellHeight);
         return () -> {
             ChunkAccess targetChunk = request.chunk();
             if (SharedConstants.debugVoidTerrain(targetChunk.getPos())) {
                 return targetChunk;
             }
-            if (!ArenaNoiseFiller.hasFreshAirTargets(request, cellHeight)) {
+            if (!ArenaNoiseFiller.hasFreshAirTargets(request, targets)) {
                 return original.get();
             }
             NoiseChunk noiseChunk = targetChunk.getOrCreateNoiseChunk(
                     target -> this.createNoiseChunk(target, structureManager, blender, randomState)
             );
-            return ArenaNoiseFiller.fill(noiseChunk, request);
+            return ArenaNoiseFiller.fill(noiseChunk, request, targets);
         };
     }
 }

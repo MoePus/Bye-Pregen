@@ -27,18 +27,22 @@ public final class ArenaNoiseFiller {
     private ArenaNoiseFiller() {
     }
 
-    public static ChunkAccess fill(NoiseChunk noiseChunk, Request request) {
-        return new FillState(noiseChunk, request).fill();
+    public static ChunkAccess fill(NoiseChunk noiseChunk, Request request, TargetSections targets) {
+        return new FillState(noiseChunk, request, targets).fill();
     }
 
-    public static boolean hasFreshAirTargets(Request request, int cellHeight) {
-        ChunkAccess chunk = request.chunk();
+    public static TargetSections targetSections(Request request, int cellHeight) {
         int minBlockY = request.minCellY() * cellHeight;
         int maxBlockY = minBlockY + request.cellCountY() * cellHeight - 1;
-        int firstSection = chunk.getSectionIndex(minBlockY);
-        int lastSection = chunk.getSectionIndex(maxBlockY);
-        LevelChunkSection[] sections = chunk.getSections();
-        for (int sectionIndex = firstSection; sectionIndex <= lastSection; ++sectionIndex) {
+        return new TargetSections(
+                request.chunk().getSectionIndex(minBlockY),
+                request.chunk().getSectionIndex(maxBlockY)
+        );
+    }
+
+    public static boolean hasFreshAirTargets(Request request, TargetSections targets) {
+        LevelChunkSection[] sections = request.chunk().getSections();
+        for (int sectionIndex = targets.first(); sectionIndex <= targets.last(); ++sectionIndex) {
             if (!(sections[sectionIndex].getStates() instanceof ArenaBlockStatePalettedContainer container)
                     || !container.isFreshAirForWorldgen()) {
                 return false;
@@ -53,6 +57,9 @@ public final class ArenaNoiseFiller {
             int minCellY,
             int cellCountY
     ) {
+    }
+
+    public record TargetSections(int first, int last) {
     }
 
     private static final class FillState {
@@ -78,14 +85,14 @@ public final class ArenaNoiseFiller {
         private int currentSectionIndex;
         private int currentPage;
 
-        private FillState(NoiseChunk noiseChunk, Request request) {
+        private FillState(NoiseChunk noiseChunk, Request request, TargetSections targets) {
             this.noiseChunk = noiseChunk;
             this.noiseChunkAccess = (NoiseChunkAccessor) noiseChunk;
             this.arenaNoiseChunk = (ArenaNoiseChunkAccess) noiseChunk;
             this.request = request;
             this.chunk = request.chunk();
             this.sections = this.chunk.getSections();
-            this.containers = arenaContainers(this.sections);
+            this.containers = arenaContainers(this.sections, targets);
             this.touchedSections = new boolean[this.sections.length];
             this.aquifer = noiseChunk.aquifer();
             this.materialEvaluator = ArenaMaterialEvaluator.create(this.noiseChunkAccess.byepregen$blockStateRule());
@@ -218,9 +225,10 @@ public final class ArenaNoiseFiller {
             }
         }
 
-        private static ArenaBlockStatePalettedContainer[] arenaContainers(LevelChunkSection[] sections) {
+        private static ArenaBlockStatePalettedContainer[] arenaContainers(
+                LevelChunkSection[] sections, TargetSections targets) {
             ArenaBlockStatePalettedContainer[] containers = new ArenaBlockStatePalettedContainer[sections.length];
-            for (int i = 0; i < sections.length; ++i) {
+            for (int i = targets.first(); i <= targets.last(); ++i) {
                 containers[i] = (ArenaBlockStatePalettedContainer) sections[i].getStates();
             }
             return containers;

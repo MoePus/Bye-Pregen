@@ -48,11 +48,11 @@ public abstract class ChunkAccessArenaMixin {
             @Nullable BlendingData blendingData
     ) {
         Config config = ConfigParser.getConfig();
-        boolean isNewProtoChunk = (Object) this instanceof ProtoChunk && providedSections == null;
+        boolean isProtoChunk = (Object) this instanceof ProtoChunk;
         for (int i = 0; i < sections.length; ++i) {
             if (sections[i] == null) {
                 sections[i] = new LevelChunkSection(
-                        this.byepregen$createStateContainer(config, isNewProtoChunk, heightAccessor),
+                        this.byepregen$createStateContainer(config, isProtoChunk, heightAccessor),
                         this.byepregen$createBiomeContainer(biomeRegistry)
                 );
             }
@@ -61,8 +61,8 @@ public abstract class ChunkAccessArenaMixin {
 
     @Unique
     private PalettedContainer<BlockState> byepregen$createStateContainer(
-            Config config, boolean isNewProtoChunk, LevelHeightAccessor heightAccessor) {
-        if (byepregen$shouldUseArena(config, isNewProtoChunk, heightAccessor)) {
+            Config config, boolean isProtoChunk, LevelHeightAccessor heightAccessor) {
+        if (byepregen$shouldUseArena(config, isProtoChunk, heightAccessor)) {
             return new ArenaBlockStatePalettedContainer();
         }
         return new PalettedContainer<>(
@@ -73,11 +73,11 @@ public abstract class ChunkAccessArenaMixin {
     }
 
     @Unique
-    private boolean byepregen$shouldUseArena(Config config, boolean isNewProtoChunk, LevelHeightAccessor heightAccessor) {
+    private boolean byepregen$shouldUseArena(Config config, boolean isProtoChunk, LevelHeightAccessor heightAccessor) {
         if (!config.enableArenaPalette) {
             return false;
         }
-        if (isNewProtoChunk) {
+        if (isProtoChunk) {
             return true;
         }
         if (heightAccessor instanceof Level level && level.isClientSide()) {

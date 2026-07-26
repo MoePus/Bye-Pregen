@@ -62,15 +62,15 @@ public final class YABlockStateLightClass {
         if (needsStateLightColor(state)) {
             return SLOW;
         }
+        if (state.getBlock().hasDynamicShape()) {
+            return SLOW;
+        }
 
         // Only classify facts that are stable without a world/pos lookup. Everything ambiguous stays slow.
         int lightBlock = state.getLightBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
         boolean emptyShape = YALightMath.isEmptyShape(state);
         if (lightBlock == 0 && emptyShape) {
             return CLEAR;
-        }
-        if (state.getBlock().hasDynamicShape()) {
-            return SLOW;
         }
         if (lightBlock == 0) {
             return SHAPED;
