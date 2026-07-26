@@ -169,7 +169,6 @@ public final class YAChunkLightData {
     }
 
     public int publishDirty(LightChunkGetter chunkGetter, LightLayer layer) {
-        int count = 0;
         for (int i = 0; i < this.dirtyCount; ++i) {
             int index = this.dirtyIndices[i];
             this.dirtySections[index] = false;
@@ -177,11 +176,24 @@ public final class YAChunkLightData {
             if (nibble != null && nibble.isDirty()) {
                 nibble.publish();
             }
-            chunkGetter.onLightUpdate(layer, SectionPos.of(this.pos, this.sectionY(index)));
-            ++count;
         }
         if (this.dirtyCount != 0) {
+            /*
+             * Publish every section and the chunk-level visible array before exposing any callback.
+             * This closes the callback-before-visible window in which a callback-triggered save could
+             * observe the previous array after the individual nibbles had already been published.
+             * It intentionally does not make serialization a transaction: an asynchronous save worker
+             * may still read a live owner, halo neighbours still have no ticket and may lose callbacks
+             * after target-status changes, a final publication may occur after the last save decision,
+             * owner replacement has no generation check, and successful serialization is not the same
+             * as confirmed I/O completion.
+             */
             this.visible = this.updating.clone();
+        }
+        int count = this.dirtyCount;
+        for (int i = 0; i < count; ++i) {
+            int index = this.dirtyIndices[i];
+            chunkGetter.onLightUpdate(layer, SectionPos.of(this.pos, this.sectionY(index)));
         }
         this.dirtyCount = 0;
         this.queuedDirty = false;
