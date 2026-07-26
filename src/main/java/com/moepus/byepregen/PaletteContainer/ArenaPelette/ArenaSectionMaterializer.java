@@ -28,7 +28,6 @@ public final class ArenaSectionMaterializer {
             PalettedContainer<BlockState> states = section.getStates();
             if (states instanceof ArenaBlockStatePalettedContainer arenaContainer) {
                 ((LevelChunkSectionAccessor) section).byepregen$setStates(materialize(arenaContainer));
-                arenaContainer.releaseRawIds();
             }
         }
     }
