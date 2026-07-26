@@ -44,8 +44,11 @@ public abstract class EnvironmentScanPlacementMixin implements FastPlacementModi
             }
 
             pos.move(this.directionOfSearch);
-            if (level.isOutsideBuildHeight(pos.getY()) || !this.allowedSearchCondition.test(level, pos)) {
+            if (level.isOutsideBuildHeight(pos.getY())) {
                 return;
+            }
+            if (!this.allowedSearchCondition.test(level, pos)) {
+                break;
             }
         }
 
