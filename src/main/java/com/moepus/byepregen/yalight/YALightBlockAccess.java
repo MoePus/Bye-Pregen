@@ -41,7 +41,14 @@ final class YALightBlockAccess {
     }
 
     int blockAt(int x, int y, int z) {
-        int rawId = this.cache.getRawId(this.chunkGetter, x, y, z);
+        return this.blockFromRawId(this.cache.getRawId(this.chunkGetter, x, y, z));
+    }
+
+    int residentBlockAt(int x, int y, int z) {
+        return this.blockFromRawId(this.cache.getResidentRawId(x, y, z));
+    }
+
+    private int blockFromRawId(int rawId) {
         if (rawId < 0) {
             return 0;
         }

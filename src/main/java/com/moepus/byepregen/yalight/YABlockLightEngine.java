@@ -203,14 +203,24 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
         int x = BlockPos.getX(pos);
         int y = BlockPos.getY(pos);
         int z = BlockPos.getZ(pos);
-        int stored = this.getCachedUpdatingLight(x, y, z);
+        boolean resident = YALightMath.isSectionInterior(x, y, z);
+        if (resident) {
+            this.runCache.prepareResidentSection(this.storage, x, y, z);
+        }
+        int stored = resident
+                ? this.runCache.getResidentUpdatingLight(x, y, z)
+                : this.getCachedUpdatingLight(x, y, z);
         if (stored != level) {
             boolean canWrite = (meta & (YALightMath.FLAG_RECHECK | YALightMath.FLAG_WRITE_LEVEL))
                     == YALightMath.FLAG_WRITE_LEVEL && stored < level;
             if (!canWrite) {
                 return;
             }
-            this.setCachedUpdatingLight(x, y, z, level);
+            if (resident) {
+                this.runCache.setResidentUpdatingLight(this.storage, x, y, z, level);
+            } else {
+                this.setCachedUpdatingLight(x, y, z, level);
+            }
         }
 
         int fromBlock = 0;
@@ -222,11 +232,15 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
             int toX = x + YALightMath.stepX(directionIndex);
             int toY = y + YALightMath.stepY(directionIndex);
             int toZ = z + YALightMath.stepZ(directionIndex);
-            int current = this.getEnabledCachedUpdatingLight(toX, toY, toZ);
+            int current = resident
+                    ? this.runCache.getEnabledResidentUpdatingLight(toX, toY, toZ)
+                    : this.getEnabledCachedUpdatingLight(toX, toY, toZ);
             if (current < 0 || current >= level - 1) {
                 continue;
             }
-            int toBlock = this.blocks.blockAt(toX, toY, toZ);
+            int toBlock = resident
+                    ? this.blocks.residentBlockAt(toX, toY, toZ)
+                    : this.blocks.blockAt(toX, toY, toZ);
             if (this.blocks.isFull(toBlock)) {
                 continue;
             }
@@ -236,14 +250,20 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
                 continue;
             }
             if (!fromBlockLoaded) {
-                fromBlock = this.blocks.blockAt(x, y, z);
+                fromBlock = resident
+                        ? this.blocks.residentBlockAt(x, y, z)
+                        : this.blocks.blockAt(x, y, z);
                 fromBlockLoaded = true;
             }
             if ((fromBlock | toBlock) != 0 && this.blocks.shapeOccludes(
                     x, y, z, fromBlock, toX, toY, toZ, toBlock, YALightMath.direction(directionIndex))) {
                 continue;
             }
-            this.setCachedUpdatingLight(toX, toY, toZ, target);
+            if (resident) {
+                this.runCache.setResidentUpdatingLight(this.storage, toX, toY, toZ, target);
+            } else {
+                this.setCachedUpdatingLight(toX, toY, toZ, target);
+            }
             if (target > 1) {
                 this.enqueueIncrease(
                         BlockPos.asLong(toX, toY, toZ), target, YALightMath.withoutOpposite(directionIndex), 0L);

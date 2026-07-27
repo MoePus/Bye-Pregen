@@ -70,6 +70,15 @@ final class YALightMath {
         };
     }
 
+    static boolean isSectionInterior(int x, int y, int z) {
+        int localX = x & 15;
+        int localY = y & 15;
+        int localZ = z & 15;
+        return localX > 0 && localX < 15
+                && localY > 0 && localY < 15
+                && localZ > 0 && localZ < 15;
+    }
+
     static Direction direction(int directionIndex) {
         return switch (directionIndex) {
             case 0 -> Direction.DOWN;

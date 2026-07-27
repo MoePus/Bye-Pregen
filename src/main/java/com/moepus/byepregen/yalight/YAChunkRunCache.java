@@ -27,7 +27,12 @@ public class YAChunkRunCache {
     private int chunkCenterZ = UNSET;
     private int chunkLoadedMask;
     private int lightDataLoadedMask;
-    private int chunkEnabledMask;
+
+    private YAChunkLightData residentLightData;
+    private BlockStateRawIdAccess residentBlockAccess;
+    private int residentChunkIndex;
+    private int residentStorageIndex = -1;
+    private boolean residentBlockResolved;
 
     void clear() {
         this.pinnedOwners.clear();
@@ -37,7 +42,7 @@ public class YAChunkRunCache {
         this.chunkCenterZ = UNSET;
         this.chunkLoadedMask = 0;
         this.lightDataLoadedMask = 0;
-        this.chunkEnabledMask = 0;
+        this.clearResidentSection();
     }
 
     LightChunk chunk(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
@@ -60,7 +65,6 @@ public class YAChunkRunCache {
             return null;
         }
         data.setLightEnabled(true);
-        this.chunkEnabledMask |= 1 << index;
         return this.chunks[index];
     }
 
@@ -74,7 +78,6 @@ public class YAChunkRunCache {
             return false;
         }
         data.setLightEnabled(true);
-        this.chunkEnabledMask |= 1 << index;
         return true;
     }
 
@@ -125,8 +128,8 @@ public class YAChunkRunCache {
 
     LightChunk enabledChunk(YALightStorage storage, int chunkX, int chunkZ) {
         int index = this.chunkIndex(storage.chunkGetter(), chunkX, chunkZ);
-        this.existingLightData(storage, index);
-        return (this.chunkEnabledMask & (1 << index)) == 0 ? null : this.chunks[index];
+        YAChunkLightData data = this.existingLightData(storage, index);
+        return data == null || !data.lightEnabled() ? null : this.chunks[index];
     }
 
     boolean lightEnabled(YALightStorage storage, int chunkX, int chunkZ) {
@@ -136,6 +139,65 @@ public class YAChunkRunCache {
     int getRawId(LightChunkGetter chunkGetter, int x, int y, int z) {
         int index = this.chunkIndex(chunkGetter, x >> 4, z >> 4);
         return rawIdAt(this.chunks[index], x, y, z);
+    }
+
+    void prepareResidentSection(YALightStorage storage, int x, int y, int z) {
+        int index = this.chunkIndex(storage.chunkGetter(), x >> 4, z >> 4);
+        this.residentLightData = this.existingLightData(storage, index);
+        this.residentBlockAccess = null;
+        this.residentChunkIndex = index;
+        int storageIndex = storage.sectionIndex(y >> 4);
+        this.residentStorageIndex = storageIndex >= 0 && storageIndex < storage.lightSectionCount()
+                ? storageIndex
+                : -1;
+        this.residentBlockResolved = false;
+    }
+
+    int getResidentUpdatingLight(int x, int y, int z) {
+        YAChunkLightData data = this.residentLightData;
+        int index = this.residentStorageIndex;
+        if (data == null || index < 0) {
+            return 0;
+        }
+        YANibbleArray nibble = data.getUpdatingSectionByIndex(index);
+        return nibble == null ? 0 : nibble.getUpdating(x, y, z);
+    }
+
+    int getEnabledResidentUpdatingLight(int x, int y, int z) {
+        YAChunkLightData data = this.residentLightData;
+        if (data == null || !data.lightEnabled()) {
+            return -1;
+        }
+        int index = this.residentStorageIndex;
+        if (index < 0) {
+            return -1;
+        }
+        YANibbleArray nibble = data.getUpdatingSectionByIndex(index);
+        return nibble == null ? 0 : nibble.getUpdating(x, y, z);
+    }
+
+    void setResidentUpdatingLight(YALightStorage storage, int x, int y, int z, int value) {
+        YAChunkLightData data = this.residentLightData;
+        if (data == null) {
+            data = this.writableLightData(storage, this.residentChunkIndex);
+            this.residentLightData = data;
+        }
+        int index = this.residentStorageIndex;
+        if (data != null && index >= 0) {
+            YANibbleArray nibble = data.getOrCreateUpdatingSectionByIndex(index);
+            if (nibble.setUpdatingAndGetDirtyTransition(YANibbleArray.index(x, y, z), value)) {
+                storage.markDirty(data, index);
+            }
+        }
+    }
+
+    int getResidentRawId(int x, int y, int z) {
+        if (!this.residentBlockResolved) {
+            this.residentBlockAccess = blockAccessAt(this.chunks[this.residentChunkIndex], y >> 4);
+            this.residentBlockResolved = true;
+        }
+        BlockStateRawIdAccess access = this.residentBlockAccess;
+        return access == null ? -1 : access.getRawId(x & 15, y & 15, z & 15);
     }
 
     private int chunkIndex(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
@@ -174,7 +236,7 @@ public class YAChunkRunCache {
         this.chunkCenterZ = centerZ;
         this.chunkLoadedMask = 0;
         this.lightDataLoadedMask = 0;
-        this.chunkEnabledMask = 0;
+        this.clearResidentSection();
     }
 
     private void loadChunkSlot(LightChunkGetter chunkGetter, int index, int dx, int dz) {
@@ -196,7 +258,6 @@ public class YAChunkRunCache {
             YAChunkLightData data = storage.existingData(this.chunks[index]);
             this.lightData[index] = data;
             this.lightDataLoadedMask |= bit;
-            this.chunkEnabledMask = setMaskBit(this.chunkEnabledMask, index, data != null && data.lightEnabled());
         }
         return this.lightData[index];
     }
@@ -208,25 +269,32 @@ public class YAChunkRunCache {
             data = storage.data(this.chunks[index]);
             this.lightData[index] = data;
             this.lightDataLoadedMask |= bit;
-            this.chunkEnabledMask = setMaskBit(this.chunkEnabledMask, index, data != null && data.lightEnabled());
         }
         return data;
     }
 
-    public static int rawIdAt(ChunkAccess chunk, int x, int y, int z) {
+    private static BlockStateRawIdAccess blockAccessAt(ChunkAccess chunk, int sectionY) {
         if (chunk == null) {
-            return -1;
+            return null;
         }
-        int sectionIndex = chunk.getSectionIndexFromSectionY(y >> 4);
+        int sectionIndex = chunk.getSectionIndexFromSectionY(sectionY);
         LevelChunkSection[] sections = chunk.getSections();
-        if (sectionIndex < 0 || sectionIndex >= sections.length) {
-            return -1;
+        if (sectionIndex < 0 || sectionIndex >= sections.length || sections[sectionIndex] == null) {
+            return null;
         }
-        LevelChunkSection section = sections[sectionIndex];
-        if (section == null) {
-            return -1;
-        }
-        if (!(section.getStates() instanceof BlockStateRawIdAccess access)) {
+        return sections[sectionIndex].getStates() instanceof BlockStateRawIdAccess access ? access : null;
+    }
+
+    private void clearResidentSection() {
+        this.residentLightData = null;
+        this.residentBlockAccess = null;
+        this.residentStorageIndex = -1;
+        this.residentBlockResolved = false;
+    }
+
+    public static int rawIdAt(ChunkAccess chunk, int x, int y, int z) {
+        BlockStateRawIdAccess access = blockAccessAt(chunk, y >> 4);
+        if (access == null) {
             return -1;
         }
         return access.getRawId(x & 15, y & 15, z & 15);
@@ -234,11 +302,6 @@ public class YAChunkRunCache {
 
     private static int chunkWindowIndex(int dx, int dz) {
         return (dz + 1) * 3 + dx + 1;
-    }
-
-    private static int setMaskBit(int mask, int index, boolean value) {
-        int bit = 1 << index;
-        return value ? mask | bit : mask & ~bit;
     }
 
 }
