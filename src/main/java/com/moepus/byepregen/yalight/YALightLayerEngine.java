@@ -46,8 +46,11 @@ interface YALightLayerEngine extends LayerLightEventListener {
         try {
             YALightQueue.ChunkTask task;
             while ((task = this.lightQueue().poll()) != null) {
-                work += this.runTask(task);
-                this.lightQueue().recycle(task);
+                try {
+                    work += this.runTask(task);
+                } finally {
+                    this.lightQueue().recycle(task);
+                }
             }
             // Removal is processed before additions so stale light is cleared before sources re-add it.
             work += this.propagateDecreases();
@@ -61,12 +64,11 @@ interface YALightLayerEngine extends LayerLightEventListener {
     }
 
     private int runTask(YALightQueue.ChunkTask task) {
-        int work = 0;
-        if (task.hasSource()) {
-            boolean fresh = task.freshSource && !task.normalSource && task.checks.isEmpty();
+        int work = this.runFreshSources(task);
+        if (task.hasPositionSource()) {
             ChunkAccess sourceChunk = this.runCache().enableChunk(this.storage(), task.chunkX(), task.chunkZ());
             if (sourceChunk != null) {
-                this.propagateLightSourcesInternal(sourceChunk, fresh);
+                this.propagateLightSourcesInternal(sourceChunk, false);
                 ++work;
             }
         }
@@ -75,6 +77,36 @@ interface YALightLayerEngine extends LayerLightEventListener {
             ++work;
         }
         return work;
+    }
+
+    private int runFreshSources(YALightQueue.ChunkTask task) {
+        YAFreshLightRequest first = task.firstFreshOwner();
+        if (first == null) {
+            return 0;
+        }
+        if (task.hasFreshOwnerConflict() || this.cannotUseFreshOwner(task, first)) {
+            task.failFreshSources(this.lightLayer());
+            return 0;
+        }
+        int work = 0;
+        for (YAFreshLightRequest request = first;
+                request != null;
+                request = request.nextQueued(this.lightLayer())) {
+            if (!this.runCache().enableOwnedChunk(this.storage(), request.owner())) {
+                request.markFailed();
+                continue;
+            }
+            this.propagateLightSourcesInternal(request.owner(), true);
+            request.markExecuted(this.lightLayer());
+            ++work;
+        }
+        return work;
+    }
+
+    private boolean cannotUseFreshOwner(YALightQueue.ChunkTask task, YAFreshLightRequest request) {
+        ChunkAccess owner = request.owner();
+        ChunkAccess current = this.storage().chunkAccess(owner.getPos().x, owner.getPos().z);
+        return current == null ? task.hasPositionWork() : !request.matchesOwner(current);
     }
 
     @Override
@@ -112,11 +144,11 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     @Override
     default void propagateLightSources(ChunkPos pos) {
-        this.lightQueue().queueSource(pos, false);
+        this.lightQueue().queueSource(pos);
     }
 
-    default void propagateFreshLightSources(ChunkPos pos) {
-        this.lightQueue().queueSource(pos, true);
+    default void propagateFreshLightSources(YAFreshLightRequest request) {
+        this.lightQueue().queueFreshSource(request);
     }
 
     @Override

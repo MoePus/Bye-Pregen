@@ -1,7 +1,9 @@
 package com.moepus.byepregen.yalight;
 
 import com.moepus.byepregen.PaletteContainer.BlockStateRawIdAccess;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -13,9 +15,13 @@ import java.util.Arrays;
 
 public class YAChunkRunCache {
     private static final int UNSET = Integer.MIN_VALUE;
+    private static final int INITIAL_PINNED_OWNER_CAPACITY = 8;
 
     private final ChunkAccess[] chunks = new ChunkAccess[9];
     private final YAChunkLightData[] lightData = new YAChunkLightData[9];
+    // Source scans enqueue increases that run later, so their center owner stays fixed for the full layer run.
+    private final Long2ObjectOpenHashMap<ChunkAccess> pinnedOwners =
+            new Long2ObjectOpenHashMap<>(INITIAL_PINNED_OWNER_CAPACITY);
 
     private int chunkCenterX = UNSET;
     private int chunkCenterZ = UNSET;
@@ -24,6 +30,7 @@ public class YAChunkRunCache {
     private int chunkEnabledMask;
 
     void clear() {
+        this.pinnedOwners.clear();
         Arrays.fill(this.chunks, null);
         Arrays.fill(this.lightData, null);
         this.chunkCenterX = UNSET;
@@ -55,6 +62,20 @@ public class YAChunkRunCache {
         data.setLightEnabled(true);
         this.chunkEnabledMask |= 1 << index;
         return this.chunks[index];
+    }
+
+    boolean enableOwnedChunk(YALightStorage storage, ChunkAccess owner) {
+        if (!this.pinOwner(owner)) {
+            return false;
+        }
+        int index = this.chunkIndex(storage.chunkGetter(), owner.getPos().x, owner.getPos().z);
+        YAChunkLightData data = this.writableLightData(storage, index);
+        if (data == null) {
+            return false;
+        }
+        data.setLightEnabled(true);
+        this.chunkEnabledMask |= 1 << index;
+        return true;
     }
 
     int getUpdatingLight(YALightStorage storage, int x, int y, int z) {
@@ -132,6 +153,21 @@ public class YAChunkRunCache {
         if (this.chunkCenterX == centerX && this.chunkCenterZ == centerZ) {
             return;
         }
+        this.resetChunkWindow(centerX, centerZ);
+    }
+
+    private boolean pinOwner(ChunkAccess owner) {
+        long chunkKey = owner.getPos().toLong();
+        ChunkAccess existing = this.pinnedOwners.get(chunkKey);
+        if (existing != null) {
+            return YAFreshLightRequest.sameOwner(existing, owner);
+        }
+        this.pinnedOwners.put(chunkKey, owner);
+        this.resetChunkWindow(owner.getPos().x, owner.getPos().z);
+        return true;
+    }
+
+    private void resetChunkWindow(int centerX, int centerZ) {
         Arrays.fill(this.chunks, null);
         Arrays.fill(this.lightData, null);
         this.chunkCenterX = centerX;
@@ -146,8 +182,11 @@ public class YAChunkRunCache {
         if ((this.chunkLoadedMask & bit) != 0) {
             return;
         }
-        LightChunk chunk = chunkGetter.getChunkForLighting(this.chunkCenterX + dx, this.chunkCenterZ + dz);
-        this.chunks[index] = chunk == null ? null : (ChunkAccess) chunk;
+        int chunkX = this.chunkCenterX + dx;
+        int chunkZ = this.chunkCenterZ + dz;
+        ChunkAccess pinned = this.pinnedOwners.get(ChunkPos.asLong(chunkX, chunkZ));
+        LightChunk chunk = pinned == null ? chunkGetter.getChunkForLighting(chunkX, chunkZ) : pinned;
+        this.chunks[index] = chunk == null ? null : (ChunkAccess)chunk;
         this.chunkLoadedMask |= bit;
     }
 

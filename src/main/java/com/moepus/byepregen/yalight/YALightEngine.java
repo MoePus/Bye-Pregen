@@ -7,6 +7,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LightChunkGetter;
+import net.minecraft.world.level.chunk.LightChunk;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.lighting.LayerLightSectionStorage;
 
@@ -135,13 +136,23 @@ public final class YALightEngine {
         }
     }
 
-    public void propagateFreshLightSources(ChunkPos pos) {
+    public YAFreshLightRequest createFreshLightRequest(ChunkAccess chunk) {
+        return YAFreshLightRequest.create(chunk, this.blockEngine != null, this.skyEngine != null);
+    }
+
+    public void propagateFreshLightSources(YAFreshLightRequest request) {
         if (this.blockEngine != null) {
-            this.blockEngine.propagateLightSources(pos);
+            this.blockEngine.propagateFreshLightSources(request);
         }
         if (this.skyEngine != null) {
-            this.skyEngine.propagateFreshLightSources(pos);
+            this.skyEngine.propagateFreshLightSources(request);
         }
+    }
+
+    public boolean isCurrentOwner(YAFreshLightRequest request) {
+        ChunkPos pos = request.owner().getPos();
+        LightChunk current = this.chunkGetter.getChunkForLighting(pos.x, pos.z);
+        return current != null && request.matchesOwner((ChunkAccess)current);
     }
 
     public void restoreSavedSkyLight(ChunkAccess chunk) {

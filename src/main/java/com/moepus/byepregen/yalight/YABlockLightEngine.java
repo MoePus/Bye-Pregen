@@ -19,7 +19,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     final YALightStorage storage;
     final YAChunkRunCache runCache = new YAChunkRunCache();
     final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-    private final YALightQueue lightQueue = new YALightQueue();
+    private final YALightQueue lightQueue = new YALightQueue(LightLayer.BLOCK);
     private final YADLongQueue decreaseQueue = new YADLongQueue();
     private final YADLongQueue increaseQueue = new YADLongQueue();
     private final YALightBlockAccess blocks;
@@ -186,10 +186,13 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     public void propagateLightSourcesInternal(ChunkAccess chunk, boolean fresh) {
         chunk.findBlockLightSources((pos, state) -> {
             int emitted = state.getLightEmission(this.levelReader, pos);
-            if (emitted <= 0 || emitted <= this.getCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ())) {
+            if (emitted <= 0) {
                 return;
             }
-            this.setCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ(), emitted);
+            int current = this.getCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ());
+            if (current < emitted) {
+                this.setCachedUpdatingLight(pos.getX(), pos.getY(), pos.getZ(), emitted);
+            }
             this.enqueueIncrease(pos.asLong(), emitted, YALightMath.ALL_DIRECTIONS, 0L);
         });
     }

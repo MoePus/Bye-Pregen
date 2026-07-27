@@ -4,6 +4,7 @@ import com.moepus.byepregen.mixin.ChunkMapAccessor;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YALightEngine;
 import com.moepus.byepregen.yalight.YAImmediateChunkAccess;
+import com.moepus.byepregen.yalight.YAFreshLightRequest;
 import com.moepus.byepregen.yalight.YAThreadedLightScheduler;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
@@ -297,10 +298,11 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Overwrite
     public CompletableFuture<ChunkAccess> lightChunk(ChunkAccess chunk, boolean isLighted) {
         ChunkPos chunkPos = chunk.getPos();
-        CompletableFuture<ChunkAccess> future = new CompletableFuture<>();
+        YALightEngine engine = this.byepregen$yaEngine();
+        YAFreshLightRequest freshRequest = isLighted ? null : engine.createFreshLightRequest(chunk);
+        CompletableFuture<ChunkAccess> future = freshRequest == null ? new CompletableFuture<>() : freshRequest;
         chunk.setLightCorrect(false);
         Runnable prepare = Util.name(() -> {
-            YALightEngine engine = this.byepregen$yaEngine();
             engine.setEdgeCheckReady(chunk, false);
             LevelChunkSection[] sections = chunk.getSections();
             for (int i = 0; i < chunk.getSectionsCount(); ++i) {
@@ -310,8 +312,8 @@ public abstract class ThreadedLevelLightEngineYAMixin {
                 }
             }
             engine.setLightEnabled(chunk, true);
-            if (!isLighted) {
-                engine.propagateFreshLightSources(chunkPos);
+            if (freshRequest != null) {
+                engine.propagateFreshLightSources(freshRequest);
             } else {
                 // Light saves omit all-15 sky sections above the surface.
                 engine.restoreSavedSkyLight(chunk);
@@ -320,8 +322,12 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             }
         }, () -> "YA lightChunk " + chunkPos + " " + isLighted);
         Runnable complete = () -> {
-            this.byepregen$yaEngine().setEdgeCheckReady(chunk, true);
-            chunk.setLightCorrect(true);
+            boolean freshSucceeded = !(future instanceof YAFreshLightRequest request)
+                    || request.succeeded() && engine.isCurrentOwner(request);
+            if (freshSucceeded) {
+                engine.setEdgeCheckReady(chunk, true);
+                chunk.setLightCorrect(true);
+            }
             future.complete(chunk);
         };
         this.byepregen$addLightChunkTask(chunkPos.x, chunkPos.z, prepare, complete);

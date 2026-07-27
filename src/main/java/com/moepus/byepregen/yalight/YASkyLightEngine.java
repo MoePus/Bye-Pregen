@@ -21,7 +21,7 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
     final YALightBlockAccess blocks;
     final YASkyOwnerTransfers ownerTransfers;
     final YASkySourcePropagator sources;
-    private final YALightQueue lightQueue = new YALightQueue();
+    private final YALightQueue lightQueue = new YALightQueue(LightLayer.SKY);
     private final YADLongQueue decreaseQueue = new YADLongQueue();
     private final YADLongQueue increaseQueue = new YADLongQueue();
 
@@ -98,9 +98,9 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
     }
 
     @Override
-    public void propagateFreshLightSources(ChunkPos pos) {
-        this.ownerTransfers.register(pos.toLong());
-        YALightLayerEngine.super.propagateFreshLightSources(pos);
+    public void propagateFreshLightSources(YAFreshLightRequest request) {
+        this.ownerTransfers.register(request.owner().getPos().toLong());
+        YALightLayerEngine.super.propagateFreshLightSources(request);
     }
 
     @Override
