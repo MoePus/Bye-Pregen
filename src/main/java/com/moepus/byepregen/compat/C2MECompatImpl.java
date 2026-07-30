@@ -23,21 +23,6 @@ final class C2MECompatImpl {
     private C2MECompatImpl() {
     }
 
-    static void managedBlockWithSyncLoad(
-            ServerChunkCache cache,
-            ChunkMap chunkMap,
-            CompletableFuture<?> future,
-            int chunkX,
-            int chunkZ) {
-        SchedulingManager schedulingManager = ((IVanillaChunkManager) chunkMap).c2me$getSchedulingManager();
-        schedulingManager.setCurrentSyncLoad(new ChunkPos(chunkX, chunkZ));
-        try {
-            ServerChunkCacheAccess.mainThreadProcessor(cache).managedBlock(future::isDone);
-        } finally {
-            schedulingManager.setCurrentSyncLoad(null);
-        }
-    }
-
     static Long2ByteMap tickingChunksForNaturalSpawning(ChunkMap chunkMap) {
         return ((ISimulationDistanceLevelPropagator)
                 ((IChunkLevelManager) chunkMap.getDistanceManager()).getSimulationDistanceLevelPropagator())

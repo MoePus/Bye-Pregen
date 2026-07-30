@@ -10,10 +10,6 @@ import java.util.List;
 public final class FastTickChunksMixinAdjuster implements MixinAnnotationAdjuster {
     private static final String SERVER_CHUNK_CACHE = "net.minecraft.server.level.ServerChunkCache";
 
-    private static final String C2ME_BASE_INSTRUMENTATION =
-            "com.ishland.c2me.base.mixin.instrumentation.MixinServerChunkManager";
-    private static final String C2ME_REWRITES_CHUNK_SYSTEM =
-            "com.ishland.c2me.rewrites.chunksystem.mixin.MixinServerChunkManager";
     private static final String C2ME_NOTICKVD =
             "com.ishland.c2me.notickvd.mixin.MixinServerChunkManager";
     private static final String C2ME_MID_TICK_CHUNK_TASKS =
@@ -24,8 +20,6 @@ public final class FastTickChunksMixinAdjuster implements MixinAnnotationAdjuste
     private static final String LITHIUM_SPAWNING_CHUNK_CACHE_MIXIN =
             "net.caffeinemc.mods.lithium.mixin.minimal_nonvanilla.spawning.ServerChunkCacheMixin";
 
-    private static final String WRAP_METHOD =
-            "Lcom/llamalad7/mixinextras/injector/wrapmethod/WrapMethod;";
     private static final String WRAP_OPERATION =
             "Lcom/llamalad7/mixinextras/injector/wrapoperation/WrapOperation;";
     private static final String INJECT =
@@ -34,9 +28,6 @@ public final class FastTickChunksMixinAdjuster implements MixinAnnotationAdjuste
             "Lorg/spongepowered/asm/mixin/injection/Redirect;";
 
     private static final List<DisabledHandler> DISABLED_HANDLERS = List.of(
-            new DisabledHandler(C2ME_BASE_INSTRUMENTATION, "instrumentGetChunk", WRAP_METHOD),
-            new DisabledHandler(C2ME_BASE_INSTRUMENTATION, "instrumentAwaitChunk", WRAP_OPERATION),
-            new DisabledHandler(C2ME_REWRITES_CHUNK_SYSTEM, "shortcutGetChunk", INJECT),
             new DisabledHandler(C2ME_NOTICKVD, "redirectIterateEntities", WRAP_OPERATION),
             new DisabledHandler(C2ME_NOTICKVD, "redirectIterateEntities", REDIRECT),
             new DisabledHandler(C2ME_NOTICKVD, "broadcastBorderChunks", WRAP_OPERATION),

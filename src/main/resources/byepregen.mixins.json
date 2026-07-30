@@ -50,7 +50,6 @@
     "accessor.PersistentEntitySectionManagerAccessor",
     "accessor.RegionFileStorageAccessor",
     "accessor.ServerLevelEntityManagerAccessor",
-    "accessor.ServerChunkCacheAccessor",
     "accessor.StructurePieceSaveAccessor",
     "accessor.CompoundTagAccessor",
     "ServerChunkCacheGetChunkMixin",

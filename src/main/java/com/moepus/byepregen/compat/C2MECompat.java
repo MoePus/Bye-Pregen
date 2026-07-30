@@ -21,15 +21,6 @@ public final class C2MECompat {
         return C2ME_INSTALLED;
     }
 
-    public static void managedBlockWithSyncLoad(
-            ServerChunkCache cache,
-            ChunkMap chunkMap,
-            CompletableFuture<?> future,
-            int chunkX,
-            int chunkZ) {
-        C2MECompatImpl.managedBlockWithSyncLoad(cache, chunkMap, future, chunkX, chunkZ);
-    }
-
     public static Long2ByteMap tickingChunksForNaturalSpawning(ChunkMap chunkMap) {
         return C2MECompatImpl.tickingChunksForNaturalSpawning(chunkMap);
     }
