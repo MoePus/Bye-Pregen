@@ -1,0 +1,33 @@
+name: Issue Report
+description: Report a problem or submit other feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your feedback! Describe the issue in any format you prefer.
+
+        Before submitting, upload `latest.log` or `debug.log` to [mclo.gs](https://mclo.gs/) and paste the generated URL below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue description
+      description: Describe the issue, reproduction steps, or any other relevant context in any format you prefer.
+      placeholder: Describe your issue here (any format is fine).
+
+  - type: input
+    id: log-url
+    attributes:
+      label: Log URL
+      description: This must be the mclo.gs link generated after uploading latest.log or debug.log.
+      placeholder: https://mclo.gs/...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Submission confirmation
+      options:
+        - label: I uploaded latest.log or debug.log to mclo.gs and pasted the corresponding URL above.
+          required: true
