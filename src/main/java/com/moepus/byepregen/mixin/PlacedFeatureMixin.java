@@ -31,7 +31,7 @@ public abstract class PlacedFeatureMixin {
      * @reason Avoid stream, lambda, iterator, MutableBoolean, and intermediate BlockPos allocation in feature placement.
      */
     @Overwrite
-    private boolean placeWithContext(PlacementContext context, RandomSource random, BlockPos pos) {
+    public boolean placeWithContext(PlacementContext context, RandomSource random, BlockPos pos) {
         FastPlacementContext fastContext = FastPlacementContext.acquire(context, random, this.feature.value(), this.placement);
         try {
             return fastContext.apply(0, pos.getX(), pos.getY(), pos.getZ());
