@@ -16,7 +16,8 @@ def worldGenConfig = [
         dir    : file('run/test-worldgen'),
         radius : prop('byepregenTestWorldGenRadius', '700'),
         gcFree : prop('byepregenTestWorldGenGcFree', 'true'),
-        yaLight: prop('byepregenTestWorldGenYALight', 'true')
+        yaLight: prop('byepregenTestWorldGenYALight', 'true'),
+        datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
 ]
 worldGenConfig.label = prop('byepregenTestWorldGenLabel', "gc${worldGenConfig.gcFree}")
 worldGenConfig.jfr = file("${worldGenConfig.dir}/byepregen-worldgen-radius${sanitizeRunName(worldGenConfig.radius)}-${sanitizeRunName(worldGenConfig.label)}.jfr")
@@ -273,6 +274,12 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 gcFree    : worldGenConfig.gcFree,
                 clearWorld: true,
         ])
+        if (worldGenConfig.datapack != null) {
+            copy {
+                from file(worldGenConfig.datapack)
+                into file("${worldGenConfig.dir}/world/datapacks")
+            }
+        }
     }
 }
 

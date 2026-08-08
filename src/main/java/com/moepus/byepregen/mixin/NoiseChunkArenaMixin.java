@@ -1,19 +1,22 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
-import com.moepus.byepregen.worldgen.ArenaCellCacheAccess;
 import com.moepus.byepregen.worldgen.ArenaNoiseChunkAccess;
 import com.moepus.byepregen.worldgen.ArenaNoiseInterpolatorAccess;
+import com.moepus.byepregen.worldgen.C2meDfcColumnAdapter;
 import java.util.List;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Slice;
 
 @Mixin(NoiseChunk.class)
 public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
-    @Unique private static final double byepregen$PAGE_STEP_SCALE = 0.25D;
+    @Unique private static final double byepregen$PAGE_STEP_SCALE = 1.0D / Layout.PAGE_HEIGHT;
 
     @Shadow @Final private int cellCountY;
     @Shadow @Final private int cellNoiseMinY;
@@ -21,7 +24,6 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     @Shadow @Final private int cellWidth;
     @Shadow @Final private int cellHeight;
     @Shadow @Final private List<NoiseChunk.NoiseInterpolator> interpolators;
-    @Shadow @Final private List<?> cellCaches;
     @Shadow private boolean interpolating;
     @Shadow private int cellStartBlockX;
     @Shadow private int cellStartBlockY;
@@ -45,6 +47,57 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
 
     @Unique private NoiseChunk.NoiseInterpolator[] byepregen$arenaInterpolators;
     @Unique private double[][] byepregen$arenaXZBaseSteps;
+    @Unique private NoiseChunk.BlockStateFiller byepregen$aquiferMaterialRule;
+    @Unique private double[] byepregen$arenaDensityColumn;
+    @Unique private C2meDfcColumnAdapter byepregen$dfcColumnAdapter;
+    @Unique private double byepregen$densityCellLower;
+    @Unique private double byepregen$densityCellDifference;
+    @Unique private double byepregen$densityValue;
+    @Unique private double byepregen$densityPageLower;
+    @Unique private double byepregen$densityPageStep;
+
+    @ModifyArg(
+            method = "<init>",
+            slice = @Slice(
+                    from = @At(
+                            value = "INVOKE",
+                            target = "Lcom/google/common/collect/ImmutableList;builder()"
+                                    + "Lcom/google/common/collect/ImmutableList$Builder;"
+                    ),
+                    to = @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/world/level/levelgen/NoiseGeneratorSettings;oreVeinsEnabled()Z"
+                    )
+            ),
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lcom/google/common/collect/ImmutableList$Builder;add(Ljava/lang/Object;)"
+                            + "Lcom/google/common/collect/ImmutableList$Builder;"
+            ),
+            index = 0,
+            require = 0
+    )
+    private Object byepregen$captureAquiferMaterialRule(Object rule) {
+        this.byepregen$aquiferMaterialRule = rule instanceof NoiseChunk.BlockStateFiller candidate
+                && byepregen$isNoiseChunkLambda(candidate)
+                ? candidate
+                : null;
+        return rule;
+    }
+
+    @Unique
+    private static boolean byepregen$isNoiseChunkLambda(NoiseChunk.BlockStateFiller rule) {
+        Class<?> type = rule.getClass();
+        // The vanilla Aquifer filler is the only hidden lambda created by NoiseChunk
+        // at this add call. Replacements from another mixin have that mixin as nest host.
+        return type.isHidden() && type.isSynthetic() && type.getNestHost() == NoiseChunk.class;
+    }
+
+    @Unique
+    @Override
+    public NoiseChunk.BlockStateFiller byepregen$getAquiferMaterialRule() {
+        return this.byepregen$aquiferMaterialRule;
+    }
 
     @Unique
     @Override
@@ -52,8 +105,8 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
         if (this.interpolating) {
             throw new IllegalStateException("Starting interpolation twice");
         }
-        this.byepregen$allocateArenaState(inverseCellWidth);
         try {
+            this.byepregen$allocateArenaState(inverseCellWidth);
             this.initializeForFirstCellX();
         } catch (Throwable throwable) {
             try {
@@ -81,8 +134,23 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
         }
         this.byepregen$arenaInterpolators = arenaInterpolators;
         this.byepregen$arenaXZBaseSteps = arenaXZBaseSteps;
-        for (Object cellCache : this.cellCaches) {
-            ((ArenaCellCacheAccess) cellCache).byepregen$setArenaPassthrough(true);
+        this.byepregen$allocateColumnState();
+    }
+
+    @Unique
+    private void byepregen$allocateColumnState() {
+        int minY = this.cellNoiseMinY * this.cellHeight;
+        int maxY = (this.cellNoiseMinY + this.cellCountY) * this.cellHeight;
+        this.byepregen$dfcColumnAdapter = C2meDfcColumnAdapter.tryCreate(
+                this,
+                new C2meDfcColumnAdapter.ColumnBounds(minY, maxY, this.cellHeight),
+                new C2meDfcColumnAdapter.InterpolationSources(
+                        this.byepregen$arenaInterpolators,
+                        this.byepregen$arenaXZBaseSteps
+                )
+        );
+        if (this.byepregen$dfcColumnAdapter != null) {
+            this.byepregen$arenaDensityColumn = this.byepregen$dfcColumnAdapter.output();
         }
     }
 
@@ -117,7 +185,29 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
 
     @Unique
     @Override
+    public boolean byepregen$prepareArenaDensityColumn(int blockX, int blockZ) {
+        if (this.byepregen$dfcColumnAdapter == null) {
+            return false;
+        }
+        this.byepregen$dfcColumnAdapter.evaluate(blockX, blockZ, this.inCellZ);
+        return true;
+    }
+
+    @Unique
+    @Override
+    public double byepregen$getArenaDensity(int blockY) {
+        int expectedY = this.cellStartBlockY + this.inCellY;
+        if (blockY != expectedY) {
+            throw new IllegalArgumentException("Unexpected Arena density Y: " + blockY + " != " + expectedY);
+        }
+        return this.byepregen$densityValue;
+    }
+
+    @Unique
+    @Override
     public void byepregen$selectArenaColumnCellY(int cellY) {
+        // evalColumn produces the same cell boundary samples as vanilla. Block values
+        // are still generated by the existing top-to-bottom cell/page interpolation.
         this.cellStartBlockY = (this.cellNoiseMinY + cellY) * this.cellHeight;
         this.inCellY = this.cellHeight;
         for (int i = 0; i < this.byepregen$arenaInterpolators.length; ++i) {
@@ -128,11 +218,20 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
             interpolator.valueXZ01 = upper - lower;
             interpolator.value = upper;
         }
+        if (this.byepregen$arenaDensityColumn != null) {
+            double lower = this.byepregen$arenaDensityColumn[cellY];
+            double upper = this.byepregen$arenaDensityColumn[cellY + 1];
+            this.byepregen$densityCellLower = lower;
+            this.byepregen$densityCellDifference = upper - lower;
+            this.byepregen$densityValue = upper;
+        }
     }
 
     @Unique
     @Override
     public void byepregen$startArenaPage() {
+        // Arena pages are traversed from high Y to low Y. Keep the subtraction-based
+        // step and the four explicit transitions to match the existing rounding order.
         --this.inCellY;
         ++this.interpolationCounter;
         int pageStart = this.inCellY - (Layout.PAGE_HEIGHT - 1);
@@ -148,6 +247,15 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
             interpolator.valueZ1 = pageStep;
             interpolator.value += pageStep;
         }
+        if (this.byepregen$arenaDensityColumn != null) {
+            double pageLower = bottomPage
+                    ? this.byepregen$densityCellLower
+                    : this.byepregen$densityCellLower + lowerDelta * this.byepregen$densityCellDifference;
+            double pageStep = (pageLower - this.byepregen$densityValue) * byepregen$PAGE_STEP_SCALE;
+            this.byepregen$densityPageLower = pageLower;
+            this.byepregen$densityPageStep = pageStep;
+            this.byepregen$densityValue += pageStep;
+        }
     }
 
     @Unique
@@ -157,6 +265,9 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
         ++this.interpolationCounter;
         for (NoiseChunk.NoiseInterpolator interpolator : this.byepregen$arenaInterpolators) {
             interpolator.value += interpolator.valueZ1;
+        }
+        if (this.byepregen$arenaDensityColumn != null) {
+            this.byepregen$densityValue += this.byepregen$densityPageStep;
         }
     }
 
@@ -168,6 +279,9 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
         for (NoiseChunk.NoiseInterpolator interpolator : this.byepregen$arenaInterpolators) {
             interpolator.value = interpolator.valueZ0 - interpolator.valueZ1;
         }
+        if (this.byepregen$arenaDensityColumn != null) {
+            this.byepregen$densityValue = this.byepregen$densityPageLower - this.byepregen$densityPageStep;
+        }
     }
 
     @Unique
@@ -177,6 +291,9 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
         ++this.interpolationCounter;
         for (NoiseChunk.NoiseInterpolator interpolator : this.byepregen$arenaInterpolators) {
             interpolator.value = interpolator.valueZ0;
+        }
+        if (this.byepregen$arenaDensityColumn != null) {
+            this.byepregen$densityValue = this.byepregen$densityPageLower;
         }
     }
 
@@ -195,10 +312,9 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     @Unique
     @Override
     public void byepregen$releaseArenaInterpolation() {
-        for (Object cellCache : this.cellCaches) {
-            ((ArenaCellCacheAccess) cellCache).byepregen$setArenaPassthrough(false);
-        }
         this.byepregen$arenaInterpolators = null;
         this.byepregen$arenaXZBaseSteps = null;
+        this.byepregen$arenaDensityColumn = null;
+        this.byepregen$dfcColumnAdapter = null;
     }
 }

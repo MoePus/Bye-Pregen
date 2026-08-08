@@ -77,6 +77,13 @@ ordering = "NONE"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
+modId = "c2me"
+type = "optional"
+versionRange = "[0.4.0-alpha.0.116,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
 modId = "noisiumed"
 type = "incompatible"
 reason = "Please use ZFastNoise instead"

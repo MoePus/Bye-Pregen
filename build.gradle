@@ -53,6 +53,23 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 apply from: 'gradle/byepregen-test-runs.gradle'
 
+def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
+        .map(Integer::parseInt)
+        .orElse(21)
+def runJavaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
+}
+afterEvaluate {
+    tasks.named('runTestWorldGen', JavaExec) {
+        javaLauncher.set(runJavaLauncher)
+    }
+}
+tasks.withType(JavaExec).matching { it.name != 'runTestWorldGen' }.configureEach {
+    javaLauncher.convention(javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
+    })
+}
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
@@ -159,6 +176,7 @@ def sodiumDevRuntimeMod = tasks.register('sodiumDevRuntimeMod', Zip) {
 def mixinSquaredVersion = '0.3.7-beta.1'
 def mixinSquaredCommon = "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinSquaredVersion}"
 def mixinSquaredNeoForge = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinSquaredVersion}"
+def c2meExperimentJar = providers.gradleProperty('byepregen.c2meExperimentJar').orNull
 
 dependencies {
     implementation "curse.maven:zfastnoise-1460602:8294347"
@@ -170,10 +188,15 @@ dependencies {
     compileOnly files("libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar")
     compileOnly files("libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar")
     compileOnly files("libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar")
+    compileOnly files("libs/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar")
 //    additionalRuntimeClasspath "curse.maven:c2me-ocl-1563823:8436419"
     compileOnly "com.ibm.async:asyncutil:0.1.0"
     compileOnly files("libs/voxy-0.2.15-beta-3.jar")
-    runtimeOnly "curse.maven:c2me-533097:8480771"
+    if (c2meExperimentJar != null) {
+        runtimeOnly files(c2meExperimentJar)
+    } else {
+        runtimeOnly "curse.maven:c2me-533097:8480771"
+    }
     runtimeOnly "curse.maven:lithium-360438:7740400"
     runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"
     runtimeOnly files(sodiumDevRuntimeMod.flatMap { it.archiveFile }) {

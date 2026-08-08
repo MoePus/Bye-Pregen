@@ -100,6 +100,7 @@ public final class ArenaNoiseFiller {
         private ArenaBlockStatePalettedContainer currentContainer;
         private int currentSectionIndex;
         private int currentPage;
+        private boolean useDensityColumn;
 
         private FillState(NoiseChunk noiseChunk, Request request, TargetSections targets) {
             this.noiseChunk = noiseChunk;
@@ -113,7 +114,11 @@ public final class ArenaNoiseFiller {
             this.aquifer = noiseChunk.aquifer();
             this.aquiferSurfaceShortcut = (AquiferSurfaceShortcutAccess) noiseChunk;
             this.hasNoiseBasedAquifer = this.aquifer instanceof Aquifer.NoiseBasedAquifer;
-            this.materialEvaluator = ArenaMaterialEvaluator.create(this.noiseChunkAccess.byepregen$blockStateRule());
+            this.materialEvaluator = ArenaMaterialEvaluator.create(
+                    this.noiseChunkAccess.byepregen$blockStateRule(),
+                    this.aquifer,
+                    this.arenaNoiseChunk.byepregen$getAquiferMaterialRule()
+            );
             ChunkPos chunkPos = this.chunk.getPos();
             this.chunkStartX = chunkPos.getMinBlockX();
             this.chunkStartZ = chunkPos.getMinBlockZ();
@@ -179,6 +184,8 @@ public final class ArenaNoiseFiller {
 
         private void fillColumn(int blockX, int blockZ) {
             this.arenaNoiseChunk.byepregen$beginArenaColumn(blockZ);
+            this.useDensityColumn = this.materialEvaluator.supportsColumnDensity()
+                    && this.arenaNoiseChunk.byepregen$prepareArenaDensityColumn(blockX, blockZ);
             if (!this.hasNoiseBasedAquifer) {
                 this.fillColumnCells(blockX, blockZ);
                 return;
@@ -223,7 +230,12 @@ public final class ArenaNoiseFiller {
         }
 
         private void sampleBlock(int blockX, int blockY, int blockZ) {
-            BlockState state = this.materialEvaluator.calculate(this.noiseChunk);
+            BlockState state = this.useDensityColumn
+                    ? this.materialEvaluator.calculateColumn(
+                            this.noiseChunk,
+                            this.arenaNoiseChunk.byepregen$getArenaDensity(blockY)
+                    )
+                    : this.materialEvaluator.calculate(this.noiseChunk);
             if (state == null) {
                 state = this.request.defaultBlock();
             }

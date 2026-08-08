@@ -18,6 +18,8 @@ public abstract class NoiseInterpolatorArenaMixin implements ArenaNoiseInterpola
     @Unique
     @Override
     public void byepregen$prepareArenaXZ(int cellZ, double deltaX, double[] zBaseSteps) {
+        // Preserve vanilla's X-then-Z lerp order. Each Y boundary is stored as a Z
+        // base and step so all block columns can reuse the two current X slices.
         double[] slice00 = this.slice0[cellZ];
         double[] slice01 = this.slice0[cellZ + 1];
         double[] slice10 = this.slice1[cellZ];

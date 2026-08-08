@@ -1,22 +1,15 @@
 package com.moepus.byepregen.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.moepus.byepregen.worldgen.ArenaCellCacheAccess;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(targets = "net.minecraft.world.level.levelgen.NoiseChunk$CacheAllInCell", priority = 1200)
-public abstract class NoiseChunkCellCacheArenaMixin implements ArenaCellCacheAccess {
-    @Unique private boolean byepregen$arenaPassthrough;
-
-    @Unique
-    @Override
-    public void byepregen$setArenaPassthrough(boolean enabled) {
-        this.byepregen$arenaPassthrough = enabled;
-    }
-
+public abstract class NoiseChunkCellCacheArenaMixin {
+    // Arena never drives vanilla's fillingCell/arrayIndex lifecycle, and the dedicated
+    // column graph removes this wrapper too. One unconditional delegate path prevents
+    // either context from observing stale cell-cache entries.
     @ModifyExpressionValue(
             method = "compute",
             at = @At(
@@ -26,7 +19,7 @@ public abstract class NoiseChunkCellCacheArenaMixin implements ArenaCellCacheAcc
                     ordinal = 0
             )
     )
-    private NoiseChunk byepregen$useArenaPassthrough(NoiseChunk owner) {
-        return this.byepregen$arenaPassthrough ? null : owner;
+    private NoiseChunk byepregen$bypassCellCache(NoiseChunk owner) {
+        return null;
     }
 }
