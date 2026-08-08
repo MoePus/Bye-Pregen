@@ -7,6 +7,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.levelgen.Aquifer;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
@@ -29,6 +30,10 @@ public abstract class NoiseBasedChunkGeneratorArenaMixin {
     @Shadow
     @Final
     private Holder<NoiseGeneratorSettings> settings;
+
+    @Shadow
+    @Final
+    private Supplier<Aquifer.FluidPicker> globalFluidPicker;
 
     @Shadow
     protected abstract NoiseChunk createNoiseChunk(
@@ -61,11 +66,13 @@ public abstract class NoiseBasedChunkGeneratorArenaMixin {
                 .noiseSettings()
                 .clampToHeightAccessor(chunk.getHeightAccessorForGeneration());
         int cellHeight = noiseSettings.getCellHeight();
+        NoiseGeneratorSettings generatorSettings = this.settings.value();
         ArenaNoiseFiller.Request request = new ArenaNoiseFiller.Request(
                 chunk,
-                this.settings.value().defaultBlock(),
+                generatorSettings.defaultBlock(),
                 Math.floorDiv(noiseSettings.minY(), cellHeight),
-                Math.floorDiv(noiseSettings.height(), cellHeight)
+                Math.floorDiv(noiseSettings.height(), cellHeight),
+                this.byepregen$globalFluidUpperBound()
         );
         ArenaNoiseFiller.TargetSections targets = ArenaNoiseFiller.targetSections(request, cellHeight);
         return () -> {
@@ -81,5 +88,25 @@ public abstract class NoiseBasedChunkGeneratorArenaMixin {
             );
             return ArenaNoiseFiller.fill(noiseChunk, request, targets);
         };
+    }
+
+    private int byepregen$globalFluidUpperBound() {
+        Aquifer.FluidPicker fluidPicker = this.globalFluidPicker.get();
+        if (!byepregen$isVanillaFluidPicker(fluidPicker)) {
+            return Integer.MAX_VALUE;
+        }
+        Aquifer.FluidStatus lower = fluidPicker.computeFluid(0, Integer.MIN_VALUE, 0);
+        Aquifer.FluidStatus upper = fluidPicker.computeFluid(0, Integer.MAX_VALUE, 0);
+        return Math.max(
+                ((AquiferFluidStatusAccessor) (Object) lower).byepregen$getFluidLevel(),
+                ((AquiferFluidStatusAccessor) (Object) upper).byepregen$getFluidLevel()
+        );
+    }
+
+    private static boolean byepregen$isVanillaFluidPicker(Aquifer.FluidPicker fluidPicker) {
+        Class<?> type = fluidPicker.getClass();
+        return type.isHidden()
+                && type.isSynthetic()
+                && type.getNestHost() == NoiseBasedChunkGenerator.class;
     }
 }

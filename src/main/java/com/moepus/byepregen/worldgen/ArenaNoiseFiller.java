@@ -4,6 +4,7 @@ import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalette
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
 import com.moepus.byepregen.mixin.NoiseChunkAccessor;
 
+import java.util.Arrays;
 import java.util.Set;
 
 import net.minecraft.core.BlockPos;
@@ -18,6 +19,13 @@ import net.minecraft.world.level.levelgen.NoiseChunk;
 
 public final class ArenaNoiseFiller {
     private static final int CHUNK_WIDTH = 16;
+    private static final int AQUIFER_XZ_OFFSET = 5;
+    private static final int AQUIFER_XZ_SPACING = 16;
+    private static final int AQUIFER_HORIZONTAL_GRID_COUNT = 2;
+    private static final int QUART_SPACING = 4;
+    private static final int SURFACE_SAMPLES_PER_GRID_AXIS = 3;
+    private static final int SURFACE_SAMPLES_PER_AXIS = 6;
+    private static final int UNCOMPUTED_ENVELOPE = Integer.MIN_VALUE;
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
     private static final Set<Heightmap.Types> WORLDGEN_HEIGHTMAPS = Set.of(
             Heightmap.Types.OCEAN_FLOOR_WG,
@@ -55,7 +63,8 @@ public final class ArenaNoiseFiller {
             ChunkAccess chunk,
             BlockState defaultBlock,
             int minCellY,
-            int cellCountY
+            int cellCountY,
+            int globalFluidUpperBound
     ) {
     }
 
@@ -72,6 +81,8 @@ public final class ArenaNoiseFiller {
         private final ArenaBlockStatePalettedContainer[] containers;
         private final boolean[] touchedSections;
         private final Aquifer aquifer;
+        private final AquiferSurfaceShortcutAccess aquiferSurfaceShortcut;
+        private final boolean hasNoiseBasedAquifer;
         private final ArenaMaterialEvaluator materialEvaluator;
         private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
         private final int chunkStartX;
@@ -81,6 +92,11 @@ public final class ArenaNoiseFiller {
         private final double inverseCellWidth;
         private final int horizontalCellCount;
         private final int minBlockY;
+        private final int minAquiferGridX;
+        private final int minAquiferGridZ;
+        private final int[] aquiferSurfaceEnvelopes = new int[
+                AQUIFER_HORIZONTAL_GRID_COUNT * AQUIFER_HORIZONTAL_GRID_COUNT
+        ];
         private ArenaBlockStatePalettedContainer currentContainer;
         private int currentSectionIndex;
         private int currentPage;
@@ -95,10 +111,15 @@ public final class ArenaNoiseFiller {
             this.containers = arenaContainers(this.sections, targets);
             this.touchedSections = new boolean[this.sections.length];
             this.aquifer = noiseChunk.aquifer();
+            this.aquiferSurfaceShortcut = (AquiferSurfaceShortcutAccess) noiseChunk;
+            this.hasNoiseBasedAquifer = this.aquifer instanceof Aquifer.NoiseBasedAquifer;
             this.materialEvaluator = ArenaMaterialEvaluator.create(this.noiseChunkAccess.byepregen$blockStateRule());
             ChunkPos chunkPos = this.chunk.getPos();
             this.chunkStartX = chunkPos.getMinBlockX();
             this.chunkStartZ = chunkPos.getMinBlockZ();
+            this.minAquiferGridX = aquiferGrid(this.chunkStartX);
+            this.minAquiferGridZ = aquiferGrid(this.chunkStartZ);
+            Arrays.fill(this.aquiferSurfaceEnvelopes, UNCOMPUTED_ENVELOPE);
             this.cellWidth = this.noiseChunkAccess.byepregen$cellWidth();
             this.cellHeight = this.noiseChunkAccess.byepregen$cellHeight();
             this.horizontalCellCount = CHUNK_WIDTH / this.cellWidth;
@@ -158,6 +179,20 @@ public final class ArenaNoiseFiller {
 
         private void fillColumn(int blockX, int blockZ) {
             this.arenaNoiseChunk.byepregen$beginArenaColumn(blockZ);
+            if (!this.hasNoiseBasedAquifer) {
+                this.fillColumnCells(blockX, blockZ);
+                return;
+            }
+            int fluidUpperBound = this.aquiferFluidUpperBound(blockX, blockZ);
+            this.aquiferSurfaceShortcut.byepregen$beginAquiferSurfaceColumn(fluidUpperBound);
+            try {
+                this.fillColumnCells(blockX, blockZ);
+            } finally {
+                this.aquiferSurfaceShortcut.byepregen$endAquiferSurfaceColumn();
+            }
+        }
+
+        private void fillColumnCells(int blockX, int blockZ) {
             for (int cellY = this.request.cellCountY() - 1; cellY >= 0; --cellY) {
                 this.fillColumnCell(blockX, blockZ, cellY);
             }
@@ -207,6 +242,49 @@ public final class ArenaNoiseFiller {
                     pageLocalIndex,
                     ArenaBlockStatePalettedContainer.rawId(state)
             );
+        }
+
+        private int aquiferFluidUpperBound(int blockX, int blockZ) {
+            int gridXOffset = aquiferGrid(blockX) - this.minAquiferGridX;
+            int gridZOffset = aquiferGrid(blockZ) - this.minAquiferGridZ;
+            int index = gridXOffset * AQUIFER_HORIZONTAL_GRID_COUNT + gridZOffset;
+            int envelope = this.aquiferSurfaceEnvelopes[index];
+            if (envelope == UNCOMPUTED_ENVELOPE) {
+                envelope = this.computeAquiferSurfaceEnvelope(
+                        this.minAquiferGridX + gridXOffset,
+                        this.minAquiferGridZ + gridZOffset
+                );
+                this.aquiferSurfaceEnvelopes[index] = envelope;
+            }
+            return envelope;
+        }
+
+        private int computeAquiferSurfaceEnvelope(int gridX, int gridZ) {
+            int envelope = this.request.globalFluidUpperBound();
+            // Candidate centers use nextInt(10), then preliminarySurfaceLevel aligns to quart
+            // coordinates. Two neighboring aquifer grids therefore cover these 6x6 samples.
+            for (int xIndex = 0; xIndex < SURFACE_SAMPLES_PER_AXIS; ++xIndex) {
+                int sampleX = surfaceSampleCoordinate(gridX, xIndex);
+                for (int zIndex = 0; zIndex < SURFACE_SAMPLES_PER_AXIS; ++zIndex) {
+                    int sampleZ = surfaceSampleCoordinate(gridZ, zIndex);
+                    int surface = this.noiseChunk.preliminarySurfaceLevel(sampleX, sampleZ);
+                    if (surface == Integer.MAX_VALUE) {
+                        return Integer.MAX_VALUE;
+                    }
+                    envelope = Math.max(envelope, surface);
+                }
+            }
+            return envelope;
+        }
+
+        private static int aquiferGrid(int blockCoordinate) {
+            return Math.floorDiv(blockCoordinate - AQUIFER_XZ_OFFSET, AQUIFER_XZ_SPACING);
+        }
+
+        private static int surfaceSampleCoordinate(int gridCoordinate, int sampleIndex) {
+            int gridOffset = sampleIndex / SURFACE_SAMPLES_PER_GRID_AXIS;
+            int quartOffset = sampleIndex % SURFACE_SAMPLES_PER_GRID_AXIS;
+            return (gridCoordinate + gridOffset) * AQUIFER_XZ_SPACING + quartOffset * QUART_SPACING;
         }
 
         private void rollbackSections() {

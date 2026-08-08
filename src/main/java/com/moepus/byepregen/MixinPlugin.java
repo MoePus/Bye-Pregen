@@ -28,16 +28,22 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             MIXIN_PACKAGE + "accessor.RegionFileStorageAccessor";
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
+    private static final String AQUIFER_FLUID_STATUS_ACCESSOR =
+            MIXIN_PACKAGE + "AquiferFluidStatusAccessor";
     private static final String CHUNK_ACCESS_ARENA_MIXIN = MIXIN_PACKAGE + "ChunkAccessArenaMixin";
     private static final String CHUNK_SERIALIZER_ARENA_READ_MIXIN =
             MIXIN_PACKAGE + "ChunkSerializerArenaReadMixin";
     private static final String LEVEL_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "LevelChunkArenaMixin";
     private static final String NOISE_CHUNK_ACCESSOR = MIXIN_PACKAGE + "NoiseChunkAccessor";
+    private static final String NOISE_CHUNK_AQUIFER_SURFACE_MIXIN =
+            MIXIN_PACKAGE + "NoiseChunkAquiferSurfaceMixin";
     private static final String NOISE_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "NoiseChunkArenaMixin";
     private static final String NOISE_CELL_CACHE_ARENA_MIXIN =
             MIXIN_PACKAGE + "NoiseChunkCellCacheArenaMixin";
     private static final String NOISE_INTERPOLATOR_ARENA_MIXIN =
             MIXIN_PACKAGE + "NoiseInterpolatorArenaMixin";
+    private static final String NOISE_BASED_AQUIFER_SURFACE_MIXIN =
+            MIXIN_PACKAGE + "NoiseBasedAquiferSurfaceMixin";
     private static final String NOISE_GENERATOR_ARENA_MIXIN =
             MIXIN_PACKAGE + "NoiseBasedChunkGeneratorArenaMixin";
     private static final String FASTNOISE_OCL_ARENA_MIXIN =
@@ -58,13 +64,16 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             REGION_FILE_STORAGE_ACCESSOR
     );
     private static final Set<String> ARENA_MIXINS = Set.of(
+            AQUIFER_FLUID_STATUS_ACCESSOR,
             CHUNK_ACCESS_ARENA_MIXIN,
             CHUNK_SERIALIZER_ARENA_READ_MIXIN,
             LEVEL_CHUNK_ARENA_MIXIN,
             NOISE_CHUNK_ACCESSOR,
+            NOISE_CHUNK_AQUIFER_SURFACE_MIXIN,
             NOISE_CHUNK_ARENA_MIXIN,
             NOISE_CELL_CACHE_ARENA_MIXIN,
             NOISE_INTERPOLATOR_ARENA_MIXIN,
+            NOISE_BASED_AQUIFER_SURFACE_MIXIN,
             NOISE_GENERATOR_ARENA_MIXIN,
             FASTNOISE_OCL_ARENA_MIXIN,
             VOXY_ARENA_MIXIN
