@@ -13,12 +13,16 @@ def sanitizeRunName = { String value ->
 def jfrSettings = prop('byepregenJfrSettings', 'profile')
 
 def worldGenConfig = [
-        dir    : file('run/test-worldgen'),
+        dir    : file(prop('byepregenTestWorldGenDir', 'run/test-worldgen')),
         radius : prop('byepregenTestWorldGenRadius', '700'),
+        seed   : prop('byepregenTestWorldGenSeed', 'byepregen-test-worldgen'),
         gcFree : prop('byepregenTestWorldGenGcFree', 'true'),
         yaLight: prop('byepregenTestWorldGenYALight', 'true'),
         surfaceBiomeCache: prop('byepregenTestSurfaceBiomeCache', 'true'),
+        surfaceScalar: prop('byepregenTestSurfaceScalar', 'false'),
+        surfaceDifferential: prop('byepregenTestSurfaceDifferential', 'false'),
         noFeatures: prop('byepregenTestWorldGenNoFeatures', 'false'),
+        logCompilation: prop('byepregenTestLogCompilation', 'false').toBoolean(),
         surfaceBiomeProfile: prop('byepregenTestSurfaceBiomeProfile', 'false'),
         datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
 ]
@@ -26,6 +30,10 @@ worldGenConfig.label = prop('byepregenTestWorldGenLabel', "gc${worldGenConfig.gc
 worldGenConfig.jfr = file("${worldGenConfig.dir}/byepregen-worldgen-radius${sanitizeRunName(worldGenConfig.radius)}-${sanitizeRunName(worldGenConfig.label)}.jfr")
 worldGenConfig.jfrRepository = file("${worldGenConfig.dir}/jfr-repository")
 worldGenConfig.tmpDir = file("${worldGenConfig.dir}/tmp")
+worldGenConfig.compilationLog = file(prop(
+        'byepregenTestCompilationLog',
+        "${worldGenConfig.dir}/hotspot-compilation.log"
+))
 
 def lightGoldenRoot = file('run/light-golden')
 def lightGoldenConfig = [
@@ -90,7 +98,8 @@ def configureWorldgenRun = { run, Map options ->
     run.programArgument('--nogui')
     run.systemProperty('byepregen.testWorldGen', 'true')
     run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
-    run.systemProperty('byepregen.testWorldGenNoFeatures', options.noFeatures ?: 'false')
+    run.systemProperty('byepregen.surfaceScalar', options.surfaceScalar ?: 'false')
+    run.systemProperty('byepregen.surfaceDifferential', options.surfaceDifferential ?: 'false')
     run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
     run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
     run.logLevel = org.slf4j.event.Level.INFO
@@ -108,6 +117,11 @@ def configureWorldgenRun = { run, Map options ->
     if (options.jfrFile != null) {
         run.jvmArgument("-XX:FlightRecorderOptions=stackdepth=128,repository=${slashPath(options.jfrRepository)}")
         run.jvmArgument("-XX:StartFlightRecording=filename=${slashPath(options.jfrFile)},settings=${jfrSettings},dumponexit=true")
+    }
+    if (options.compilationLog != null) {
+        run.jvmArgument('-XX:+UnlockDiagnosticVMOptions')
+        run.jvmArgument('-XX:+LogCompilation')
+        run.jvmArgument("-XX:LogFile=${slashPath(options.compilationLog)}")
     }
 }
 
@@ -131,6 +145,7 @@ def prepareWorldGenRunDir = { Map options ->
     file("${dir}/eula.txt").text = "eula=true\n"
     file("${dir}/config/byepregen.json").text = """\
 {
+  "debugDisableFeatures": ${options.noFeatures ?: 'false'},
   "enablePlacedFeatureMixin": false,
   "enableArenaPalette": ${arenaPalette},
   "enableServerRuntimeArenaPalette": ${serverRuntimeArenaPalette},
@@ -149,7 +164,7 @@ def prepareWorldGenRunDir = { Map options ->
 }
 """.stripIndent()
     file("${dir}/server.properties").text = """\
-level-seed=byepregen-test-worldgen
+level-seed=${options.seed ?: 'byepregen-test-worldgen'}
 level-name=world
 online-mode=false
 max-tick-time=0
@@ -212,8 +227,10 @@ neoForge {
                     jfrFile      : worldGenConfig.jfr,
                     jfrRepository: worldGenConfig.jfrRepository,
                     surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
-                    noFeatures    : worldGenConfig.noFeatures,
+                    surfaceScalar: worldGenConfig.surfaceScalar,
+                    surfaceDifferential: worldGenConfig.surfaceDifferential,
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
+                    compilationLog: worldGenConfig.logCompilation ? worldGenConfig.compilationLog : null,
             ])
         }
 
@@ -275,12 +292,18 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
     notCompatibleWithConfigurationCache('Prepares a disposable test world before launching the server')
     doFirst {
         delete(worldGenConfig.jfr)
+        if (worldGenConfig.logCompilation) {
+            delete(worldGenConfig.compilationLog)
+            worldGenConfig.compilationLog.parentFile.mkdirs()
+        }
         worldGenConfig.jfrRepository.mkdirs()
         worldGenConfig.tmpDir.mkdirs()
         prepareWorldGenRunDir([
                 dir       : worldGenConfig.dir,
                 yaLight   : worldGenConfig.yaLight,
                 gcFree    : worldGenConfig.gcFree,
+                seed      : worldGenConfig.seed,
+                noFeatures: worldGenConfig.noFeatures,
                 clearWorld: true,
         ])
         if (worldGenConfig.datapack != null) {

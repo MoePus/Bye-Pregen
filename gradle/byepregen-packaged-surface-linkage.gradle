@@ -1,0 +1,147 @@
+import java.util.zip.ZipFile
+
+def packagedSurfaceRoot = file('run/surface-packaged-linkage')
+def packagedSurfaceResult = file("${packagedSurfaceRoot}/surface-linkage.result")
+def packagedSurfaceDatapack = providers.gradleProperty('byepregenPackagedSurfaceDatapack')
+
+sourceSets {
+    surfaceLinkageHarness {
+        java.setSrcDirs(['src/surfaceLinkageHarness/java'])
+        resources.setSrcDirs(['src/surfaceLinkageHarness/resources'])
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+    surfacePackagedRun {
+        java.setSrcDirs([])
+        resources.setSrcDirs([])
+    }
+}
+sourceSets.surfacePackagedRun.runtimeClasspath = sourceSets.surfacePackagedRun.output +
+        (sourceSets.main.runtimeClasspath - sourceSets.main.output)
+
+configurations {
+    surfaceLinkageHarnessCompileOnly.extendsFrom compileOnly
+    surfaceLinkageHarnessAnnotationProcessor.extendsFrom annotationProcessor
+}
+
+def surfaceLinkageHarnessJar = tasks.register('surfaceLinkageHarnessJar', Jar) {
+    group = 'verification'
+    description = 'Builds the isolated NeoForge mod used by the packaged Surface linkage gate.'
+    dependsOn(sourceSets.surfaceLinkageHarness.classesTaskName)
+    archiveBaseName = 'byepregen-surface-linkage-harness'
+    archiveVersion = '1'
+    destinationDirectory = layout.buildDirectory.dir('surface-linkage')
+    from(sourceSets.surfaceLinkageHarness.output)
+}
+
+def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
+    group = 'verification'
+    description = 'Checks that the production jar contains the Surface scalar runtime and no test driver.'
+    dependsOn(tasks.named('jar'))
+    inputs.file(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    doLast {
+        File productionJar = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        new ZipFile(productionJar).withCloseable { zip ->
+            [
+                    'com/moepus/byepregen/worldgen/surface/SurfaceScalarAsmCompiler.class',
+                    'com/moepus/byepregen/mixin/surface/SurfaceRulesLookupMixin.class',
+                    'byepregen.mixins.json',
+                    'META-INF/neoforge.mods.toml',
+            ].each { entry ->
+                if (zip.getEntry(entry) == null) {
+                    throw new GradleException("Production jar is missing ${entry}: ${productionJar}")
+                }
+            }
+            if (zip.entries().any { it.name.startsWith('com/moepus/byepregen/test/') }) {
+                throw new GradleException("Production jar contains excluded test classes: ${productionJar}")
+            }
+        }
+    }
+}
+
+def preparePackagedSurfaceLinkage = tasks.register('preparePackagedSurfaceLinkage') {
+    group = 'verification'
+    description = 'Prepares a disposable server containing only packaged test mods.'
+    dependsOn(verifyPackagedSurfaceJar, surfaceLinkageHarnessJar)
+    notCompatibleWithConfigurationCache('Prepares a disposable packaged NeoForge server directory')
+    doLast {
+        delete(packagedSurfaceRoot)
+        file("${packagedSurfaceRoot}/mods").mkdirs()
+        file("${packagedSurfaceRoot}/config").mkdirs()
+        file("${packagedSurfaceRoot}/tmp").mkdirs()
+
+        copy {
+            from(tasks.named('jar', Jar).flatMap { it.archiveFile })
+            from(surfaceLinkageHarnessJar.flatMap { it.archiveFile })
+            into(file("${packagedSurfaceRoot}/mods"))
+        }
+        if (packagedSurfaceDatapack.present) {
+            File datapack = file(packagedSurfaceDatapack.get())
+            if (!datapack.isFile()) {
+                throw new GradleException("Surface linkage datapack does not exist: ${datapack}")
+            }
+            copy {
+                from(datapack)
+                into(file("${packagedSurfaceRoot}/world/datapacks"))
+            }
+        }
+
+        file("${packagedSurfaceRoot}/eula.txt").setText('eula=true\n', 'UTF-8')
+        file("${packagedSurfaceRoot}/server.properties").setText('''\
+level-name=world
+level-seed=byepregen-packaged-surface-linkage
+online-mode=false
+server-port=25569
+max-tick-time=0
+view-distance=2
+simulation-distance=2
+spawn-protection=0
+'''.stripIndent(), 'UTF-8')
+        file("${packagedSurfaceRoot}/config/byepregen.json").setText('''\
+{
+  "debugDisableFeatures": true,
+  "enablePlacedFeatureMixin": false,
+  "enableArenaPalette": false,
+  "enableServerRuntimeArenaPalette": false,
+  "enableYALightEngine": false,
+  "enableGcFreeWorldgenSave": false
+}
+'''.stripIndent(), 'UTF-8')
+    }
+}
+
+neoForge {
+    runs {
+        surfacePackagedLinkage {
+            server()
+            disableIdeRun()
+            loadedMods.set([] as Set)
+            sourceSet.set(sourceSets.surfacePackagedRun)
+            gameDirectory = packagedSurfaceRoot
+            programArgument '--nogui'
+            systemProperty 'byepregen.surfaceScalar', 'true'
+            systemProperty 'byepregen.surfaceDifferential', 'false'
+            systemProperty 'byepregen.surfaceBiomeCache', 'true'
+            systemProperty 'byepregen.surfaceLinkageResult', packagedSurfaceResult.absolutePath
+            systemProperty 'neoforge.enabledGameTestNamespaces', ''
+            jvmArgument("-Djava.io.tmpdir=${file("${packagedSurfaceRoot}/tmp").absolutePath.replace('\\', '/')}")
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(preparePackagedSurfaceLinkage)
+        }
+    }
+}
+
+tasks.matching { it.name == 'runSurfacePackagedLinkage' }.configureEach {
+    group = 'verification'
+    description = 'Loads the production jar in NeoForge and executes generated Surface scalar bytecode.'
+    notCompatibleWithConfigurationCache('Validates a result produced by a disposable packaged server')
+    doLast {
+        if (!packagedSurfaceResult.isFile()) {
+            throw new GradleException("Packaged Surface linkage harness produced no result: ${packagedSurfaceResult}")
+        }
+        String result = packagedSurfaceResult.getText('UTF-8')
+        if (!result.startsWith('PASS\n')) {
+            throw new GradleException("Packaged Surface linkage failed:\n${result}")
+        }
+        logger.lifecycle("Packaged Surface linkage passed:\n${result.trim()}")
+    }
+}

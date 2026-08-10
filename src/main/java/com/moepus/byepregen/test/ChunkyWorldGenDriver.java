@@ -1,6 +1,7 @@
 package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.yalight.YALightEngineHolder;
+import com.moepus.byepregen.worldgen.surface.SurfaceScalarMetrics;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -741,7 +742,28 @@ final class ChunkyWorldGenDriver {
                 wallSeconds,
                 processCpuSeconds
         );
+        logSurfaceScalarMetrics();
         server.executeIfPossible(() -> stopServer(server));
+    }
+
+    private static void logSurfaceScalarMetrics() {
+        SurfaceScalarMetrics.Snapshot metrics = SurfaceScalarMetrics.snapshot();
+        LOGGER.info(
+                "Surface scalar metrics: compiled={} rejected={} buildBindings={} topBindings={} "
+                        + "bindFailures={} buildDifferential={} topDifferential={} "
+                        + "buildMismatches={} topMismatches={} classBytes={} regions={}",
+                metrics.compiled(),
+                metrics.rejected(),
+                metrics.buildBindings(),
+                metrics.topBindings(),
+                metrics.bindFailures(),
+                metrics.buildDifferentialEvaluations(),
+                metrics.topDifferentialEvaluations(),
+                metrics.buildDifferentialMismatches(),
+                metrics.topDifferentialMismatches(),
+                metrics.latestClassBytes(),
+                metrics.latestRegions()
+        );
     }
 
     private static long processCpuNanos() {

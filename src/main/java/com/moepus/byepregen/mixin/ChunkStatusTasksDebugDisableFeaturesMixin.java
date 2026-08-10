@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin;
 
+import com.moepus.byepregen.MixinGate;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -9,8 +10,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@MixinGate(config = "debugDisableFeatures")
 @Mixin(ChunkStatusTasks.class)
-public abstract class ChunkStatusTasksTestNoFeaturesMixin {
+public abstract class ChunkStatusTasksDebugDisableFeaturesMixin {
     @Redirect(
             method = "generateFeatures",
             at = @At(

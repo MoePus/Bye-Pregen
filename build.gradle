@@ -52,6 +52,7 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 apply from: 'gradle/byepregen-test-runs.gradle'
+apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
 
 def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
         .map(Integer::parseInt)
@@ -59,6 +60,7 @@ def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
 def runJavaLauncher = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
 }
+def surfaceDumpClassesDirectory = providers.systemProperty('byepregen.surfaceDumpClasses')
 afterEvaluate {
     tasks.named('runTestWorldGen', JavaExec) {
         javaLauncher.set(runJavaLauncher)
@@ -69,6 +71,11 @@ tasks.withType(JavaExec).matching { it.name != 'runTestWorldGen' }.configureEach
         languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
     })
 }
+tasks.withType(JavaExec).configureEach {
+    if (surfaceDumpClassesDirectory.present) {
+        systemProperty 'byepregen.surfaceDumpClasses', surfaceDumpClassesDirectory.get()
+    }
+}
 
 def surfaceBiomeCacheTest = tasks.register('testSurfaceBiomeCache', JavaExec) {
     group = 'verification'
@@ -76,6 +83,47 @@ def surfaceBiomeCacheTest = tasks.register('testSurfaceBiomeCache', JavaExec) {
     dependsOn(classes)
     classpath = sourceSets.main.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheTest')
+}
+def surfaceRuleAnalyzerTest = tasks.register('testSurfaceRuleAnalyzer', JavaExec) {
+    group = 'verification'
+    description = 'Checks Surface source-order IDs, canonical values, and opaque barriers.'
+    dependsOn(classes)
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest')
+}
+def surfaceBindingLayoutTest = tasks.register('testSurfaceBindingLayout', JavaExec) {
+    group = 'verification'
+    description = 'Checks Surface binding order, failure stop, and eager/lazy recipes.'
+    dependsOn(classes)
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest')
+}
+def surfaceOpaqueRuntimeVerification = tasks.register('testSurfaceOpaqueRuntime') {
+    group = 'verification'
+    description = 'Runs opaque SurfaceRule continuation checks against generated hidden classes.'
+    dependsOn('runSurfaceOpaqueRuntimeTest')
+}
+tasks.register('compareSurfaceWorlds', JavaExec) {
+    group = 'verification'
+    description = 'Compares saved Surface block-state, heightmap, and postprocessing hashes.'
+    dependsOn(classes)
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.test.SurfaceWorldHash')
+    args(
+            providers.gradleProperty('byepregenSurfaceExpectedWorld').orElse('').get(),
+            providers.gradleProperty('byepregenSurfaceActualWorld').orElse('').get()
+    )
+    [
+            minChunkX: 'byepregenSurfaceHashMinChunkX',
+            maxChunkX: 'byepregenSurfaceHashMaxChunkX',
+            minChunkZ: 'byepregenSurfaceHashMinChunkZ',
+            maxChunkZ: 'byepregenSurfaceHashMaxChunkZ',
+    ].each { suffix, propertyName ->
+        def value = providers.gradleProperty(propertyName)
+        if (value.present) {
+            systemProperty "byepregen.surfaceHash.${suffix}", value.get()
+        }
+    }
 }
 tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
     group = 'verification'
@@ -93,7 +141,12 @@ tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
     )
 }
 tasks.named('check') {
-    dependsOn(surfaceBiomeCacheTest)
+    dependsOn(
+            surfaceBiomeCacheTest,
+            surfaceRuleAnalyzerTest,
+            surfaceBindingLayoutTest,
+            surfaceOpaqueRuntimeVerification
+    )
 }
 
 neoForge {
@@ -131,6 +184,15 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        surfaceOpaqueRuntimeTest {
+            server()
+            gameDirectory = file('run/surface-opaque-runtime-test')
+            programArgument '--nogui'
+            systemProperty 'byepregen.surfaceScalar', 'true'
+            systemProperty 'byepregen.surfaceOpaqueRuntimeTest', 'true'
+            logLevel = org.slf4j.event.Level.INFO
+        }
+
         data {
             data()
 
@@ -165,6 +227,23 @@ neoForge {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
+    }
+}
+
+tasks.named('runSurfaceOpaqueRuntimeTest', JavaExec) {
+    javaLauncher.set(runJavaLauncher)
+    notCompatibleWithConfigurationCache('Prepares a disposable runtime-test server directory')
+    doFirst {
+        def runDirectory = file('run/surface-opaque-runtime-test')
+        file("${runDirectory}/config").mkdirs()
+        file("${runDirectory}/eula.txt").text = 'eula=true\n'
+        file("${runDirectory}/config/byepregen.json").text = '''\
+{
+  "enableArenaPalette": false,
+  "enableGcFreeWorldgenSave": false,
+  "enableYALightEngine": false
+}
+'''.stripIndent()
     }
 }
 
