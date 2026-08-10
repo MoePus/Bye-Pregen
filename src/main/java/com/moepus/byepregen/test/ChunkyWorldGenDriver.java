@@ -5,6 +5,7 @@ import com.mojang.logging.LogUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -79,6 +80,8 @@ final class ChunkyWorldGenDriver {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
     private static final AtomicBoolean STOPPING = new AtomicBoolean();
     private static final AtomicLong NEXT_PROGRESS_LOG = new AtomicLong();
+    private static long worldgenStartedNanos;
+    private static long worldgenStartedCpuNanos;
     private static LightFuzzRun lightFuzzRun;
 
     private ChunkyWorldGenDriver() {
@@ -125,6 +128,8 @@ final class ChunkyWorldGenDriver {
         ChunkyAPI api = chunky.getApi();
         api.onGenerationProgress(ChunkyWorldGenDriver::onGenerationProgress);
         api.onGenerationComplete(done -> onGenerationComplete(server, done));
+        worldgenStartedNanos = System.nanoTime();
+        worldgenStartedCpuNanos = processCpuNanos();
         if (!api.startTask(WORLD, SHAPE, CENTER_X, CENTER_Z, RADIUS, RADIUS, PATTERN)) {
             failAndStop(server, "Chunky refused to start the worldgen task for " + WORLD);
             return;
@@ -728,8 +733,19 @@ final class ChunkyWorldGenDriver {
         if (!STOPPING.compareAndSet(false, true)) {
             return;
         }
-        LOGGER.info("Chunky worldgen completed for {}; saving and stopping server", event.world());
+        double wallSeconds = (System.nanoTime() - worldgenStartedNanos) / 1_000_000_000.0D;
+        double processCpuSeconds = (processCpuNanos() - worldgenStartedCpuNanos) / 1_000_000_000.0D;
+        LOGGER.info(
+                "Chunky worldgen completed for {}; wallSeconds={} processCpuSeconds={}; saving and stopping server",
+                event.world(),
+                wallSeconds,
+                processCpuSeconds
+        );
         server.executeIfPossible(() -> stopServer(server));
+    }
+
+    private static long processCpuNanos() {
+        return ProcessHandle.current().info().totalCpuDuration().map(Duration::toNanos).orElse(0L);
     }
 
     private static void failAndStop(MinecraftServer server, String message) {

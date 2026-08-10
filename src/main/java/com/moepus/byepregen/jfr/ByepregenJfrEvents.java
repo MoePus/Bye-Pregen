@@ -42,6 +42,20 @@ public final class ByepregenJfrEvents {
         }
     }
 
+    public static void commitSurfaceBiomeProfile(SurfaceBiomeProfile profile) {
+        SurfaceBiomeProfileEvent event = new SurfaceBiomeProfileEvent();
+        event.chunkX = profile.chunkX();
+        event.chunkZ = profile.chunkZ();
+        event.certificates = profile.certificates();
+        event.uniformCertificates = profile.uniformCertificates();
+        event.queries = profile.queries();
+        event.interiorQueries = profile.interiorQueries();
+        event.uniformHits = profile.uniformHits();
+        event.flatSlowLookups = profile.flatSlowLookups();
+        event.delegateLookups = profile.delegateLookups();
+        event.commit();
+    }
+
     @Name("com.moepus.byepregen.SyncChunkWait")
     @Label("ByePregen Sync Chunk Wait")
     @Category({"ByePregen", "Chunk"})
@@ -61,5 +75,44 @@ public final class ByepregenJfrEvents {
         public boolean c2me;
         @Label("Future Done")
         public boolean futureDone;
+    }
+
+    @Name("com.moepus.byepregen.SurfaceBiomeProfile")
+    @Label("ByePregen Surface Biome Profile")
+    @Category({"ByePregen", "Worldgen"})
+    @Enabled(true)
+    @StackTrace(false)
+    public static final class SurfaceBiomeProfileEvent extends Event {
+        @Label("Chunk X")
+        public int chunkX;
+        @Label("Chunk Z")
+        public int chunkZ;
+        @Label("Certificates")
+        public int certificates;
+        @Label("Uniform Certificates")
+        public int uniformCertificates;
+        @Label("Biome Queries")
+        public long queries;
+        @Label("Interior Queries")
+        public long interiorQueries;
+        @Label("Uniform Fast Hits")
+        public long uniformHits;
+        @Label("Flat Slow Lookups")
+        public long flatSlowLookups;
+        @Label("Delegate Lookups")
+        public long delegateLookups;
+    }
+
+    public record SurfaceBiomeProfile(
+            int chunkX,
+            int chunkZ,
+            int certificates,
+            int uniformCertificates,
+            long queries,
+            long interiorQueries,
+            long uniformHits,
+            long flatSlowLookups,
+            long delegateLookups
+    ) {
     }
 }

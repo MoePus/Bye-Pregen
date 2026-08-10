@@ -20,6 +20,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String YA_LIGHT_MIXIN_PREFIX = MIXIN_PACKAGE + "yalight.";
     private static final String GC_FREE_MIXIN_PREFIX = MIXIN_PACKAGE + "gcfree.";
     private static final String DFC_MIXIN_PREFIX = MIXIN_PACKAGE + "dfc.";
+    private static final String SURFACE_BIOME_CACHE_PROPERTY = "byepregen.surfaceBiomeCache";
+    private static final String TEST_NO_FEATURES_PROPERTY = "byepregen.testWorldGenNoFeatures";
     private static final String C2ME_DFC_MODULE_ENTRYPOINT =
             "com.ishland.c2me.opts.dfc.ModuleEntryPoint";
     private static final String C2ME_DFC_ENABLED_FIELD = "enabled";
@@ -56,6 +58,10 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             MIXIN_PACKAGE + "compat.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.VoxyWorldConversionFactoryMixin";
+    private static final String SURFACE_BIOME_CACHE_MIXIN =
+            MIXIN_PACKAGE + "SurfaceSystemBiomeCacheMixin";
+    private static final String TEST_NO_FEATURES_MIXIN =
+            MIXIN_PACKAGE + "ChunkStatusTasksTestNoFeaturesMixin";
 
     private static final Set<String> GC_FREE_SATELLITE_MIXINS = Set.of(
             C2ME_HOOK_COMPATIBILITY_MIXIN,
@@ -111,6 +117,12 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             Config config,
             Predicate<String> classExists
     ) {
+        if (TEST_NO_FEATURES_MIXIN.equals(mixinClassName)) {
+            return Boolean.getBoolean(TEST_NO_FEATURES_PROPERTY);
+        }
+        if (SURFACE_BIOME_CACHE_MIXIN.equals(mixinClassName)) {
+            return Boolean.parseBoolean(System.getProperty(SURFACE_BIOME_CACHE_PROPERTY, "true"));
+        }
         if (mixinClassName.startsWith(DFC_MIXIN_PREFIX)) {
             return config.enableArenaPalette && this.c2meDfcEnabled;
         }

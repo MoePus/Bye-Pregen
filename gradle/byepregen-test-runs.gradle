@@ -17,6 +17,9 @@ def worldGenConfig = [
         radius : prop('byepregenTestWorldGenRadius', '700'),
         gcFree : prop('byepregenTestWorldGenGcFree', 'true'),
         yaLight: prop('byepregenTestWorldGenYALight', 'true'),
+        surfaceBiomeCache: prop('byepregenTestSurfaceBiomeCache', 'true'),
+        noFeatures: prop('byepregenTestWorldGenNoFeatures', 'false'),
+        surfaceBiomeProfile: prop('byepregenTestSurfaceBiomeProfile', 'false'),
         datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
 ]
 worldGenConfig.label = prop('byepregenTestWorldGenLabel', "gc${worldGenConfig.gcFree}")
@@ -86,6 +89,9 @@ def configureWorldgenRun = { run, Map options ->
     run.gameDirectory = options.dir
     run.programArgument('--nogui')
     run.systemProperty('byepregen.testWorldGen', 'true')
+    run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
+    run.systemProperty('byepregen.testWorldGenNoFeatures', options.noFeatures ?: 'false')
+    run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
     run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
     run.logLevel = org.slf4j.event.Level.INFO
     run.jvmArgument("-Djava.io.tmpdir=${slashPath(file("${options.dir}/tmp"))}")
@@ -205,6 +211,9 @@ neoForge {
                     radius       : worldGenConfig.radius,
                     jfrFile      : worldGenConfig.jfr,
                     jfrRepository: worldGenConfig.jfrRepository,
+                    surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
+                    noFeatures    : worldGenConfig.noFeatures,
+                    surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
             ])
         }
 

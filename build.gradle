@@ -70,6 +70,32 @@ tasks.withType(JavaExec).matching { it.name != 'runTestWorldGen' }.configureEach
     })
 }
 
+def surfaceBiomeCacheTest = tasks.register('testSurfaceBiomeCache', JavaExec) {
+    group = 'verification'
+    description = 'Checks flat-palette certificates against vanilla BiomeManager sampling.'
+    dependsOn(classes)
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheTest')
+}
+tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
+    group = 'verification'
+    description = 'Microbenchmarks flat-palette certificate hit and miss paths.'
+    dependsOn(classes)
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheBenchmark')
+    systemProperty(
+            'byepregen.surfaceBiomeCacheBenchmarkMode',
+            providers.gradleProperty('byepregenSurfaceBiomeCacheBenchmarkMode').orElse('OFF').get()
+    )
+    systemProperty(
+            'byepregen.surfaceBiomeCacheBenchmarkPattern',
+            providers.gradleProperty('byepregenSurfaceBiomeCacheBenchmarkPattern').orElse('NON_UNIFORM').get()
+    )
+}
+tasks.named('check') {
+    dependsOn(surfaceBiomeCacheTest)
+}
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
