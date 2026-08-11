@@ -54,6 +54,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             MIXIN_PACKAGE + "NoiseBasedAquiferSurfaceMixin";
     private static final String NOISE_GENERATOR_ARENA_MIXIN =
             MIXIN_PACKAGE + "NoiseBasedChunkGeneratorArenaMixin";
+    private static final String PROTO_CHUNK_ARENA_HEIGHTMAP_MIXIN =
+            MIXIN_PACKAGE + "ProtoChunkArenaHeightmapMixin";
     private static final String FASTNOISE_OCL_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
@@ -85,6 +87,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             NOISE_INTERPOLATOR_ARENA_MIXIN,
             NOISE_BASED_AQUIFER_SURFACE_MIXIN,
             NOISE_GENERATOR_ARENA_MIXIN,
+            PROTO_CHUNK_ARENA_HEIGHTMAP_MIXIN,
             FASTNOISE_OCL_ARENA_MIXIN,
             VOXY_ARENA_MIXIN
     );

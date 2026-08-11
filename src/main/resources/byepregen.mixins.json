@@ -41,6 +41,7 @@
     "nbt.CompoundTagLoadSizingMixin",
     "PalettedContainerMixin",
     "PalettedContainerNoLithiumMixin",
+    "ProtoChunkArenaHeightmapMixin",
     "LinearPaletteMixin",
     "PlacedFeatureMixin",
     "PlacementModifierMixin",
