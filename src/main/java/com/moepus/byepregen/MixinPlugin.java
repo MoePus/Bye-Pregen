@@ -21,7 +21,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String GC_FREE_MIXIN_PREFIX = MIXIN_PACKAGE + "gcfree.";
     private static final String DFC_MIXIN_PREFIX = MIXIN_PACKAGE + "dfc.";
     private static final String SURFACE_BIOME_CACHE_PROPERTY = "byepregen.surfaceBiomeCache";
-    private static final String SURFACE_SCALAR_PROPERTY = "byepregen.surfaceScalar";
     private static final String C2ME_DFC_MODULE_ENTRYPOINT =
             "com.ishland.c2me.opts.dfc.ModuleEntryPoint";
     private static final String C2ME_DFC_ENABLED_FIELD = "enabled";
@@ -126,7 +125,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             return Boolean.parseBoolean(System.getProperty(SURFACE_BIOME_CACHE_PROPERTY, "true"));
         }
         if (mixinClassName.startsWith(SURFACE_SCALAR_MIXIN_PREFIX)) {
-            return Boolean.parseBoolean(System.getProperty(SURFACE_SCALAR_PROPERTY, "true"));
+            return config.enableSurfaceRuleCompiler;
         }
         if (mixinClassName.startsWith(DFC_MIXIN_PREFIX)) {
             return config.enableArenaPalette && this.c2meDfcEnabled;

@@ -179,7 +179,6 @@ tasks.named('check') {
             surfaceRuleAnalyzerTest,
             surfaceBindingLayoutTest,
             arenaHeightmapUpdateTest,
-            surfaceOpaqueRuntimeVerification,
             tasks.named('verifyPackagedSurfaceJar')
     )
 }

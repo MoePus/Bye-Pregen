@@ -107,7 +107,6 @@ def configureWorldgenRun = { run, Map options ->
     run.programArgument('--nogui')
     run.systemProperty('byepregen.testWorldGen', 'true')
     run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
-    run.systemProperty('byepregen.surfaceScalar', options.surfaceScalar ?: 'true')
     run.systemProperty(
             'byepregen.surfaceOutputDifferential',
             options.surfaceOutputDifferential ?: 'false'
@@ -162,7 +161,8 @@ def prepareWorldGenRunDir = { Map options ->
   "enableArenaPalette": ${arenaPalette},
   "enableServerRuntimeArenaPalette": ${serverRuntimeArenaPalette},
   "enableYALightEngine": ${options.yaLight},
-  "enableGcFreeWorldgenSave": ${options.gcFree}
+  "enableGcFreeWorldgenSave": ${options.gcFree},
+  "enableSurfaceRuleCompiler": ${options.surfaceScalar ?: 'true'}
 }
 """.stripIndent()
     file("${dir}/config/chunky/config.json").text = """\
