@@ -9,6 +9,7 @@ package com.moepus.byepregen.dfc.column;
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.misc.*;
 import com.ishland.c2me.opts.dfc.common.ast.noise.DFTWeirdScaledSamplerNode;
+import com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistry;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -129,6 +130,10 @@ final class ColumnCse {
             if (this.forced2D.contains(node) || node instanceof ConstantNode) return false;
             if (node instanceof ColumnCacheNode cache) return cache.mode() == ColumnCacheNode.Mode.INTERPOLATED;
             if (node instanceof CoordinateNode coordinate) return coordinate.axis == CoordinateNode.Axis.Y;
+            if (node.getClass() == DelegateNode.class) {
+                return !ColumnDensityFunctionRegistry.isYIndependentDelegate(
+                        ((DelegateNode) node).getDelegate());
+            }
             if (node instanceof YClampedGradientNode || node instanceof DFTWeirdScaledSamplerNode
                     || node instanceof FindTopSurfaceNode || node instanceof DelegateNode
                     || node instanceof CacheLikeNode) return true;

@@ -13,6 +13,7 @@ import com.ishland.c2me.opts.dfc.common.ast.noise.DFTWeirdScaledSamplerNode;
 import com.ishland.c2me.opts.dfc.common.ast.noise.GenericShiftedNoiseNode;
 import com.ishland.c2me.opts.dfc.common.ast.spline.SplineAstNode;
 import com.ishland.c2me.opts.dfc.common.ast.unary.*;
+import com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistry;
 import net.minecraft.util.CubicSpline;
 import net.minecraft.world.level.levelgen.DensityFunctions;
 
@@ -88,8 +89,8 @@ final class ColumnSupport {
 
     private static Optional<String> checkDirectSupport(AstNode node) {
         Class<?> type = node.getClass();
-        if (node instanceof DelegateNode && !isSupportedDelegateType(node.getClass())) {
-            return unsupported(node, "only Beardifier delegates are safe in column codegen");
+        if (node instanceof DelegateNode && !isSupportedDelegate(node)) {
+            return unsupported(node, "delegate is not registered as Y-independent");
         }
         if (type == DFTWeirdScaledSamplerNode.class) {
             DFTWeirdScaledSamplerNode weird = (DFTWeirdScaledSamplerNode) node;
@@ -116,7 +117,7 @@ final class ColumnSupport {
                 || type == CoordinateNode.class
                 || type == YClampedGradientNode.class
                 || type == RangeChoiceNode.class
-                || isSupportedDelegateType(type)
+                || isSupportedDelegate(node)
                 || type == GenericShiftedNoiseNode.class
                 || type == DFTWeirdScaledSamplerNode.class
                 || type == SplineAstNode.class
@@ -144,8 +145,11 @@ final class ColumnSupport {
                 || type == MaxShortNode.class;
     }
 
-    static boolean isSupportedDelegateType(Class<?> type) {
-        return type == BeardifierNode.class;
+    static boolean isSupportedDelegate(AstNode node) {
+        if (node.getClass() == BeardifierNode.class) return true;
+        return node.getClass() == DelegateNode.class
+                && ColumnDensityFunctionRegistry.isYIndependentDelegate(
+                        ((DelegateNode) node).getDelegate());
     }
 
     private static boolean isSupportedMapper(DFTWeirdScaledSamplerNode node) {

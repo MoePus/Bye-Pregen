@@ -125,6 +125,13 @@ def arenaHeightmapUpdateTest = tasks.register('testArenaHeightmapUpdate', JavaEx
     classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.worldgen.ArenaHeightmapUpdateTest')
 }
+def columnDensityFunctionRegistryTest = tasks.register('testColumnDensityFunctionRegistry', JavaExec) {
+    group = 'verification'
+    description = 'Checks exact and idempotent Y-independent delegate registration.'
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.dfc.column.ColumnDensityFunctionRegistryTest')
+}
 def surfaceOpaqueRuntimeVerification = tasks.register('testSurfaceOpaqueRuntime') {
     group = 'verification'
     description = 'Runs opaque SurfaceRule continuation checks against generated hidden classes.'
@@ -186,6 +193,7 @@ tasks.named('check') {
             surfaceRuleAnalyzerTest,
             surfaceBindingLayoutTest,
             arenaHeightmapUpdateTest,
+            columnDensityFunctionRegistryTest,
             tasks.named('verifyPackagedSurfaceJar')
     )
 }

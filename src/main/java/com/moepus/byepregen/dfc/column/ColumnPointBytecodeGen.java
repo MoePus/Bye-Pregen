@@ -102,8 +102,8 @@ final class ColumnPointBytecodeGen {
             this.emitShiftedNoise((GenericShiftedNoiseNode) node, m);
         } else if (type == DFTWeirdScaledSamplerNode.class) {
             this.emitWeirdScaled((DFTWeirdScaledSamplerNode) node, m, locals);
-        } else if (ColumnSupport.isSupportedDelegateType(type)) {
-            this.emitBeardifier((BeardifierNode) node, m, locals);
+        } else if (ColumnSupport.isSupportedDelegate(node)) {
+            this.emitDelegate((DelegateNode) node, m, locals);
         } else {
             throw new UnsupportedOperationException("Unsupported ColumnPoint node: " + node.getClass().getName());
         }
@@ -209,7 +209,7 @@ final class ColumnPointBytecodeGen {
         }
     }
 
-    private void emitBeardifier(BeardifierNode node, InstructionAdapter m, LocalAllocator locals) {
+    private void emitDelegate(DelegateNode node, InstructionAdapter m, LocalAllocator locals) {
         String field = this.owner.newField(DensityFunction.class, node.getDelegate());
         int noisePos = locals.allocate(Type.getType(NoisePosVanillaInterface.class));
         this.loadObjectCache(m);

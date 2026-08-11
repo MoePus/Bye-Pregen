@@ -127,7 +127,7 @@ final class ColumnBytecodeGen {
         } else if (type == YClampedGradientNode.class) {
             YClampedGradientNode gradient = (YClampedGradientNode) node;
             this.emitGradient(gradient, m, locals);
-        } else if (ColumnSupport.isSupportedDelegateType(type) || type == SplineAstNode.class
+        } else if (ColumnSupport.isSupportedDelegate(node) || type == SplineAstNode.class
                 || type == GenericShiftedNoiseNode.class || type == DFTWeirdScaledSamplerNode.class) {
             this.emitPointLoop(node, m, locals);
         } else {
