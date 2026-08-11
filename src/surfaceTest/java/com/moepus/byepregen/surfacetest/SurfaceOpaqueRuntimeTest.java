@@ -30,6 +30,7 @@ public final class SurfaceOpaqueRuntimeTest {
         stopsAfterNonNullDelegate(context);
         continuesAfterOutlinedRegion(context);
         customBiomeHolderFallsBackLazily(context);
+        TerraBlenderSurfaceRuntimeTest.run();
         System.out.println("Surface opaque hidden-class runtime test passed");
     }
 
@@ -162,7 +163,7 @@ public final class SurfaceOpaqueRuntimeTest {
         setField(context, "biome", supplier);
     }
 
-    private static void setField(Object target, String name, Object value)
+    static void setField(Object target, String name, Object value)
             throws ReflectiveOperationException {
         Field field = target.getClass().getDeclaredField(name);
         field.setAccessible(true);
@@ -189,7 +190,7 @@ public final class SurfaceOpaqueRuntimeTest {
         return rule;
     }
 
-    private static Object createContext() throws Exception {
+    static Object createContext() throws Exception {
         Class<?> type = Class.forName(SurfaceRules.class.getName() + "$Context");
         Constructor<?> constructor = type.getDeclaredConstructors()[0];
         constructor.setAccessible(true);

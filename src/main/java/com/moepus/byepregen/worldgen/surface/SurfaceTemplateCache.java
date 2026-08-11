@@ -1,5 +1,6 @@
 package com.moepus.byepregen.worldgen.surface;
 
+import com.moepus.byepregen.MixinPlugin;
 import java.util.Objects;
 import java.util.function.Function;
 import net.minecraft.world.level.levelgen.SurfaceRules;
@@ -8,10 +9,17 @@ import org.slf4j.LoggerFactory;
 
 public final class SurfaceTemplateCache {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Surface Scalar");
+    private static final boolean TERRABLENDER_LOADED = MixinPlugin.isModExist("terrablender");
 
+    private final boolean outputDifferential;
     private volatile Entry current;
 
     public SurfaceTemplateCache() {
+        this(true);
+    }
+
+    SurfaceTemplateCache(boolean outputDifferential) {
+        this.outputDifferential = outputDifferential;
     }
 
     public Object bind(SurfaceRules.RuleSource source, Object context) {
@@ -25,9 +33,12 @@ public final class SurfaceTemplateCache {
             return vanillaBind(source, context);
         }
         try {
-            Object bound = entry.template().bind(context);
-            SurfaceScalarMetrics.binding(entry.template().statistics());
-            if (!SurfaceOutputDifferential.enabled()) {
+            SurfaceCompiledTemplate template = entry.template();
+            Object bound = template.bind(context);
+            if (template instanceof SurfaceDirectTemplate direct) {
+                SurfaceScalarMetrics.binding(direct.statistics());
+            }
+            if (!this.outputDifferential || !SurfaceOutputDifferential.enabled()) {
                 return bound;
             }
             Object vanilla = vanillaBind(source, context);
@@ -53,6 +64,11 @@ public final class SurfaceTemplateCache {
     }
 
     private Entry compile(SurfaceRules.RuleSource source) {
+        SurfaceCompiledTemplate compat = this.compileCompat(source);
+        if (compat != null) {
+            LOGGER.info("Preserving TerraBlender SurfaceRule namespace dispatcher");
+            return new Entry(source, compat);
+        }
         try {
             SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(source);
             SurfaceDirectTemplate template = SurfaceScalarAsmCompiler.compile(plan);
@@ -76,11 +92,23 @@ public final class SurfaceTemplateCache {
         }
     }
 
+    private SurfaceCompiledTemplate compileCompat(SurfaceRules.RuleSource source) {
+        if (!TERRABLENDER_LOADED) {
+            return null;
+        }
+        try {
+            return TerraBlenderCompat.compile(source);
+        } catch (LinkageError | RuntimeException exception) {
+            LOGGER.warn("Falling back from TerraBlender SurfaceRule compatibility", exception);
+            return null;
+        }
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Object vanillaBind(SurfaceRules.RuleSource source, Object context) {
+    static Object vanillaBind(SurfaceRules.RuleSource source, Object context) {
         return ((Function) source).apply(context);
     }
 
-    private record Entry(SurfaceRules.RuleSource source, SurfaceDirectTemplate template) {
+    private record Entry(SurfaceRules.RuleSource source, SurfaceCompiledTemplate template) {
     }
 }

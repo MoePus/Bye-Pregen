@@ -3,7 +3,7 @@ package com.moepus.byepregen.worldgen.surface;
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
 
-final class SurfaceDirectTemplate {
+final class SurfaceDirectTemplate extends SurfaceCompiledTemplate {
     private final SurfaceBindingLayout bindings;
     private final MethodHandle constructor;
     private final Statistics statistics;
@@ -18,6 +18,7 @@ final class SurfaceDirectTemplate {
         this.statistics = Objects.requireNonNull(statistics, "statistics");
     }
 
+    @Override
     Object bind(Object context) throws Throwable {
         Object[] values = this.bindings.bind(context);
         return this.constructor.invokeExact(context, values);

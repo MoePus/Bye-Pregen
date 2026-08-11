@@ -14,3 +14,10 @@ type = "required"
 versionRange = "[0,)"
 ordering = "AFTER"
 side = "SERVER"
+
+[[dependencies."byepregen_surface_test"]]
+modId = "terrablender"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "SERVER"
