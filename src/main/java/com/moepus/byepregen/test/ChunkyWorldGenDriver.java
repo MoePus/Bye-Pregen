@@ -749,18 +749,14 @@ final class ChunkyWorldGenDriver {
     private static void logSurfaceScalarMetrics() {
         SurfaceScalarMetrics.Snapshot metrics = SurfaceScalarMetrics.snapshot();
         LOGGER.info(
-                "Surface scalar metrics: compiled={} rejected={} buildBindings={} topBindings={} "
-                        + "bindFailures={} buildDifferential={} topDifferential={} "
-                        + "buildMismatches={} topMismatches={} classBytes={} regions={}",
+                "Surface scalar metrics: compiled={} rejected={} bindings={} bindFailures={} "
+                        + "outputComparisons={} outputMismatches={} classBytes={} regions={}",
                 metrics.compiled(),
                 metrics.rejected(),
-                metrics.buildBindings(),
-                metrics.topBindings(),
+                metrics.bindings(),
                 metrics.bindFailures(),
-                metrics.buildDifferentialEvaluations(),
-                metrics.topDifferentialEvaluations(),
-                metrics.buildDifferentialMismatches(),
-                metrics.topDifferentialMismatches(),
+                metrics.outputComparisons(),
+                metrics.outputMismatches(),
                 metrics.latestClassBytes(),
                 metrics.latestRegions()
         );

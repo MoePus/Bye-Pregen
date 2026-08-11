@@ -11,33 +11,22 @@ import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 
 final class SurfaceEmissionContext {
     static final String CONTEXT_FIELD = "context";
-    static final String BIOME_BITS_METHOD = "biomeBits";
-    static final String BIOME_BITS_SLOW_METHOD = "biomeBitsSlow";
-    static final String BIOME_FALLBACK_METHOD = "biomeFallback";
     static final String COLUMN_EPOCH_FIELD = "columnEpoch";
-    static final String BIOME_SUPPLIER_FIELD = "biomeSupplier";
-    static final String BIOME_HOLDER_FIELD = "biomeHolder";
-    static final String BIOME_BITS_FIELD = "biomeBits";
-    static final String BIOME_FALLBACKS_FIELD = "biomeFallbacks";
 
     private final String owner;
     private final SurfaceRuntimeAbi abi;
     private final SurfaceScalarLayout layout;
     private final SurfaceRegionPlan regions;
-    private final SurfaceScalarTarget target;
 
     SurfaceEmissionContext(
             String owner,
             SurfaceRuntimeAbi abi,
-            SurfaceScalarLayout layout,
-            SurfaceRegionPlan regions,
-            SurfaceScalarTarget target
+            SurfaceScalarLayout layout
     ) {
         this.owner = owner;
         this.abi = abi;
         this.layout = layout;
-        this.regions = regions;
-        this.target = target;
+        this.regions = SurfaceRegionPlan.create(layout.plan().root());
     }
 
     String owner() {
@@ -54,10 +43,6 @@ final class SurfaceEmissionContext {
 
     SurfaceRegionPlan regions() {
         return this.regions;
-    }
-
-    SurfaceScalarTarget target() {
-        return this.target;
     }
 
     String contextDescriptor() {

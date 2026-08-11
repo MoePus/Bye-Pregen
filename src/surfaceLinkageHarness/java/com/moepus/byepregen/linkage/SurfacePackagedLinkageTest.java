@@ -70,20 +70,16 @@ public final class SurfacePackagedLinkageTest {
         Object snapshot = metricsClass.getMethod("snapshot").invoke(null);
         long compiled = longValue(snapshot, "compiled");
         long rejected = longValue(snapshot, "rejected");
-        long buildBindings = longValue(snapshot, "buildBindings");
-        long topBindings = longValue(snapshot, "topBindings");
+        long bindings = longValue(snapshot, "bindings");
         long bindFailures = longValue(snapshot, "bindFailures");
         long classBytes = longValue(snapshot, "latestClassBytes");
-        if (compiled < 1 || buildBindings < 1 || classBytes < 1) {
+        if (compiled < 1 || bindings < 1 || classBytes < 1) {
             throw new IllegalStateException("Surface scalar did not compile and bind: " + snapshot);
-        }
-        if (topBindings != 0) {
-            throw new IllegalStateException("Cold topMaterial path must remain vanilla: " + snapshot);
         }
         if (rejected != 0 || bindFailures != 0) {
             throw new IllegalStateException("Surface scalar rejected or failed to bind: " + snapshot);
         }
-        return new Evidence(codeSource, compiled, buildBindings, topBindings, classBytes);
+        return new Evidence(codeSource, compiled, bindings, classBytes);
     }
 
     private static long longValue(Object target, String methodName)
@@ -117,16 +113,14 @@ public final class SurfacePackagedLinkageTest {
     private record Evidence(
             String codeSource,
             long compiled,
-            long buildBindings,
-            long topBindings,
+            long bindings,
             long classBytes
     ) {
         String format() {
             return "PASS\n"
                     + "codeSource=" + this.codeSource + "\n"
                     + "compiled=" + this.compiled + "\n"
-                    + "buildBindings=" + this.buildBindings + "\n"
-                    + "topBindings=" + this.topBindings + "\n"
+                    + "bindings=" + this.bindings + "\n"
                     + "latestClassBytes=" + this.classBytes + "\n";
         }
     }

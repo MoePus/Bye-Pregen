@@ -1,10 +1,8 @@
 package com.moepus.byepregen.worldgen.surface;
 
 import java.util.List;
-import java.util.function.Predicate;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
@@ -31,12 +29,6 @@ public final class SurfaceRuleSourceAccess {
 
     public interface NotCondition {
         SurfaceRules.ConditionSource byepregen$target();
-    }
-
-    public interface BiomeCondition {
-        List<ResourceKey<Biome>> byepregen$biomes();
-
-        Predicate<ResourceKey<Biome>> byepregen$biomeNameTest();
     }
 
     public interface NoiseCondition {

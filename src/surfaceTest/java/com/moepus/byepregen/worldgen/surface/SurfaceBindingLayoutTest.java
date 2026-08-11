@@ -3,12 +3,8 @@ package com.moepus.byepregen.worldgen.surface;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import net.minecraft.core.Holder;
-import net.minecraft.core.HolderOwner;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.SurfaceRules;
@@ -21,15 +17,14 @@ public final class SurfaceBindingLayoutTest {
     }
 
     public static void main(String[] args) {
-        slotsFollowSourceOrderAndStopOnFailure();
+        eventsFollowSourceOrderAndStopOnFailure();
         preservesGradientAndYAnchorRecipes();
         canonicalizesNoiseStorageWithoutSkippingBindingEvents();
-        delegatesBiomePredicatesUntilSpecializationIsProven();
-        classifiesReferenceAndDirectBiomeHolders();
+        delegatesBiomePredicates();
         doesNotSnapshotContextAcrossOpaqueBarrier();
     }
 
-    private static void slotsFollowSourceOrderAndStopOnFailure() {
+    private static void eventsFollowSourceOrderAndStopOnFailure() {
         SurfaceRules.RuleSource source = sequence(List.of(
                 test(unknownCondition(), unknownRule()),
                 unknownRule(),
@@ -45,8 +40,8 @@ public final class SurfaceBindingLayoutTest {
         );
         assertEquals(
                 expected,
-                bindings.slots().stream().map(SurfaceBindingLayout.Slot::kind).toList(),
-                "binding slot source order"
+                bindings.events().stream().map(SurfaceBindingLayout.BindEvent::kind).toList(),
+                "binding event source order"
         );
         assertStopsAtFirstFailure(bindings, expected);
     }
@@ -57,12 +52,12 @@ public final class SurfaceBindingLayoutTest {
     ) {
         List<SurfaceBindingLayout.Kind> trace = new ArrayList<>();
         try {
-            bindings.bindForTest(fakeContext(), (slot, raw, context) -> {
-                trace.add(slot.kind());
+            bindings.bindForTest(fakeContext(), (event, raw, context) -> {
+                trace.add(event.kind());
                 if (trace.size() == 3) {
                     throw new TestException();
                 }
-                return slot.source();
+                return event.source();
             });
             throw new AssertionError("Expected binding failure");
         } catch (TestException expectedFailure) {
@@ -78,7 +73,7 @@ public final class SurfaceBindingLayoutTest {
                 test(gradient(lower, upper), SurfaceRules.bandlands()),
                 test(yAbove(lazy), SurfaceRules.bandlands())
         ));
-        List<SurfaceBindingLayout.Slot> slots = lower(source).bindings().slots();
+        List<SurfaceBindingLayout.BindEvent> events = lower(source).bindings().events();
         assertEquals(
                 List.of(
                         SurfaceBindingLayout.Kind.RESOLVED_ANCHOR,
@@ -86,28 +81,10 @@ public final class SurfaceBindingLayoutTest {
                         SurfaceBindingLayout.Kind.RANDOM_FACTORY,
                         SurfaceBindingLayout.Kind.Y_ANCHOR
                 ),
-                slots.stream().map(SurfaceBindingLayout.Slot::kind).toList(),
+                events.stream().map(SurfaceBindingLayout.BindEvent::kind).toList(),
                 "gradient eager and Y lazy binding order"
         );
-        assertSame(lazy, slots.get(3).source(), "Y anchor must stay unresolved in the layout");
-    }
-
-    public static void verifyBuiltInYAnchorRecipe() {
-        VerticalAnchor builtIn = VerticalAnchor.absolute(96);
-        SurfaceScalarLayout layout = lower(
-                test(yAbove(builtIn), SurfaceRules.bandlands())
-        );
-        assertEquals(
-                List.of(),
-                layout.bindings().slots(),
-                "absolute Y anchor must not need a binding field"
-        );
-        SurfaceRulePlan.Test root = (SurfaceRulePlan.Test) layout.plan().root();
-        SurfaceScalarLayout.ConditionLayout condition = layout.condition(root.condition());
-        assertEquals(96, condition.cacheIndex(), "absolute Y anchor constant");
-        if (!condition.resolvedAnchor()) {
-            throw new AssertionError("absolute Y anchor was not constant-lowered");
-        }
+        assertSame(lazy, events.get(3).source(), "Y anchor must stay unresolved in the layout");
     }
 
     private static void canonicalizesNoiseStorageWithoutSkippingBindingEvents() {
@@ -125,7 +102,7 @@ public final class SurfaceBindingLayoutTest {
                         SurfaceBindingLayout.Kind.NOISE,
                         SurfaceBindingLayout.Kind.RULE
                 ),
-                bindings.slots().stream().map(SurfaceBindingLayout.Slot::kind).toList(),
+                bindings.events().stream().map(SurfaceBindingLayout.BindEvent::kind).toList(),
                 "noise binding events"
         );
         assertEquals(
@@ -133,6 +110,13 @@ public final class SurfaceBindingLayoutTest {
                 bindings.storedSlots().stream().map(SurfaceBindingLayout.Slot::kind).toList(),
                 "canonical generated storage"
         );
+        if (!(bindings.events().get(1) instanceof SurfaceBindingLayout.Discarded)
+                || !(bindings.events().get(2) instanceof SurfaceBindingLayout.Discarded)) {
+            throw new AssertionError("duplicate noise binds must be explicit discarded events");
+        }
+        SurfaceBindingLayout.Slot trailing = (SurfaceBindingLayout.Slot)
+                bindings.events().get(3);
+        assertEquals(1, trailing.id().value(), "stored IDs must stay dense across discarded events");
         assertEquals(1, layout.noiseSamples().size(), "canonical noise samples");
         assertEquals(2, layout.noiseOccurrences(), "canonical noise predicates");
         assertEquals(
@@ -141,8 +125,8 @@ public final class SurfaceBindingLayoutTest {
                 "ranges sharing one noise sample"
         );
         List<SurfaceBindingLayout.Kind> trace = new ArrayList<>();
-        Object[] values = bindings.bindForTest(fakeContext(), (slot, raw, context) -> {
-            trace.add(slot.kind());
+        Object[] values = bindings.bindForTest(fakeContext(), (event, raw, context) -> {
+            trace.add(event.kind());
             return "event-" + trace.size();
         });
         assertEquals(4, trace.size(), "all binding events must execute");
@@ -151,28 +135,9 @@ public final class SurfaceBindingLayoutTest {
         assertEquals("event-4", values[1], "later stored slot index");
     }
 
-    private static void classifiesReferenceAndDirectBiomeHolders() {
-        SurfaceBiomeBehaviorTable table = new SurfaceBiomeBehaviorTable(
-                List.of(
-                        new SurfaceScalarLayout.BiomeValue(0, Set.of(Biomes.PLAINS)),
-                        new SurfaceScalarLayout.BiomeValue(
-                                1, Set.of(Biomes.PLAINS, Biomes.DESERT)
-                        )
-                ),
-                List.of()
-        );
-        HolderOwner<Biome> owner = new HolderOwner<>() {
-        };
-        assertBehavior(3L, table.behavior(reference(owner, Biomes.PLAINS)), "plains mask");
-        assertBehavior(2L, table.behavior(reference(owner, Biomes.DESERT)), "desert mask");
-        assertBehavior(0L, table.behavior(reference(owner, Biomes.FOREST)), "unlisted mask");
-        assertBehavior(0L, table.behavior(Holder.direct(null)), "direct holder mask");
-        assertEquals(0L, table.behavior(customHolder()), "custom holder fallback marker");
-    }
-
-    private static void delegatesBiomePredicatesUntilSpecializationIsProven() {
+    private static void delegatesBiomePredicates() {
         SurfaceScalarLayout layout = lower(test(
-                biome(List.of(Biomes.PLAINS)),
+                biome(),
                 SurfaceRules.bandlands()
         ));
         assertEquals(
@@ -182,30 +147,6 @@ public final class SurfaceBindingLayoutTest {
                         .toList(),
                 "biome condition binding"
         );
-        assertEquals(List.of(), layout.biomeValues(), "biome behavior specialization");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Holder<Biome> customHolder() {
-        return (Holder<Biome>) Proxy.newProxyInstance(
-                SurfaceBindingLayoutTest.class.getClassLoader(),
-                new Class<?>[]{Holder.class},
-                (proxy, method, arguments) -> defaultValue(method.getReturnType())
-        );
-    }
-
-    private static void assertBehavior(long expected, long actual, String message) {
-        if (actual >= 0L) {
-            throw new AssertionError(message + ": missing supported marker");
-        }
-        assertEquals(expected, actual & Long.MAX_VALUE, message);
-    }
-
-    private static Holder.Reference<Biome> reference(
-            HolderOwner<Biome> owner,
-            ResourceKey<Biome> key
-    ) {
-        return Holder.Reference.createStandAlone(owner, key);
     }
 
     private static void doesNotSnapshotContextAcrossOpaqueBarrier() {
@@ -234,9 +175,7 @@ public final class SurfaceBindingLayoutTest {
     }
 
     private static SurfaceMethodLocals rootLocals(SurfaceScalarLayout layout) {
-        SurfaceRegionPlan regions = SurfaceRegionPlan.create(
-                layout.plan().root(), SurfaceScalarTarget.BUILD_POINT
-        );
+        SurfaceRegionPlan regions = SurfaceRegionPlan.create(layout.plan().root());
         return SurfaceMethodLocals.create(
                 layout,
                 regions,
@@ -326,16 +265,8 @@ public final class SurfaceBindingLayoutTest {
         );
     }
 
-    private static SurfaceRules.ConditionSource biome(List<ResourceKey<Biome>> biomes) {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.BiomeCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$biomes" -> biomes;
-                    case "byepregen$biomeNameTest" ->
-                            (java.util.function.Predicate<ResourceKey<Biome>>) biomes::contains;
-                    default -> null;
-                }
-        );
+    private static SurfaceRules.ConditionSource biome() {
+        return SurfaceRules.isBiome(Biomes.PLAINS);
     }
 
     private static SurfaceRules.ConditionSource water() {

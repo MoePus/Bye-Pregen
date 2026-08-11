@@ -190,7 +190,7 @@ final class SurfaceMethodLocals {
                 this.countCondition(not.target());
                 return;
             }
-            SurfaceConditionSpec spec = condition.value().spec();
+            SurfaceConditionSpec spec = SurfaceRulePlan.conditionValue(condition).spec();
             switch (spec) {
                 case SurfaceConditionSpec.Noise ignored -> this.add(Input.X, Input.Z);
                 case SurfaceConditionSpec.StoneDepth stone -> this.countStone(stone);
@@ -237,7 +237,7 @@ final class SurfaceMethodLocals {
                 this.add(Input.STONE_ABOVE);
             }
             SurfaceScalarLayout.ConditionLayout lowered = this.layout.condition(condition);
-            if (lowered == null || !lowered.resolvedAnchor()) {
+            if (!(lowered instanceof SurfaceScalarLayout.AbsoluteY)) {
                 this.barrierSeen = true;
             }
             if (yAbove.surfaceDepthMultiplier() != 0) {
@@ -296,21 +296,9 @@ final class SurfaceMethodLocals {
             if (condition instanceof SurfaceRulePlan.NotCondition not) {
                 return this.containsBarrier(not.target());
             }
-            SurfaceRuleSemantics.Semantics semantics = condition.value().semantics();
-            if (condition.value().spec() instanceof SurfaceConditionSpec.YAbove) {
-                SurfaceScalarLayout.ConditionLayout lowered = this.layout.condition(condition);
-                return lowered == null || !lowered.resolvedAnchor();
-            }
-            if (semantics.effect().barrier()) {
-                return true;
-            }
-            if (!semantics.dependencies().contains(
-                    SurfaceRuleSemantics.Dependency.MUTABLE_CONTEXT
-            )) {
-                return false;
-            }
             SurfaceScalarLayout.ConditionLayout lowered = this.layout.condition(condition);
-            return lowered == null || !lowered.resolvedAnchor();
+            return lowered instanceof SurfaceScalarLayout.Delegate
+                    || lowered instanceof SurfaceScalarLayout.BoundY;
         }
     }
 }

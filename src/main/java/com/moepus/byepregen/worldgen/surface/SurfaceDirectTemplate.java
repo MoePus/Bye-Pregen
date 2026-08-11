@@ -52,10 +52,6 @@ final class SurfaceDirectTemplate {
             return this.values.noiseSamples();
         }
 
-        int biomeValues() {
-            return this.values.biomeValues();
-        }
-
         String regionShape() {
             return this.generated.regionShape();
         }
@@ -67,6 +63,6 @@ final class SurfaceDirectTemplate {
     record BindingCounts(int fields, int events) {
     }
 
-    record ValueCounts(int noisePredicates, int noiseSamples, int biomeValues) {
+    record ValueCounts(int noisePredicates, int noiseSamples) {
     }
 }

@@ -19,14 +19,23 @@ def worldGenConfig = [
         gcFree : prop('byepregenTestWorldGenGcFree', 'true'),
         yaLight: prop('byepregenTestWorldGenYALight', 'true'),
         surfaceBiomeCache: prop('byepregenTestSurfaceBiomeCache', 'true'),
-        surfaceScalar: prop('byepregenTestSurfaceScalar', 'false'),
-        surfaceDifferential: prop('byepregenTestSurfaceDifferential', 'false'),
+        surfaceScalar: prop('byepregenTestSurfaceScalar', 'true'),
+        surfaceOutputDifferential: providers.gradleProperty('byepregenTestSurfaceOutputDifferential')
+                .orElse(providers.gradleProperty('byepregenTestSurfaceDifferential'))
+                .orElse('false')
+                .get(),
         noFeatures: prop('byepregenTestWorldGenNoFeatures', 'false'),
         logCompilation: prop('byepregenTestLogCompilation', 'false').toBoolean(),
         surfaceBiomeProfile: prop('byepregenTestSurfaceBiomeProfile', 'false'),
         datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
 ]
-worldGenConfig.label = prop('byepregenTestWorldGenLabel', "gc${worldGenConfig.gcFree}")
+def defaultWorldGenLabel = "gc${worldGenConfig.gcFree}" +
+        "-scalar${worldGenConfig.surfaceScalar}" +
+        "-cache${worldGenConfig.surfaceBiomeCache}" +
+        "-noFeatures${worldGenConfig.noFeatures}" +
+        "-outputDiff${worldGenConfig.surfaceOutputDifferential}" +
+        "-biomeProfile${worldGenConfig.surfaceBiomeProfile}"
+worldGenConfig.label = prop('byepregenTestWorldGenLabel', defaultWorldGenLabel)
 worldGenConfig.jfr = file("${worldGenConfig.dir}/byepregen-worldgen-radius${sanitizeRunName(worldGenConfig.radius)}-${sanitizeRunName(worldGenConfig.label)}.jfr")
 worldGenConfig.jfrRepository = file("${worldGenConfig.dir}/jfr-repository")
 worldGenConfig.tmpDir = file("${worldGenConfig.dir}/tmp")
@@ -98,8 +107,11 @@ def configureWorldgenRun = { run, Map options ->
     run.programArgument('--nogui')
     run.systemProperty('byepregen.testWorldGen', 'true')
     run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
-    run.systemProperty('byepregen.surfaceScalar', options.surfaceScalar ?: 'false')
-    run.systemProperty('byepregen.surfaceDifferential', options.surfaceDifferential ?: 'false')
+    run.systemProperty('byepregen.surfaceScalar', options.surfaceScalar ?: 'true')
+    run.systemProperty(
+            'byepregen.surfaceOutputDifferential',
+            options.surfaceOutputDifferential ?: 'false'
+    )
     run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
     run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
     run.logLevel = org.slf4j.event.Level.INFO
@@ -228,7 +240,7 @@ neoForge {
                     jfrRepository: worldGenConfig.jfrRepository,
                     surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
                     surfaceScalar: worldGenConfig.surfaceScalar,
-                    surfaceDifferential: worldGenConfig.surfaceDifferential,
+                    surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
                     compilationLog: worldGenConfig.logCompilation ? worldGenConfig.compilationLog : null,
             ])

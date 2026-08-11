@@ -17,32 +17,28 @@ final class SurfaceScalarAsmCompiler {
     private SurfaceScalarAsmCompiler() {
     }
 
-    static SurfaceDirectTemplate compile(
-            SurfaceRulePlan plan,
-            SurfaceScalarTarget target
-    ) throws SurfaceCompileException {
+    static SurfaceDirectTemplate compile(SurfaceRulePlan plan) throws SurfaceCompileException {
         SurfaceRuntimeAbi abi = SurfaceRuntimeAbi.resolve();
         SurfaceScalarLayout layout = SurfaceScalarLayout.lower(plan);
-        SurfaceRegionPlan regions = SurfaceRegionPlan.create(plan.root(), target);
         String simpleName = "SurfaceRules$ByepregenScalar$" + NEXT_CLASS.getAndIncrement();
         String internalName = GENERATED_PACKAGE + simpleName;
         SurfaceEmissionContext emission = new SurfaceEmissionContext(
-                internalName, abi, layout, regions, target
+                internalName, abi, layout
         );
         byte[] bytecode = new SurfaceScalarClassEmitter(emission).emit();
         dumpClass(simpleName, bytecode);
         MethodHandle constructor = defineConstructor(abi, bytecode);
+        SurfaceRegionPlan regions = emission.regions();
         SurfaceDirectTemplate.Statistics statistics = new SurfaceDirectTemplate.Statistics(
                 new SurfaceDirectTemplate.ClassShape(
                         bytecode.length, regions.regions().size(), regions.describe()
                 ),
                 new SurfaceDirectTemplate.BindingCounts(
-                        layout.bindings().storedSlots().size(), layout.bindings().slots().size()
+                        layout.bindings().storedSlots().size(), layout.bindings().events().size()
                 ),
                 new SurfaceDirectTemplate.ValueCounts(
                         layout.noiseOccurrences(),
-                        layout.noiseSamples().size(),
-                        layout.biomeValues().size()
+                        layout.noiseSamples().size()
                 )
         );
         return new SurfaceDirectTemplate(layout.bindings(), constructor, statistics);

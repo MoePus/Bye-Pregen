@@ -6,31 +6,22 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 final class SurfaceScalarLayout {
-    static final int MAX_BIOME_VALUES = Long.SIZE - 1;
-
     private final SurfaceRulePlan plan;
     private final SurfaceBindingLayout bindings;
     private final IdentityHashMap<SurfaceRulePlan.Rule, SurfaceRulePlan.BindingSlotId> ruleSlots;
     private final IdentityHashMap<SurfaceRulePlan.Condition, ConditionLayout> conditions;
-    private final List<BiomeValue> biomeValues;
-    private final int biomeFallbacks;
-    private final SurfaceRulePlan.BindingSlotId biomeTableSlot;
     private final List<NoiseSample> noiseSamples;
     private final int noisePredicates;
 
-    private SurfaceScalarLayout(Builder builder) {
-        this.plan = builder.plan;
+    private SurfaceScalarLayout(SurfaceRulePlan plan, Builder builder) {
+        this.plan = plan;
         this.bindings = builder.bindings.build();
         this.ruleSlots = builder.ruleSlots;
         this.conditions = builder.conditions;
-        this.biomeValues = List.copyOf(builder.biomeValues.values());
-        this.biomeFallbacks = builder.biomeFallbackSources.size();
-        this.biomeTableSlot = builder.biomeTableSlot;
         this.noiseSamples = builder.noiseSamples.stream()
                 .map(MutableNoiseSample::freeze)
                 .toList();
@@ -38,15 +29,9 @@ final class SurfaceScalarLayout {
     }
 
     static SurfaceScalarLayout lower(SurfaceRulePlan plan) throws SurfaceCompileException {
-        Builder builder = new Builder(plan);
+        Builder builder = new Builder();
         builder.lowerRule(plan.root());
-        if (builder.biomeValues.size() > MAX_BIOME_VALUES) {
-            throw new SurfaceCompileException(
-                    "Too many canonical biome predicates: " + builder.biomeValues.size()
-            );
-        }
-        builder.finishBiomeTable();
-        return new SurfaceScalarLayout(builder);
+        return new SurfaceScalarLayout(plan, builder);
     }
 
     SurfaceRulePlan plan() {
@@ -62,19 +47,11 @@ final class SurfaceScalarLayout {
     }
 
     ConditionLayout condition(SurfaceRulePlan.Condition condition) {
-        return this.conditions.get(condition);
-    }
-
-    List<BiomeValue> biomeValues() {
-        return this.biomeValues;
-    }
-
-    SurfaceRulePlan.BindingSlotId biomeTableSlot() {
-        return this.biomeTableSlot;
-    }
-
-    int biomeFallbacks() {
-        return this.biomeFallbacks;
+        ConditionLayout layout = this.conditions.get(condition);
+        if (layout == null) {
+            throw new IllegalArgumentException("Condition was not lowered: " + condition);
+        }
+        return layout;
     }
 
     List<NoiseSample> noiseSamples() {
@@ -93,24 +70,34 @@ final class SurfaceScalarLayout {
         return bankCount(this.noiseSamples.size());
     }
 
-    record ConditionLayout(
-            SurfaceRulePlan.BindingSlotId primaryBinding,
-            SurfaceRulePlan.BindingSlotId secondaryBinding,
-            SurfaceRulePlan.BindingSlotId tertiaryBinding,
-            int sampleIndex,
-            int cacheIndex,
-            int behaviorBit,
-            boolean resolvedAnchor
-    ) {
-        static ConditionLayout empty() {
-            return new ConditionLayout(null, null, null, -1, -1, -1, false);
-        }
+    sealed interface ConditionLayout
+            permits Inline, Delegate, NoiseCondition, Gradient, AbsoluteY, BoundY {
     }
 
-    record BiomeValue(int bitIndex, java.util.Set<ResourceKey<Biome>> biomes) {
-        long mask() {
-            return 1L << this.bitIndex;
-        }
+    enum Inline implements ConditionLayout {
+        INSTANCE
+    }
+
+    record Delegate(SurfaceRulePlan.BindingSlotId slot) implements ConditionLayout {
+    }
+
+    record NoiseCondition(
+            int sampleIndex,
+            int predicateIndex
+    ) implements ConditionLayout {
+    }
+
+    record Gradient(
+            SurfaceRulePlan.BindingSlotId lower,
+            SurfaceRulePlan.BindingSlotId upper,
+            SurfaceRulePlan.BindingSlotId random
+    ) implements ConditionLayout {
+    }
+
+    record AbsoluteY(int y) implements ConditionLayout {
+    }
+
+    record BoundY(SurfaceRulePlan.BindingSlotId anchor) implements ConditionLayout {
     }
 
     record NoiseSample(
@@ -138,7 +125,6 @@ final class SurfaceScalarLayout {
     }
 
     private static final class Builder {
-        private final SurfaceRulePlan plan;
         private final SurfaceBindingLayout.Builder bindings = new SurfaceBindingLayout.Builder();
         private final IdentityHashMap<SurfaceRulePlan.Rule, SurfaceRulePlan.BindingSlotId> ruleSlots =
                 new IdentityHashMap<>();
@@ -146,62 +132,49 @@ final class SurfaceScalarLayout {
                 new IdentityHashMap<>();
         private final IdentityHashMap<SurfaceRulePlan.Condition, ConditionLayout> conditions =
                 new IdentityHashMap<>();
-        private final Map<SurfaceRulePlan.ValueId, BiomeValue> biomeValues = new LinkedHashMap<>();
-        private final List<Object> biomeFallbackSources = new ArrayList<>();
         private final Map<ResourceKey<NormalNoise.NoiseParameters>, MutableNoiseSample> samples =
                 new LinkedHashMap<>();
         private final List<MutableNoiseSample> noiseSamples = new ArrayList<>();
         private final Map<SurfaceRulePlan.ValueId, Integer> noisePredicates = new LinkedHashMap<>();
-        private SurfaceRulePlan.BindingSlotId biomeTableSlot;
         private int nextNoisePredicate;
 
-        private Builder(SurfaceRulePlan plan) {
-            this.plan = plan;
+        private void lowerRule(SurfaceRulePlan.Rule rule) throws SurfaceCompileException {
+            switch (rule) {
+                case SurfaceRulePlan.State state -> this.lowerState(state);
+                case SurfaceRulePlan.Sequence sequence -> {
+                    for (SurfaceRulePlan.Rule child : sequence.rules()) {
+                        this.lowerRule(child);
+                    }
+                }
+                case SurfaceRulePlan.Test test -> {
+                    this.lowerCondition(test.condition());
+                    this.lowerRule(test.followup());
+                }
+                case SurfaceRulePlan.OpaqueRule opaque -> this.ruleSlots.put(
+                        opaque,
+                        this.bindings.add(SurfaceBindingLayout.Kind.RULE, opaque.source())
+                );
+                case SurfaceRulePlan.Bandlands ignored -> {
+                }
+            }
         }
 
-        private void lowerRule(SurfaceRulePlan.Rule rule) throws SurfaceCompileException {
-            if (rule instanceof SurfaceRulePlan.State state) {
-                SurfaceRulePlan.BindingSlotId slot = this.stateSlots.computeIfAbsent(
-                        state.state(),
-                        ignored -> this.bindings.add(
-                                SurfaceBindingLayout.Kind.STATE, state.state()
-                        )
-                );
-                this.ruleSlots.put(rule, slot);
-                return;
-            }
-            if (rule instanceof SurfaceRulePlan.Sequence sequence) {
-                for (SurfaceRulePlan.Rule child : sequence.rules()) {
-                    this.lowerRule(child);
-                }
-                return;
-            }
-            if (rule instanceof SurfaceRulePlan.Test test) {
-                this.lowerCondition(test.condition());
-                this.lowerRule(test.followup());
-                return;
-            }
-            if (rule instanceof SurfaceRulePlan.OpaqueRule opaque) {
-                this.ruleSlots.put(rule, this.bindings.add(
-                        SurfaceBindingLayout.Kind.RULE, opaque.metadata().source()
-                ));
-            }
+        private void lowerState(SurfaceRulePlan.State state) {
+            SurfaceRulePlan.BindingSlotId slot = this.stateSlots.computeIfAbsent(
+                    state.state(),
+                    ignored -> this.bindings.add(SurfaceBindingLayout.Kind.STATE, state.state())
+            );
+            this.ruleSlots.put(state, slot);
         }
 
         private void lowerCondition(SurfaceRulePlan.Condition condition)
                 throws SurfaceCompileException {
             if (condition instanceof SurfaceRulePlan.NotCondition not) {
                 this.lowerCondition(not.target());
-                this.conditions.put(condition, ConditionLayout.empty());
                 return;
             }
             if (condition instanceof SurfaceRulePlan.OpaqueCondition opaque) {
-                this.conditions.put(condition, new ConditionLayout(
-                        this.bindings.add(
-                                SurfaceBindingLayout.Kind.CONDITION,
-                                opaque.metadata().source()
-                        ), null, null, -1, -1, -1, false
-                ));
+                this.conditions.put(opaque, this.lowerDelegate(opaque.source()));
                 return;
             }
             this.lowerKnown((SurfaceRulePlan.KnownCondition) condition);
@@ -210,42 +183,22 @@ final class SurfaceScalarLayout {
         private void lowerKnown(SurfaceRulePlan.KnownCondition condition)
                 throws SurfaceCompileException {
             SurfaceConditionSpec spec = condition.value().spec();
-            SurfaceConditionPlan plan = this.plan.conditionPlan(condition.value().id());
-            ConditionLayout layout = switch (plan.bindingRecipe()) {
-                case BIOME_BEHAVIOR -> this.lowerBiome(condition);
-                case NOISE -> this.lowerNoise(
-                        condition, (SurfaceConditionSpec.Noise) spec
-                );
-                case GRADIENT -> this.lowerGradient(
-                        (SurfaceConditionSpec.VerticalGradient) spec
-                );
-                case Y_ANCHOR -> this.lowerY((SurfaceConditionSpec.YAbove) spec);
-                case CONDITION_DELEGATE -> this.lowerDelegate(condition);
-                case NONE -> ConditionLayout.empty();
-                case OPAQUE_CONDITION -> throw new SurfaceCompileException(
-                        "Unexpected known condition: " + spec
-                );
+            ConditionLayout layout = switch (spec) {
+                case SurfaceConditionSpec.Noise noise -> this.lowerNoise(condition, noise);
+                case SurfaceConditionSpec.StoneDepth ignored -> Inline.INSTANCE;
+                case SurfaceConditionSpec.VerticalGradient gradient -> this.lowerGradient(gradient);
+                case SurfaceConditionSpec.Water ignored -> Inline.INSTANCE;
+                case SurfaceConditionSpec.YAbove yAbove -> this.lowerY(yAbove);
+                case SurfaceConditionSpec.Singleton singleton -> switch (singleton) {
+                    case STEEP, TEMPERATURE -> this.lowerDelegate(condition.source());
+                    case ABOVE_PRELIMINARY_SURFACE, HOLE -> Inline.INSTANCE;
+                };
+                case SurfaceConditionSpec.Opaque ignored -> throw unexpectedSpec(spec);
             };
             this.conditions.put(condition, layout);
         }
 
-        private ConditionLayout lowerBiome(SurfaceRulePlan.KnownCondition condition)
-                throws SurfaceCompileException {
-            int fallbackIndex = this.biomeFallbackSources.size();
-            this.biomeFallbackSources.add(condition.metadata().source());
-            SurfaceRulePlan.ValueId valueId = condition.value().id();
-            BiomeValue value = this.biomeValues.get(valueId);
-            if (value == null) {
-                SurfaceConditionSpec.Biome biome = (SurfaceConditionSpec.Biome) condition.value().spec();
-                value = new BiomeValue(this.biomeValues.size(), biome.biomes());
-                this.biomeValues.put(valueId, value);
-            }
-            return new ConditionLayout(
-                    null, null, null, -1, fallbackIndex, value.bitIndex(), false
-            );
-        }
-
-        private ConditionLayout lowerNoise(
+        private NoiseCondition lowerNoise(
                 SurfaceRulePlan.KnownCondition condition,
                 SurfaceConditionSpec.Noise noise
         ) {
@@ -260,27 +213,26 @@ final class SurfaceScalarLayout {
             } else {
                 this.bindings.addDiscarded(SurfaceBindingLayout.Kind.NOISE, noise.noise());
             }
-            Integer existingPredicate = this.noisePredicates.get(condition.value().id());
-            int predicate = existingPredicate == null
-                    ? this.addNoisePredicate(condition, noise, sample)
-                    : existingPredicate;
-            return new ConditionLayout(
-                    sample.noiseSlot, null, null, sample.index, predicate, -1, false
-            );
+            Integer existing = this.noisePredicates.get(condition.value().id());
+            int predicate = existing == null
+                    ? this.addNoisePredicate(noise, sample)
+                    : existing;
+            if (existing == null) {
+                this.noisePredicates.put(condition.value().id(), predicate);
+            }
+            return new NoiseCondition(sample.index, predicate);
         }
 
         private int addNoisePredicate(
-                SurfaceRulePlan.KnownCondition condition,
                 SurfaceConditionSpec.Noise noise,
                 MutableNoiseSample sample
         ) {
             int predicate = this.nextNoisePredicate++;
-            this.noisePredicates.put(condition.value().id(), predicate);
             sample.ranges.add(new NoiseRange(predicate, noise.minimum(), noise.maximum()));
             return predicate;
         }
 
-        private ConditionLayout lowerGradient(SurfaceConditionSpec.VerticalGradient gradient) {
+        private Gradient lowerGradient(SurfaceConditionSpec.VerticalGradient gradient) {
             SurfaceRulePlan.BindingSlotId lower = this.bindings.add(
                     SurfaceBindingLayout.Kind.RESOLVED_ANCHOR, gradient.trueAtAndBelow()
             );
@@ -290,42 +242,24 @@ final class SurfaceScalarLayout {
             SurfaceRulePlan.BindingSlotId random = this.bindings.add(
                     SurfaceBindingLayout.Kind.RANDOM_FACTORY, gradient.randomName()
             );
-            return new ConditionLayout(lower, upper, random, -1, -1, -1, true);
+            return new Gradient(lower, upper, random);
         }
 
         private ConditionLayout lowerY(SurfaceConditionSpec.YAbove yAbove) {
             if (yAbove.anchor() instanceof VerticalAnchor.Absolute absolute) {
-                return new ConditionLayout(
-                        null, null, null, -1, absolute.y(), -1, true
-                );
+                return new AbsoluteY(absolute.y());
             }
-            return new ConditionLayout(
-                    this.bindings.add(
-                            SurfaceBindingLayout.Kind.Y_ANCHOR, yAbove.anchor()
-                    ),
-                    null, null, -1, -1, -1, false
-            );
+            return new BoundY(this.bindings.add(
+                    SurfaceBindingLayout.Kind.Y_ANCHOR, yAbove.anchor()
+            ));
         }
 
-        private ConditionLayout lowerDelegate(SurfaceRulePlan.KnownCondition condition) {
-            SurfaceRulePlan.BindingSlotId slot = this.bindings.add(
-                    SurfaceBindingLayout.Kind.CONDITION,
-                    condition.metadata().source()
-            );
-            return new ConditionLayout(slot, null, null, -1, -1, -1, false);
+        private Delegate lowerDelegate(Object source) {
+            return new Delegate(this.bindings.add(SurfaceBindingLayout.Kind.CONDITION, source));
         }
 
-        private void finishBiomeTable() {
-            if (this.biomeValues.isEmpty()) {
-                return;
-            }
-            this.biomeTableSlot = this.bindings.add(
-                    SurfaceBindingLayout.Kind.BIOME_TABLE,
-                    new SurfaceBiomeBehaviorTable(
-                            List.copyOf(this.biomeValues.values()),
-                            this.biomeFallbackSources
-                    )
-            );
+        private static SurfaceCompileException unexpectedSpec(SurfaceConditionSpec spec) {
+            return new SurfaceCompileException("Unexpected known condition: " + spec);
         }
     }
 

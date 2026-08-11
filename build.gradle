@@ -51,6 +51,20 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+sourceSets {
+    surfaceTest {
+        java.setSrcDirs(['src/surfaceTest/java'])
+        resources.setSrcDirs(['src/surfaceTest/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    surfaceTestCompileOnly.extendsFrom compileOnly
+    surfaceTestAnnotationProcessor.extendsFrom annotationProcessor
+}
+
 apply from: 'gradle/byepregen-test-runs.gradle'
 apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
 
@@ -80,34 +94,53 @@ tasks.withType(JavaExec).configureEach {
 def surfaceBiomeCacheTest = tasks.register('testSurfaceBiomeCache', JavaExec) {
     group = 'verification'
     description = 'Checks flat-palette certificates against vanilla BiomeManager sampling.'
-    dependsOn(classes)
-    classpath = sourceSets.main.runtimeClasspath
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheTest')
 }
 def surfaceRuleAnalyzerTest = tasks.register('testSurfaceRuleAnalyzer', JavaExec) {
     group = 'verification'
     description = 'Checks Surface source-order IDs, canonical values, and opaque barriers.'
-    dependsOn(classes)
-    classpath = sourceSets.main.runtimeClasspath
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest')
 }
 def surfaceBindingLayoutTest = tasks.register('testSurfaceBindingLayout', JavaExec) {
     group = 'verification'
     description = 'Checks Surface binding order, failure stop, and eager/lazy recipes.'
-    dependsOn(classes)
-    classpath = sourceSets.main.runtimeClasspath
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest')
+}
+def arenaHeightmapUpdateTest = tasks.register('testArenaHeightmapUpdate', JavaExec) {
+    group = 'verification'
+    description = 'Checks Arena heightmap update decisions at the current-top boundary.'
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.worldgen.ArenaHeightmapUpdateTest')
 }
 def surfaceOpaqueRuntimeVerification = tasks.register('testSurfaceOpaqueRuntime') {
     group = 'verification'
     description = 'Runs opaque SurfaceRule continuation checks against generated hidden classes.'
     dependsOn('runSurfaceOpaqueRuntimeTest')
 }
+def surfaceOpaqueRuntimeHarnessJar = tasks.register('surfaceOpaqueRuntimeHarnessJar', Jar) {
+    group = 'verification'
+    description = 'Builds the isolated mod used by the transformed Surface runtime test.'
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    archiveBaseName = 'byepregen-surface-runtime-test'
+    archiveVersion = '1'
+    destinationDirectory = layout.buildDirectory.dir('surface-runtime-test')
+    from(sourceSets.surfaceTest.output) {
+        include 'com/moepus/byepregen/surfacetest/**'
+        include 'META-INF/neoforge.mods.toml'
+    }
+}
 tasks.register('compareSurfaceWorlds', JavaExec) {
     group = 'verification'
     description = 'Compares saved Surface block-state, heightmap, and postprocessing hashes.'
-    dependsOn(classes)
-    classpath = sourceSets.main.runtimeClasspath
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.SurfaceWorldHash')
     args(
             providers.gradleProperty('byepregenSurfaceExpectedWorld').orElse('').get(),
@@ -128,8 +161,8 @@ tasks.register('compareSurfaceWorlds', JavaExec) {
 tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
     group = 'verification'
     description = 'Microbenchmarks flat-palette certificate hit and miss paths.'
-    dependsOn(classes)
-    classpath = sourceSets.main.runtimeClasspath
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheBenchmark')
     systemProperty(
             'byepregen.surfaceBiomeCacheBenchmarkMode',
@@ -145,7 +178,9 @@ tasks.named('check') {
             surfaceBiomeCacheTest,
             surfaceRuleAnalyzerTest,
             surfaceBindingLayoutTest,
-            surfaceOpaqueRuntimeVerification
+            arenaHeightmapUpdateTest,
+            surfaceOpaqueRuntimeVerification,
+            tasks.named('verifyPackagedSurfaceJar')
     )
 }
 
@@ -190,6 +225,7 @@ neoForge {
             programArgument '--nogui'
             systemProperty 'byepregen.surfaceScalar', 'true'
             systemProperty 'byepregen.surfaceOpaqueRuntimeTest', 'true'
+            taskBefore(surfaceOpaqueRuntimeHarnessJar)
             logLevel = org.slf4j.event.Level.INFO
         }
 
@@ -235,22 +271,29 @@ tasks.named('runSurfaceOpaqueRuntimeTest', JavaExec) {
     notCompatibleWithConfigurationCache('Prepares a disposable runtime-test server directory')
     doFirst {
         def runDirectory = file('run/surface-opaque-runtime-test')
+        def modsDirectory = file("${runDirectory}/mods")
+        delete(modsDirectory)
+        modsDirectory.mkdirs()
         file("${runDirectory}/config").mkdirs()
-        file("${runDirectory}/eula.txt").text = 'eula=true\n'
-        file("${runDirectory}/config/byepregen.json").text = '''\
+        copy {
+            from(surfaceOpaqueRuntimeHarnessJar.flatMap { it.archiveFile })
+            into(modsDirectory)
+        }
+        file("${runDirectory}/eula.txt").setText('eula=true\n', 'UTF-8')
+        file("${runDirectory}/config/byepregen.json").setText('''\
 {
   "enableArenaPalette": false,
   "enableGcFreeWorldgenSave": false,
   "enableYALightEngine": false
 }
-'''.stripIndent()
+'''.stripIndent(), 'UTF-8')
     }
 }
 
 // Include resources generated by data generators.
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
-tasks.withType(Jar).configureEach {
+tasks.named('jar', Jar) {
     exclude 'com/moepus/byepregen/test/**'
 }
 

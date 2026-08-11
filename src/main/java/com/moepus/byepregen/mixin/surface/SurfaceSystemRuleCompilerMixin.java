@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class SurfaceSystemRuleCompilerMixin {
     @Unique
     private final SurfaceTemplateCache byepregen$buildSurfaceRules =
-            new SurfaceTemplateCache(true);
+            new SurfaceTemplateCache();
 
     @Redirect(
             method = "buildSurface",

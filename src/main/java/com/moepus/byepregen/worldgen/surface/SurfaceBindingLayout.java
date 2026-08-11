@@ -7,23 +7,21 @@ import java.util.function.Function;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 
 final class SurfaceBindingLayout {
-    private final List<Slot> slots;
+    private final List<BindEvent> events;
     private final List<Slot> storedSlots;
 
-    SurfaceBindingLayout(List<Slot> slots, List<Slot> storedSlots) {
-        this.slots = List.copyOf(slots);
+    SurfaceBindingLayout(List<BindEvent> events, List<Slot> storedSlots) {
+        this.events = List.copyOf(events);
         this.storedSlots = List.copyOf(storedSlots);
     }
 
-    List<Slot> slots() {
-        return this.slots;
+    List<BindEvent> events() {
+        return this.events;
     }
 
     List<Slot> storedSlots() {
@@ -49,33 +47,33 @@ final class SurfaceBindingLayout {
             Resolver resolver
     ) {
         Object[] values = new Object[this.storedSlots.size()];
-        for (Slot slot : this.slots) {
-            Object value = resolver.resolve(slot, rawContext, context);
-            if (slot.valueIndex() >= 0) {
-                values[slot.valueIndex()] = value;
+        for (BindEvent event : this.events) {
+            Object value = resolver.resolve(event, rawContext, context);
+            if (event instanceof Slot slot) {
+                values[slot.id().value()] = value;
             }
         }
         return values;
     }
 
     private static Object resolveRuntime(
-            Slot slot,
+            BindEvent event,
             Object rawContext,
             SurfaceContextAccess context
     ) {
-        return switch (slot.kind()) {
-            case STATE, BIOME_TABLE, Y_ANCHOR -> slot.source();
+        return switch (event.kind()) {
+            case STATE, Y_ANCHOR -> event.source();
             case NOISE -> context.byepregen$randomState().getOrCreateNoise(
-                    castNoiseKey(slot.source())
+                    castNoiseKey(event.source())
             );
-            case RESOLVED_ANCHOR -> ((VerticalAnchor) slot.source()).resolveY(
+            case RESOLVED_ANCHOR -> ((VerticalAnchor) event.source()).resolveY(
                     context.byepregen$worldGenerationContext()
             );
             case RANDOM_FACTORY -> context.byepregen$randomState().getOrCreateRandomFactory(
-                    (ResourceLocation) slot.source()
+                    (ResourceLocation) event.source()
             );
-            case CONDITION -> bindCondition(slot.source(), rawContext);
-            case RULE -> bindRule(slot.source(), rawContext);
+            case CONDITION -> bindCondition(event.source(), rawContext);
+            case RULE -> bindRule(event.source(), rawContext);
         };
     }
 
@@ -98,7 +96,6 @@ final class SurfaceBindingLayout {
 
     enum Kind {
         STATE(BlockState.class),
-        BIOME_TABLE(SurfaceBiomeBehaviorTable.class),
         NOISE(NormalNoise.class),
         RESOLVED_ANCHOR(int.class),
         RANDOM_FACTORY(PositionalRandomFactory.class),
@@ -117,17 +114,16 @@ final class SurfaceBindingLayout {
         }
     }
 
-    record Slot(
-            SurfaceRulePlan.BindingSlotId id,
-            int valueIndex,
-            Kind kind,
-            Object source
-    ) {
+    sealed interface BindEvent permits Slot, Discarded {
+        Kind kind();
+
+        Object source();
+    }
+
+    record Slot(SurfaceRulePlan.BindingSlotId id, Kind kind, Object source)
+            implements BindEvent {
         Slot {
             Objects.requireNonNull(id, "id");
-            if (valueIndex < -1) {
-                throw new IllegalArgumentException("Invalid binding value index: " + valueIndex);
-            }
             Objects.requireNonNull(kind, "kind");
             Objects.requireNonNull(source, "source");
         }
@@ -137,35 +133,37 @@ final class SurfaceBindingLayout {
         }
     }
 
+    record Discarded(Kind kind, Object source) implements BindEvent {
+        Discarded {
+            Objects.requireNonNull(kind, "kind");
+            Objects.requireNonNull(source, "source");
+        }
+    }
+
     static final class Builder {
-        private final List<Slot> slots = new ArrayList<>();
+        private final List<BindEvent> events = new ArrayList<>();
         private final List<Slot> storedSlots = new ArrayList<>();
 
         SurfaceRulePlan.BindingSlotId add(Kind kind, Object source) {
             int index = this.storedSlots.size();
             SurfaceRulePlan.BindingSlotId id = new SurfaceRulePlan.BindingSlotId(index);
-            Slot slot = new Slot(id, index, kind, source);
-            this.slots.add(slot);
+            Slot slot = new Slot(id, kind, source);
+            this.events.add(slot);
             this.storedSlots.add(slot);
             return id;
         }
 
         void addDiscarded(Kind kind, Object source) {
-            this.slots.add(new Slot(
-                    new SurfaceRulePlan.BindingSlotId(this.slots.size()),
-                    -1,
-                    kind,
-                    source
-            ));
+            this.events.add(new Discarded(kind, source));
         }
 
         SurfaceBindingLayout build() {
-            return new SurfaceBindingLayout(this.slots, this.storedSlots);
+            return new SurfaceBindingLayout(this.events, this.storedSlots);
         }
     }
 
     @FunctionalInterface
     interface Resolver {
-        Object resolve(Slot slot, Object rawContext, SurfaceContextAccess context);
+        Object resolve(BindEvent event, Object rawContext, SurfaceContextAccess context);
     }
 }

@@ -54,7 +54,6 @@
     "surface.SurfaceRulesBoundRuleMixin",
     "surface.SurfaceRulesContextMixin",
     "surface.SurfaceRulesLookupMixin",
-    "surface.SurfaceRulesBiomeSourceMixin",
     "surface.SurfaceRulesBlockSourceMixin",
     "surface.SurfaceRulesNoiseSourceMixin",
     "surface.SurfaceRulesNotSourceMixin",

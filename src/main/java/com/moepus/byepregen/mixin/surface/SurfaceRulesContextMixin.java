@@ -1,9 +1,6 @@
 package com.moepus.byepregen.mixin.surface;
 
 import com.moepus.byepregen.worldgen.surface.SurfaceContextAccess;
-import java.util.function.Supplier;
-import net.minecraft.core.Holder;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.SurfaceSystem;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
@@ -44,14 +41,6 @@ public interface SurfaceRulesContextMixin extends SurfaceContextAccess {
     @Override
     @Accessor("lastUpdateXZ")
     long byepregen$lastUpdateXZ();
-
-    @Override
-    @Accessor("lastUpdateY")
-    long byepregen$lastUpdateY();
-
-    @Override
-    @Accessor("biome")
-    Supplier<Holder<Biome>> byepregen$biomeSupplier();
 
     @Override
     @Accessor("randomState")

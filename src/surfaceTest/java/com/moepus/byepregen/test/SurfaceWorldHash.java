@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 import net.minecraft.nbt.CompoundTag;
@@ -237,7 +238,7 @@ public final class SurfaceWorldHash {
         for (String key : all.keySet()) {
             String firstHash = first.heightmapEntries().get(key);
             String secondHash = second.heightmapEntries().get(key);
-            if (!java.util.Objects.equals(firstHash, secondHash)) {
+            if (!Objects.equals(firstHash, secondHash)) {
                 differences.put(key, firstHash + " -> " + secondHash);
             }
         }
@@ -300,14 +301,16 @@ public final class SurfaceWorldHash {
             return other instanceof ChunkHashes hashes
                     && Arrays.equals(this.blocks, hashes.blocks)
                     && Arrays.equals(this.heightmaps, hashes.heightmaps)
-                    && Arrays.equals(this.postProcessing, hashes.postProcessing);
+                    && Arrays.equals(this.postProcessing, hashes.postProcessing)
+                    && Objects.equals(this.status, hashes.status);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(this.blocks) * 31 * 31
-                    + Arrays.hashCode(this.heightmaps) * 31
-                    + Arrays.hashCode(this.postProcessing);
+            int result = Arrays.hashCode(this.blocks);
+            result = 31 * result + Arrays.hashCode(this.heightmaps);
+            result = 31 * result + Arrays.hashCode(this.postProcessing);
+            return 31 * result + Objects.hashCode(this.status);
         }
 
         private String hex() {

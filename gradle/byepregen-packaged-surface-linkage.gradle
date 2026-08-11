@@ -36,8 +36,9 @@ def surfaceLinkageHarnessJar = tasks.register('surfaceLinkageHarnessJar', Jar) {
 def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
     group = 'verification'
     description = 'Checks that the production jar contains the Surface scalar runtime and no test driver.'
-    dependsOn(tasks.named('jar'))
+    dependsOn(tasks.named('jar'), sourceSets.surfaceTest.classesTaskName)
     inputs.file(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    inputs.files(sourceSets.surfaceTest.output.classesDirs)
     doLast {
         File productionJar = tasks.named('jar', Jar).get().archiveFile.get().asFile
         new ZipFile(productionJar).withCloseable { zip ->
@@ -53,6 +54,20 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
             }
             if (zip.entries().any { it.name.startsWith('com/moepus/byepregen/test/') }) {
                 throw new GradleException("Production jar contains excluded test classes: ${productionJar}")
+            }
+            sourceSets.surfaceTest.output.classesDirs.files.each { classesDirectory ->
+                if (!classesDirectory.isDirectory()) {
+                    return
+                }
+                fileTree(classesDirectory).matching { include '**/*.class' }.files.each { testClass ->
+                    String entry = classesDirectory.toPath().relativize(testClass.toPath())
+                            .toString().replace('\\', '/')
+                    if (zip.getEntry(entry) != null) {
+                        throw new GradleException(
+                                "Production jar contains Surface test class ${entry}: ${productionJar}"
+                        )
+                    }
+                }
             }
         }
     }
@@ -119,7 +134,7 @@ neoForge {
             gameDirectory = packagedSurfaceRoot
             programArgument '--nogui'
             systemProperty 'byepregen.surfaceScalar', 'true'
-            systemProperty 'byepregen.surfaceDifferential', 'false'
+            systemProperty 'byepregen.surfaceOutputDifferential', 'false'
             systemProperty 'byepregen.surfaceBiomeCache', 'true'
             systemProperty 'byepregen.surfaceLinkageResult', packagedSurfaceResult.absolutePath
             systemProperty 'neoforge.enabledGameTestNamespaces', ''

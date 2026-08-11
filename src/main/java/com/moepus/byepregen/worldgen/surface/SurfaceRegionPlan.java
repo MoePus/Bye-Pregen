@@ -14,7 +14,6 @@ final class SurfaceRegionPlan {
     private static final int GROUP_TARGET_WEIGHT = 1_100;
     private static final int BRANCH_WEIGHT = 6;
 
-    private final SurfaceScalarTarget target;
     private final IdentityHashMap<SurfaceRulePlan.Rule, Estimate> estimates =
             new IdentityHashMap<>();
     private final IdentityHashMap<SurfaceRulePlan.Rule, String> outlinedRules =
@@ -27,18 +26,14 @@ final class SurfaceRegionPlan {
             new IdentityHashMap<>();
     private final List<Region> regions = new ArrayList<>();
 
-    private SurfaceRegionPlan(SurfaceRulePlan.Rule root, SurfaceScalarTarget target) {
-        this.target = target;
+    private SurfaceRegionPlan(SurfaceRulePlan.Rule root) {
         this.indexPaths(root, "$root");
         this.estimate(root);
         this.planRoot(root);
     }
 
-    static SurfaceRegionPlan create(
-            SurfaceRulePlan.Rule root,
-            SurfaceScalarTarget target
-    ) {
-        return new SurfaceRegionPlan(root, target);
+    static SurfaceRegionPlan create(SurfaceRulePlan.Rule root) {
+        return new SurfaceRegionPlan(root);
     }
 
     String outlinedMethod(SurfaceRulePlan.Rule rule) {
@@ -267,18 +262,15 @@ final class SurfaceRegionPlan {
         if (condition instanceof SurfaceRulePlan.NotCondition not) {
             return this.conditionBytes(not.target());
         }
-        SurfaceConditionSpec spec = condition.value().spec();
+        SurfaceConditionSpec spec = SurfaceRulePlan.conditionValue(condition).spec();
         return switch (spec) {
-            case SurfaceConditionSpec.Biome ignored -> 14;
-            case SurfaceConditionSpec.Noise ignored ->
-                    this.target == SurfaceScalarTarget.BUILD_POINT ? 72 : 36;
+            case SurfaceConditionSpec.Noise ignored -> 72;
             case SurfaceConditionSpec.StoneDepth stone -> stone.secondaryDepthRange() == 0 ? 20 : 44;
             case SurfaceConditionSpec.VerticalGradient ignored -> 58;
             case SurfaceConditionSpec.Water ignored -> 26;
             case SurfaceConditionSpec.YAbove ignored -> 26;
             case SurfaceConditionSpec.Singleton ignored -> 12;
             case SurfaceConditionSpec.Opaque ignored -> 12;
-            case SurfaceConditionSpec.Negated ignored -> 4;
         };
     }
 
@@ -286,7 +278,8 @@ final class SurfaceRegionPlan {
         if (condition instanceof SurfaceRulePlan.NotCondition not) {
             return conditionBranches(not.target());
         }
-        return condition.value().spec() instanceof SurfaceConditionSpec.VerticalGradient ? 3 : 1;
+        return SurfaceRulePlan.conditionValue(condition).spec()
+                instanceof SurfaceConditionSpec.VerticalGradient ? 3 : 1;
     }
 
     private SurfaceRulePlan.Rule largestComplexChild(List<SurfaceRulePlan.Rule> children) {

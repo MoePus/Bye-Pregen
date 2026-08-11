@@ -10,15 +10,12 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
-import static org.objectweb.asm.Opcodes.ALOAD;
 import static org.objectweb.asm.Opcodes.D2I;
 import static org.objectweb.asm.Opcodes.DCMPG;
 import static org.objectweb.asm.Opcodes.DLOAD;
 import static org.objectweb.asm.Opcodes.DSTORE;
 import static org.objectweb.asm.Opcodes.F2D;
-import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.IADD;
-import static org.objectweb.asm.Opcodes.ICONST_0;
 import static org.objectweb.asm.Opcodes.IFEQ;
 import static org.objectweb.asm.Opcodes.IFGE;
 import static org.objectweb.asm.Opcodes.IFGT;
@@ -33,11 +30,8 @@ import static org.objectweb.asm.Opcodes.IF_ICMPLT;
 import static org.objectweb.asm.Opcodes.INEG;
 import static org.objectweb.asm.Opcodes.IMUL;
 import static org.objectweb.asm.Opcodes.INVOKEINTERFACE;
-import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.LAND;
-import static org.objectweb.asm.Opcodes.LCMP;
 import static com.moepus.byepregen.worldgen.surface.SurfaceAsmSupport.pushInt;
 
 final class SurfaceConditionEmitter {
@@ -80,93 +74,21 @@ final class SurfaceConditionEmitter {
             Label target
     ) {
         SurfaceConditionSpec spec = condition.value().spec();
-        SurfaceConditionPlan plan = this.context.layout()
-                .plan()
-                .conditionPlan(condition.value().id());
-        switch (plan.kind()) {
-            case BIOME -> this.emitDelegate(method, condition, branchOnTrue, target);
-            case NOISE -> this.noiseEmitter.emit(
-                    method,
-                    condition,
-                    (SurfaceConditionSpec.Noise) spec,
-                    branchOnTrue,
-                    target
-            );
-            case STONE_DEPTH -> this.emitStoneDepth(
-                    method, (SurfaceConditionSpec.StoneDepth) spec, branchOnTrue, target
-            );
-            case VERTICAL_GRADIENT -> this.emitGradient(
-                    method,
-                    condition,
-                    (SurfaceConditionSpec.VerticalGradient) spec,
-                    branchOnTrue,
-                    target
-            );
-            case WATER -> this.emitWater(
-                    method, (SurfaceConditionSpec.Water) spec, branchOnTrue, target
-            );
-            case Y_ABOVE -> this.emitYAbove(
-                    method,
-                    condition,
-                    (SurfaceConditionSpec.YAbove) spec,
-                    branchOnTrue,
-                    target
-            );
-            case ABOVE_PRELIMINARY, HOLE, STEEP, TEMPERATURE -> this.emitSingleton(
-                    method,
-                    condition,
-                    (SurfaceConditionSpec.Singleton) spec,
-                    branchOnTrue,
-                    target
-            );
-            case NEGATED, OPAQUE -> throw new IllegalStateException(
-                    "Unexpected known condition " + spec
-            );
+        switch (spec) {
+            case SurfaceConditionSpec.Noise ignored ->
+                    this.noiseEmitter.emit(method, condition, branchOnTrue, target);
+            case SurfaceConditionSpec.StoneDepth stone ->
+                    this.emitStoneDepth(method, stone, branchOnTrue, target);
+            case SurfaceConditionSpec.VerticalGradient gradient ->
+                    this.emitGradient(method, condition, gradient, branchOnTrue, target);
+            case SurfaceConditionSpec.Water water ->
+                    this.emitWater(method, water, branchOnTrue, target);
+            case SurfaceConditionSpec.YAbove yAbove ->
+                    this.emitYAbove(method, condition, yAbove, branchOnTrue, target);
+            case SurfaceConditionSpec.Singleton singleton ->
+                    this.emitSingleton(method, condition, singleton, branchOnTrue, target);
+            case SurfaceConditionSpec.Opaque ignored -> throw unexpectedSpec(spec);
         }
-    }
-
-    private void emitBiome(
-            MethodVisitor method,
-            SurfaceRulePlan.KnownCondition condition,
-            boolean branchOnTrue,
-            Label target
-    ) {
-        SurfaceScalarLayout.ConditionLayout layout = this.context.layout().condition(condition);
-        long mask = 1L << layout.behaviorBit();
-        method.visitVarInsn(ALOAD, 0);
-        method.visitMethodInsn(
-                INVOKEVIRTUAL,
-                this.context.owner(),
-                SurfaceEmissionContext.BIOME_BITS_METHOD,
-                "()J",
-                false
-        );
-        method.visitVarInsn(org.objectweb.asm.Opcodes.LSTORE, this.locals.scratchLocal());
-        Label supported = new Label();
-        Label completed = new Label();
-        method.visitVarInsn(org.objectweb.asm.Opcodes.LLOAD, this.locals.scratchLocal());
-        method.visitInsn(org.objectweb.asm.Opcodes.LCONST_0);
-        method.visitInsn(LCMP);
-        method.visitJumpInsn(IFLT, supported);
-        method.visitVarInsn(ALOAD, 0);
-        pushInt(method, layout.cacheIndex());
-        method.visitMethodInsn(
-                INVOKEVIRTUAL,
-                this.context.owner(),
-                SurfaceEmissionContext.BIOME_FALLBACK_METHOD,
-                "(I)Z",
-                false
-        );
-        method.visitJumpInsn(branchOnTrue ? IFNE : IFEQ, target);
-        method.visitJumpInsn(GOTO, completed);
-        method.visitLabel(supported);
-        method.visitVarInsn(org.objectweb.asm.Opcodes.LLOAD, this.locals.scratchLocal());
-        method.visitLdcInsn(mask);
-        method.visitInsn(LAND);
-        method.visitInsn(org.objectweb.asm.Opcodes.LCONST_0);
-        method.visitInsn(LCMP);
-        method.visitJumpInsn(branchOnTrue ? IFNE : IFEQ, target);
-        method.visitLabel(completed);
     }
 
     private void emitStoneDepth(
@@ -217,14 +139,15 @@ final class SurfaceConditionEmitter {
             boolean branchOnTrue,
             Label target
     ) {
-        SurfaceScalarLayout.ConditionLayout layout = this.context.layout().condition(condition);
+        SurfaceScalarLayout.Gradient layout = (SurfaceScalarLayout.Gradient)
+                this.context.layout().condition(condition);
         Label fallthrough = new Label();
         this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_Y);
-        this.context.loadBinding(method, layout.primaryBinding());
-        method.visitJumpInsn(branchOnTrue ? IF_ICMPLE : IF_ICMPLE, branchOnTrue ? target : fallthrough);
+        this.context.loadBinding(method, layout.lower());
+        method.visitJumpInsn(IF_ICMPLE, branchOnTrue ? target : fallthrough);
         this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_Y);
-        this.context.loadBinding(method, layout.secondaryBinding());
-        method.visitJumpInsn(branchOnTrue ? IF_ICMPGE : IF_ICMPGE, branchOnTrue ? fallthrough : target);
+        this.context.loadBinding(method, layout.upper());
+        method.visitJumpInsn(IF_ICMPGE, branchOnTrue ? fallthrough : target);
         this.emitGradientRandom(method, layout);
         method.visitJumpInsn(branchOnTrue ? IFLT : IFGE, target);
         method.visitLabel(fallthrough);
@@ -232,13 +155,13 @@ final class SurfaceConditionEmitter {
 
     private void emitGradientRandom(
             MethodVisitor method,
-            SurfaceScalarLayout.ConditionLayout layout
+            SurfaceScalarLayout.Gradient layout
     ) {
         this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_Y);
         method.visitInsn(org.objectweb.asm.Opcodes.I2D);
-        this.context.loadBinding(method, layout.primaryBinding());
+        this.context.loadBinding(method, layout.lower());
         method.visitInsn(org.objectweb.asm.Opcodes.I2D);
-        this.context.loadBinding(method, layout.secondaryBinding());
+        this.context.loadBinding(method, layout.upper());
         method.visitInsn(org.objectweb.asm.Opcodes.I2D);
         method.visitLdcInsn(1.0D);
         method.visitLdcInsn(0.0D);
@@ -250,7 +173,7 @@ final class SurfaceConditionEmitter {
                 false
         );
         method.visitVarInsn(DSTORE, this.locals.scratchLocal());
-        this.context.loadBinding(method, layout.tertiaryBinding());
+        this.context.loadBinding(method, layout.random());
         this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_X);
         this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_Y);
         this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_Z);
@@ -318,10 +241,10 @@ final class SurfaceConditionEmitter {
             this.loadContextInt(method, SurfaceRuntimeAbi.STONE_ABOVE);
             method.visitInsn(IADD);
         }
-        if (layout.resolvedAnchor()) {
-            pushInt(method, layout.cacheIndex());
-        } else {
-            this.context.loadBinding(method, layout.primaryBinding());
+        if (layout instanceof SurfaceScalarLayout.AbsoluteY absolute) {
+            pushInt(method, absolute.y());
+        } else if (layout instanceof SurfaceScalarLayout.BoundY bound) {
+            this.context.loadBinding(method, bound.anchor());
             this.context.loadWorldGenerationContext(method);
             method.visitMethodInsn(
                     INVOKEINTERFACE,
@@ -333,6 +256,8 @@ final class SurfaceConditionEmitter {
                     ),
                     true
             );
+        } else {
+            throw new IllegalStateException("Unexpected Y layout " + layout);
         }
         this.emitSurfaceDepthTerm(method, yAbove.surfaceDepthMultiplier());
         method.visitJumpInsn(branchOnTrue ? IF_ICMPGE : IF_ICMPLT, target);
@@ -368,10 +293,9 @@ final class SurfaceConditionEmitter {
             boolean branchOnTrue,
             Label target
     ) {
-        SurfaceRulePlan.BindingSlotId slot = this.context.layout()
-                .condition(condition)
-                .primaryBinding();
-        this.context.loadBinding(method, slot);
+        SurfaceScalarLayout.Delegate layout = (SurfaceScalarLayout.Delegate)
+                this.context.layout().condition(condition);
+        this.context.loadBinding(method, layout.slot());
         method.visitMethodInsn(
                 INVOKEINTERFACE,
                 this.context.abi().conditionOwner(),
@@ -398,5 +322,9 @@ final class SurfaceConditionEmitter {
             method.visitInsn(IMUL);
         }
         method.visitInsn(IADD);
+    }
+
+    private static IllegalStateException unexpectedSpec(SurfaceConditionSpec spec) {
+        return new IllegalStateException("Unexpected known condition " + spec);
     }
 }

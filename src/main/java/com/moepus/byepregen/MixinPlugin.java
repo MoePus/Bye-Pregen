@@ -62,6 +62,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             MIXIN_PACKAGE + "compat.VoxyWorldConversionFactoryMixin";
     private static final String SURFACE_BIOME_CACHE_MIXIN =
             MIXIN_PACKAGE + "SurfaceSystemBiomeCacheMixin";
+    private static final String SURFACE_BIOME_MANAGER_ACCESSOR =
+            MIXIN_PACKAGE + "BiomeManagerAccessor";
     private static final String SURFACE_SCALAR_MIXIN_PREFIX = MIXIN_PACKAGE + "surface.";
 
     private static final Set<String> GC_FREE_SATELLITE_MIXINS = Set.of(
@@ -119,11 +121,12 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             Config config,
             Predicate<String> classExists
     ) {
-        if (SURFACE_BIOME_CACHE_MIXIN.equals(mixinClassName)) {
+        if (SURFACE_BIOME_CACHE_MIXIN.equals(mixinClassName)
+                || SURFACE_BIOME_MANAGER_ACCESSOR.equals(mixinClassName)) {
             return Boolean.parseBoolean(System.getProperty(SURFACE_BIOME_CACHE_PROPERTY, "true"));
         }
         if (mixinClassName.startsWith(SURFACE_SCALAR_MIXIN_PREFIX)) {
-            return Boolean.parseBoolean(System.getProperty(SURFACE_SCALAR_PROPERTY, "false"));
+            return Boolean.parseBoolean(System.getProperty(SURFACE_SCALAR_PROPERTY, "true"));
         }
         if (mixinClassName.startsWith(DFC_MIXIN_PREFIX)) {
             return config.enableArenaPalette && this.c2meDfcEnabled;

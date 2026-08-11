@@ -16,7 +16,6 @@ import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import org.objectweb.asm.Type;
 
 final class SurfaceRuntimeAbi {
-    static final String BIOME_SUPPLIER = "byepregen$biomeSupplier";
     static final String BLOCK_X = "byepregen$blockX";
     static final String BLOCK_Y = "byepregen$blockY";
     static final String BLOCK_Z = "byepregen$blockZ";
@@ -175,7 +174,6 @@ final class SurfaceRuntimeAbi {
         requireMethod(this.contextClass, STONE_ABOVE, int.class);
         requireMethod(this.contextClass, STONE_BELOW, int.class);
         requireMethod(this.contextClass, LAST_UPDATE_XZ, long.class);
-        requireMethod(this.contextClass, BIOME_SUPPLIER, java.util.function.Supplier.class);
         requireMethod(this.contextClass, SURFACE_SYSTEM, SurfaceSystem.class);
         requireMethod(this.contextClass, WORLD_CONTEXT, WorldGenerationContext.class);
         requireMethod(this.contextClass, SURFACE_SECONDARY, double.class);

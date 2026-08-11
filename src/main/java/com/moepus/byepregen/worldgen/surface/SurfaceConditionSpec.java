@@ -1,7 +1,6 @@
 package com.moepus.byepregen.worldgen.surface;
 
 import java.util.Objects;
-import java.util.Set;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
@@ -10,26 +9,17 @@ import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 public sealed interface SurfaceConditionSpec
         permits SurfaceConditionSpec.Singleton,
-        SurfaceConditionSpec.Biome,
         SurfaceConditionSpec.Noise,
         SurfaceConditionSpec.StoneDepth,
         SurfaceConditionSpec.VerticalGradient,
         SurfaceConditionSpec.Water,
         SurfaceConditionSpec.YAbove,
-        SurfaceConditionSpec.Negated,
         SurfaceConditionSpec.Opaque {
     enum Singleton implements SurfaceConditionSpec {
         ABOVE_PRELIMINARY_SURFACE,
         HOLE,
         STEEP,
         TEMPERATURE
-    }
-
-    record Biome(Set<ResourceKey<net.minecraft.world.level.biome.Biome>> biomes)
-            implements SurfaceConditionSpec {
-        public Biome {
-            biomes = Set.copyOf(biomes);
-        }
     }
 
     record Noise(
@@ -79,12 +69,6 @@ public sealed interface SurfaceConditionSpec
     ) implements SurfaceConditionSpec {
         public YAbove {
             Objects.requireNonNull(anchor, "anchor");
-        }
-    }
-
-    record Negated(SurfaceRulePlan.ValueId target) implements SurfaceConditionSpec {
-        public Negated {
-            Objects.requireNonNull(target, "target");
         }
     }
 

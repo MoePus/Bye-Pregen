@@ -2,9 +2,6 @@ package com.moepus.byepregen.worldgen.surface;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
-import java.util.function.Predicate;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 
@@ -13,20 +10,20 @@ public final class SurfaceRuleAnalyzerTest {
     }
 
     public static void main(String[] args) {
-        preservesSourceOrderAndStableIds();
-        canonicalizesValuesWithoutMergingOccurrences();
+        preservesSourceOrderAndOpaqueSources();
         keepsUnknownSourcesAsOpaqueBarriers();
         recognizesSingletonIdentityWithoutMixins();
         rejectsUnregisteredShapeImplementations();
-        sharesOnlyVanillaSingletonCacheGroups();
+        canonicalizesSingletonValues();
         fallsBackAtAnalysisLimits();
     }
 
-    private static void preservesSourceOrderAndStableIds() {
-        SurfaceRules.ConditionSource biome = fakeBiome(List.of(Biomes.PLAINS));
+    private static void preservesSourceOrderAndOpaqueSources() {
+        SurfaceRules.ConditionSource biome = fakeBiome();
+        SurfaceRules.RuleSource unknown = unknownRule();
         SurfaceRules.RuleSource source = fakeSequence(List.of(
                 fakeTest(fakeNot(biome), SurfaceRules.bandlands()),
-                unknownRule()
+                unknown
         ));
 
         SurfaceRulePlan plan = analyze(source);
@@ -35,60 +32,17 @@ public final class SurfaceRuleAnalyzerTest {
         SurfaceRulePlan.NotCondition not = requireType(
                 test.condition(), SurfaceRulePlan.NotCondition.class
         );
-        SurfaceRulePlan.KnownCondition target = requireType(
-                not.target(), SurfaceRulePlan.KnownCondition.class
+        SurfaceRulePlan.OpaqueCondition target = requireType(
+                not.target(), SurfaceRulePlan.OpaqueCondition.class
         );
-        SurfaceRulePlan.Bandlands bandlands = requireType(
+        requireType(
                 test.followup(), SurfaceRulePlan.Bandlands.class
         );
         SurfaceRulePlan.OpaqueRule opaque = requireType(
                 root.rules().get(1), SurfaceRulePlan.OpaqueRule.class
         );
-
-        assertId(0, root.metadata().entryId().value(), "root entry");
-        assertId(0, root.metadata().occurrenceId().value(), "root occurrence");
-        assertId(1, test.metadata().entryId().value(), "test entry");
-        assertId(1, test.metadata().occurrenceId().value(), "test occurrence");
-        assertId(2, not.metadata().occurrenceId().value(), "not occurrence");
-        assertId(3, target.metadata().occurrenceId().value(), "biome occurrence");
-        assertId(2, bandlands.metadata().entryId().value(), "bandlands entry");
-        assertId(4, bandlands.metadata().occurrenceId().value(), "bandlands occurrence");
-        assertId(3, opaque.metadata().entryId().value(), "opaque entry");
-        assertId(5, opaque.metadata().occurrenceId().value(), "opaque occurrence");
-        assertId(5, plan.entryCount(), "entry count");
-        assertId(6, plan.occurrenceCount(), "occurrence count");
-        assertSame(
-                not.metadata().cacheGroupId(),
-                target.metadata().cacheGroupId(),
-                "not must reuse the target cache group"
-        );
-        assertControlFlow(plan, test, bandlands, opaque);
-    }
-
-    private static void canonicalizesValuesWithoutMergingOccurrences() {
-        SurfaceRules.ConditionSource firstBiome = fakeBiome(List.of(Biomes.PLAINS));
-        SurfaceRules.ConditionSource secondBiome = fakeBiome(List.of(Biomes.PLAINS));
-        SurfaceRules.RuleSource source = fakeSequence(List.of(
-                fakeTest(firstBiome, SurfaceRules.bandlands()),
-                fakeTest(secondBiome, SurfaceRules.bandlands())
-        ));
-
-        SurfaceRulePlan.Sequence root = requireType(
-                analyze(source).root(), SurfaceRulePlan.Sequence.class
-        );
-        SurfaceRulePlan.KnownCondition first = condition(root.rules().get(0));
-        SurfaceRulePlan.KnownCondition second = condition(root.rules().get(1));
-        assertSame(first.value(), second.value(), "equal biome values must canonicalize");
-        assertNotEquals(
-                first.metadata().occurrenceId(),
-                second.metadata().occurrenceId(),
-                "condition occurrences must remain distinct"
-        );
-        assertNotEquals(
-                first.metadata().cacheGroupId(),
-                second.metadata().cacheGroupId(),
-                "non-singleton vanilla caches remain occurrence-local"
-        );
+        assertSame(biome, target.source(), "delegated condition source");
+        assertSame(unknown, opaque.source(), "opaque rule source");
     }
 
     private static void keepsUnknownSourcesAsOpaqueBarriers() {
@@ -103,9 +57,6 @@ public final class SurfaceRuleAnalyzerTest {
         );
         SurfaceRulePlan.OpaqueCondition first = opaqueCondition(root.rules().get(0));
         SurfaceRulePlan.OpaqueCondition second = opaqueCondition(root.rules().get(1));
-        if (!first.value().semantics().effect().barrier()) {
-            throw new AssertionError("opaque condition is not an effect barrier");
-        }
         assertNotEquals(first.value().id(), second.value().id(), "opaque values must be unique");
         if (analyze(unknownRule()).root()
                 instanceof SurfaceRulePlan.OpaqueRule) {
@@ -129,16 +80,6 @@ public final class SurfaceRuleAnalyzerTest {
                 condition.value().spec(),
                 "hole singleton"
         );
-        assertEquals(
-                SurfaceRuleSemantics.Scope.COLUMN,
-                condition.value().semantics().scope(),
-                "hole scope"
-        );
-        assertEquals(
-                SurfaceRuleSemantics.EvaluationEffect.PURE_TOTAL,
-                condition.value().semantics().effect(),
-                "hole effect"
-        );
     }
 
     private static void rejectsUnregisteredShapeImplementations() {
@@ -146,18 +87,14 @@ public final class SurfaceRuleAnalyzerTest {
         requireType(SurfaceRuleAnalyzer.analyze(source).root(), SurfaceRulePlan.OpaqueRule.class);
     }
 
-    private static void sharesOnlyVanillaSingletonCacheGroups() {
+    private static void canonicalizesSingletonValues() {
         SurfaceRulePlan.Sequence root = requireType(analyze(fakeSequence(List.of(
                 fakeTest(SurfaceRules.hole(), SurfaceRules.bandlands()),
                 fakeTest(SurfaceRules.hole(), SurfaceRules.bandlands())
         ))).root(), SurfaceRulePlan.Sequence.class);
         SurfaceRulePlan.KnownCondition first = condition(root.rules().get(0));
         SurfaceRulePlan.KnownCondition second = condition(root.rules().get(1));
-        assertEquals(
-                first.metadata().cacheGroupId(),
-                second.metadata().cacheGroupId(),
-                "Context singleton occurrences must share their vanilla cache group"
-        );
+        assertSame(first.value(), second.value(), "singleton values must canonicalize");
     }
 
     private static void fallsBackAtAnalysisLimits() {
@@ -167,28 +104,10 @@ public final class SurfaceRuleAnalyzerTest {
                 new SurfaceRuleAnalyzer.Limits(1, 1),
                 ignored -> true
         );
-        requireType(plan.root(), SurfaceRulePlan.OpaqueRule.class);
-        assertId(2, plan.entryCount(), "limited entry count");
-        assertId(1, plan.occurrenceCount(), "limited occurrence count");
-    }
-
-    private static void assertControlFlow(
-            SurfaceRulePlan plan,
-            SurfaceRulePlan.Test test,
-            SurfaceRulePlan.Bandlands bandlands,
-            SurfaceRulePlan.OpaqueRule opaque
-    ) {
-        SurfaceControlFlowPlan flow = plan.controlFlow();
-        SurfaceControlFlowPlan.Branch branch = requireType(
-                flow.entry(test.metadata().entryId()), SurfaceControlFlowPlan.Branch.class
+        SurfaceRulePlan.OpaqueRule opaque = requireType(
+                plan.root(), SurfaceRulePlan.OpaqueRule.class
         );
-        assertEquals(bandlands.metadata().entryId(), branch.onTrue(), "true successor");
-        assertEquals(opaque.metadata().entryId(), branch.onFalse(), "false continuation");
-        SurfaceControlFlowPlan.Delegate delegate = requireType(
-                flow.entry(opaque.metadata().entryId()), SurfaceControlFlowPlan.Delegate.class
-        );
-        assertEquals(flow.failEntry(), delegate.onNull(), "opaque null continuation");
-        requireType(flow.entry(flow.failEntry()), SurfaceControlFlowPlan.Fail.class);
+        assertSame(source, opaque.source(), "limited source must remain delegated");
     }
 
     private static SurfaceRulePlan analyze(SurfaceRules.RuleSource source) {
@@ -214,12 +133,6 @@ public final class SurfaceRuleAnalyzerTest {
             throw new AssertionError("Expected " + type.getSimpleName() + ", got " + value);
         }
         return type.cast(value);
-    }
-
-    private static void assertId(int expected, int actual, String message) {
-        if (expected != actual) {
-            throw new AssertionError(message + ": expected " + expected + ", got " + actual);
-        }
     }
 
     private static void assertSame(Object expected, Object actual, String message) {
@@ -265,16 +178,8 @@ public final class SurfaceRuleAnalyzerTest {
         );
     }
 
-    private static SurfaceRules.ConditionSource fakeBiome(List<ResourceKey<Biome>> biomes) {
-        Predicate<ResourceKey<Biome>> predicate = biomes::contains;
-        return conditionProxy(
-                SurfaceRuleSourceAccess.BiomeCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$biomes" -> biomes;
-                    case "byepregen$biomeNameTest" -> predicate;
-                    default -> null;
-                }
-        );
+    private static SurfaceRules.ConditionSource fakeBiome() {
+        return SurfaceRules.isBiome(Biomes.PLAINS);
     }
 
     private static SurfaceRules.RuleSource unknownRule() {

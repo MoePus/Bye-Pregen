@@ -6,14 +6,6 @@ import java.util.function.Predicate;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.BindingEffect;
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.Dependency;
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.EvaluationEffect;
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.ProofKind;
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.Scope;
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.Semantics;
-import static com.moepus.byepregen.worldgen.surface.SurfaceRuleSemantics.ValueReuse;
-
 public final class SurfaceRuleAnalyzer {
     public static final Limits DEFAULT_LIMITS = new Limits(4096, 256);
 
@@ -60,9 +52,7 @@ public final class SurfaceRuleAnalyzer {
         }
         try {
             if (source == BANDLANDS) {
-                return new SurfaceRulePlan.Bandlands(state.ruleMetadata(
-                        source, SurfaceRuleSemantics.POINT_OBSERVATION, BindingEffect.NONE
-                ));
+                return new SurfaceRulePlan.Bandlands();
             }
             if (!state.isTrusted(source)) {
                 return state.opaqueRule(source);
@@ -91,9 +81,7 @@ public final class SurfaceRuleAnalyzer {
         if (result == null) {
             return state.opaqueRule(source);
         }
-        return new SurfaceRulePlan.State(state.ruleMetadata(
-                source, SurfaceRuleSemantics.TEMPLATE_PURE, BindingEffect.NONE
-        ), result);
+        return new SurfaceRulePlan.State(result);
     }
 
     private static SurfaceRulePlan.Rule analyzeSequence(
@@ -106,14 +94,11 @@ public final class SurfaceRuleAnalyzer {
         if (sources == null || !state.canExpand(sources.size())) {
             return state.opaqueRule(source);
         }
-        SurfaceRulePlan.RuleMetadata metadata = state.ruleMetadata(
-                source, SurfaceRuleSemantics.POINT_OBSERVATION, BindingEffect.NONE
-        );
         List<SurfaceRulePlan.Rule> rules = new java.util.ArrayList<>(sources.size());
         for (SurfaceRules.RuleSource child : sources) {
             rules.add(analyzeRule(child, state, depth + 1));
         }
-        return new SurfaceRulePlan.Sequence(metadata, rules);
+        return new SurfaceRulePlan.Sequence(rules);
     }
 
     private static SurfaceRulePlan.Rule analyzeTest(
@@ -127,12 +112,9 @@ public final class SurfaceRuleAnalyzer {
         if (conditionSource == null || followupSource == null || !state.canExpand(2)) {
             return state.opaqueRule(source);
         }
-        SurfaceRulePlan.RuleMetadata metadata = state.ruleMetadata(
-                source, SurfaceRuleSemantics.POINT_OBSERVATION, BindingEffect.NONE
-        );
         SurfaceRulePlan.Condition condition = analyzeCondition(conditionSource, state, depth + 1);
         SurfaceRulePlan.Rule followup = analyzeRule(followupSource, state, depth + 1);
-        return new SurfaceRulePlan.Test(metadata, condition, followup);
+        return new SurfaceRulePlan.Test(condition, followup);
     }
 
     private static SurfaceRulePlan.Condition analyzeCondition(
@@ -147,7 +129,7 @@ public final class SurfaceRuleAnalyzer {
         try {
             SurfaceConditionSpec.Singleton singleton = singleton(source);
             if (singleton != null) {
-                return state.knownCondition(source, singleton, singletonSemantics(singleton), BindingEffect.NONE);
+                return state.knownCondition(source, singleton);
             }
             if (!state.isTrusted(source)) {
                 return state.opaqueCondition(source);
@@ -171,51 +153,30 @@ public final class SurfaceRuleAnalyzer {
         if (targetSource == null || !state.canExpand(1)) {
             return state.opaqueCondition(source);
         }
-        SurfaceRulePlan.OccurrenceId occurrenceId = state.nextOccurrence();
         SurfaceRulePlan.Condition target = analyzeCondition(targetSource, state, depth + 1);
-        SurfaceRulePlan.ConditionMetadata metadata = state.conditionMetadata(
-                occurrenceId,
-                source,
-                BindingEffect.NONE,
-                target.metadata().cacheGroupId()
-        );
-        SurfaceRulePlan.ConditionValue value = state.value(
-                new SurfaceConditionSpec.Negated(target.value().id()),
-                target.value().semantics()
-        );
-        return new SurfaceRulePlan.NotCondition(metadata, value, target);
+        return new SurfaceRulePlan.NotCondition(target);
     }
 
     private static SurfaceRulePlan.Condition analyzeKnownCondition(
             SurfaceRules.ConditionSource source,
             SurfaceRuleAnalysisBuilder state
     ) {
-        if (source instanceof SurfaceRuleSourceAccess.BiomeCondition access) {
-            return state.knownCondition(source, biomeSpec(access), biomeSemantics(), BindingEffect.NONE);
-        }
         if (source instanceof SurfaceRuleSourceAccess.NoiseCondition access) {
-            return state.knownCondition(source, noiseSpec(access), noiseSemantics(), BindingEffect.MAY_THROW);
+            return state.knownCondition(source, noiseSpec(access));
         }
         if (source instanceof SurfaceRuleSourceAccess.StoneDepthCondition access) {
-            SurfaceConditionSpec.StoneDepth spec = stoneSpec(access);
-            return state.knownCondition(source, spec, stoneSemantics(spec), BindingEffect.NONE);
+            return state.knownCondition(source, stoneSpec(access));
         }
         if (source instanceof SurfaceRuleSourceAccess.VerticalGradientCondition access) {
-            return state.knownCondition(
-                    source, gradientSpec(access), gradientSemantics(), BindingEffect.MAY_THROW
-            );
+            return state.knownCondition(source, gradientSpec(access));
         }
         if (source instanceof SurfaceRuleSourceAccess.WaterCondition access) {
-            return state.knownCondition(source, waterSpec(access), waterSemantics(), BindingEffect.NONE);
+            return state.knownCondition(source, waterSpec(access));
         }
         if (source instanceof SurfaceRuleSourceAccess.YCondition access) {
-            return state.knownCondition(source, ySpec(access), ySemantics(), BindingEffect.NONE);
+            return state.knownCondition(source, ySpec(access));
         }
         return state.opaqueCondition(source);
-    }
-
-    private static SurfaceConditionSpec biomeSpec(SurfaceRuleSourceAccess.BiomeCondition access) {
-        return new SurfaceConditionSpec.Biome(copySet(access.byepregen$biomes()));
     }
 
     private static SurfaceConditionSpec noiseSpec(SurfaceRuleSourceAccess.NoiseCondition access) {
@@ -263,141 +224,6 @@ public final class SurfaceRuleAnalyzer {
         return source == TEMPERATURE ? SurfaceConditionSpec.Singleton.TEMPERATURE : null;
     }
 
-    private static Semantics singletonSemantics(SurfaceConditionSpec.Singleton singleton) {
-        return switch (singleton) {
-            case ABOVE_PRELIMINARY_SURFACE -> semantics(
-                    Scope.UPDATE_Y,
-                    EvaluationEffect.MAY_THROW,
-                    ProofKind.AFFINE_TRAJECTORY,
-                    ValueReuse.NONE,
-                    Dependency.XZ,
-                    Dependency.Y,
-                    Dependency.SURFACE_DEPTH,
-                    Dependency.MIN_SURFACE,
-                    Dependency.HEIGHTMAP
-            );
-            case HOLE -> semantics(
-                    Scope.COLUMN,
-                    EvaluationEffect.PURE_TOTAL,
-                    ProofKind.COLUMN_FACT,
-                    ValueReuse.CANONICAL_WITHIN_SCOPE,
-                    Dependency.XZ,
-                    Dependency.SURFACE_DEPTH
-            );
-            case STEEP -> semantics(
-                    Scope.COLUMN,
-                    EvaluationEffect.MUTABLE_OBSERVATION,
-                    ProofKind.BARRIER,
-                    ValueReuse.NONE,
-                    Dependency.XZ,
-                    Dependency.HEIGHTMAP,
-                    Dependency.MUTABLE_CONTEXT
-            );
-            case TEMPERATURE -> semantics(
-                    Scope.UPDATE_Y,
-                    EvaluationEffect.MUTABLE_OBSERVATION,
-                    ProofKind.BARRIER,
-                    ValueReuse.NONE,
-                    Dependency.XZ,
-                    Dependency.Y,
-                    Dependency.BIOME,
-                    Dependency.MUTABLE_CONTEXT
-            );
-        };
-    }
-
-    private static Semantics biomeSemantics() {
-        return semantics(
-                Scope.UPDATE_Y,
-                EvaluationEffect.MUTABLE_OBSERVATION,
-                ProofKind.BARRIER,
-                ValueReuse.HOLDER_BEHAVIOR,
-                Dependency.XZ,
-                Dependency.Y,
-                Dependency.BIOME,
-                Dependency.MUTABLE_CONTEXT
-        );
-    }
-
-    private static Semantics noiseSemantics() {
-        return semantics(
-                Scope.COLUMN,
-                EvaluationEffect.PURE_TOTAL,
-                ProofKind.COLUMN_FACT,
-                ValueReuse.CANONICAL_WITHIN_SCOPE,
-                Dependency.XZ,
-                Dependency.NOISE
-        );
-    }
-
-    private static Semantics stoneSemantics(SurfaceConditionSpec.StoneDepth stone) {
-        EvaluationEffect effect = stone.secondaryDepthRange() == 0
-                ? EvaluationEffect.PURE_TOTAL
-                : EvaluationEffect.MAY_THROW;
-        return semantics(
-                Scope.UPDATE_Y,
-                effect,
-                ProofKind.AFFINE_TRAJECTORY,
-                ValueReuse.NONE,
-                Dependency.XZ,
-                Dependency.STONE_DEPTH,
-                Dependency.SURFACE_DEPTH,
-                Dependency.SURFACE_SECONDARY
-        );
-    }
-
-    private static Semantics gradientSemantics() {
-        return semantics(
-                Scope.UPDATE_Y,
-                EvaluationEffect.MAY_THROW,
-                ProofKind.VERTICAL_RANDOM,
-                ValueReuse.NONE,
-                Dependency.XZ,
-                Dependency.Y,
-                Dependency.RANDOM
-        );
-    }
-
-    private static Semantics waterSemantics() {
-        return semantics(
-                Scope.UPDATE_Y,
-                EvaluationEffect.PURE_TOTAL,
-                ProofKind.AFFINE_TRAJECTORY,
-                ValueReuse.NONE,
-                Dependency.XZ,
-                Dependency.Y,
-                Dependency.WATER,
-                Dependency.STONE_DEPTH,
-                Dependency.SURFACE_DEPTH
-        );
-    }
-
-    private static Semantics ySemantics() {
-        return semantics(
-                Scope.UPDATE_Y,
-                EvaluationEffect.MAY_THROW,
-                ProofKind.AFFINE_TRAJECTORY,
-                ValueReuse.NONE,
-                Dependency.XZ,
-                Dependency.Y,
-                Dependency.STONE_DEPTH,
-                Dependency.SURFACE_DEPTH,
-                Dependency.MUTABLE_CONTEXT
-        );
-    }
-
-    private static Semantics semantics(
-            Scope scope,
-            EvaluationEffect effect,
-            ProofKind proofKind,
-            ValueReuse valueReuse,
-            Dependency... dependencies
-    ) {
-        return SurfaceRuleSemantics.semantics(
-                scope, effect, proofKind, valueReuse, dependencies
-        );
-    }
-
     private static boolean isVanillaSource(Object source) {
         return source != null && source.getClass().getNestHost() == SurfaceRules.class;
     }
@@ -426,7 +252,4 @@ public final class SurfaceRuleAnalyzer {
         CONDITION
     }
 
-    private static <T> java.util.Set<T> copySet(List<T> values) {
-        return values == null ? java.util.Set.of() : java.util.Set.copyOf(values);
-    }
 }

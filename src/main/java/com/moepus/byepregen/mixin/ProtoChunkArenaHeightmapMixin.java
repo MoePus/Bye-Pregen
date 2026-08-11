@@ -1,7 +1,8 @@
 package com.moepus.byepregen.mixin;
 
-import com.llamalad7.mixinextras.sugar.Local;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.worldgen.ArenaHeightmapUpdate;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -14,64 +15,67 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ProtoChunk.class)
 public abstract class ProtoChunkArenaHeightmapMixin {
+    @Unique private static final EnumSet<Heightmap.Types> BYEPREGEN$NO_HEIGHTMAPS =
+            EnumSet.noneOf(Heightmap.Types.class);
+
     @Shadow private volatile ChunkStatus status;
 
     @Unique private Heightmap byepregen$worldSurfaceWg;
     @Unique private Heightmap byepregen$oceanFloorWg;
 
-    @Inject(
-            method = "setBlockState",
+    @ModifyExpressionValue(
+            method = "setBlockState(Lnet/minecraft/core/BlockPos;"
+                    + "Lnet/minecraft/world/level/block/state/BlockState;Z)"
+                    + "Lnet/minecraft/world/level/block/state/BlockState;",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/level/chunk/status/ChunkStatus;"
-                            + "isOrAfter(Lnet/minecraft/world/level/chunk/status/ChunkStatus;)Z",
+                            + "heightmapsAfter()Ljava/util/EnumSet;",
                     ordinal = 0
             ),
-            cancellable = true,
             require = 1,
             allow = 1
     )
-    private void byepregen$updateArenaNoiseHeightmaps(
+    private EnumSet<Heightmap.Types> byepregen$updateArenaNoiseHeightmaps(
+            EnumSet<Heightmap.Types> original,
             BlockPos pos,
             BlockState state,
-            boolean isMoving,
-            CallbackInfoReturnable<BlockState> callback,
-            @Local LevelChunkSection section,
-            @Local(ordinal = 1) BlockState oldState
+            boolean isMoving
     ) {
         ProtoChunk chunk = (ProtoChunk) (Object) this;
+        int y = pos.getY();
+        LevelChunkSection section = chunk.getSection(chunk.getSectionIndex(y));
         if (this.status != ChunkStatus.NOISE
                 || chunk.getBelowZeroRetrogen() != null
                 || !(section.getStates() instanceof ArenaBlockStatePalettedContainer)) {
-            return;
+            return original;
         }
 
         if (!this.byepregen$loadWorldgenHeightmaps(chunk)) {
-            return;
+            return original;
         }
 
         int x = SectionPos.sectionRelative(pos.getX());
-        int y = pos.getY();
         int z = SectionPos.sectionRelative(pos.getZ());
 
         int surfaceTop = this.byepregen$worldSurfaceWg.getHighestTaken(x, z);
-        boolean surfaceOpaque = !state.isAir();
-        if (surfaceOpaque ? y > surfaceTop : y == surfaceTop) {
+        if (ArenaHeightmapUpdate.isNeeded(
+                Heightmap.Types.WORLD_SURFACE_WG, state, Integer.compare(y, surfaceTop)
+        )) {
             this.byepregen$worldSurfaceWg.update(x, y, z, state);
         }
 
         int oceanFloorTop = this.byepregen$oceanFloorWg.getHighestTaken(x, z);
-        boolean oceanFloorOpaque = state.blocksMotion();
-        if (oceanFloorOpaque ? y > oceanFloorTop : y == oceanFloorTop) {
+        if (ArenaHeightmapUpdate.isNeeded(
+                Heightmap.Types.OCEAN_FLOOR_WG, state, Integer.compare(y, oceanFloorTop)
+        )) {
             this.byepregen$oceanFloorWg.update(x, y, z, state);
         }
 
-        callback.setReturnValue(oldState);
+        return BYEPREGEN$NO_HEIGHTMAPS;
     }
 
     @Unique

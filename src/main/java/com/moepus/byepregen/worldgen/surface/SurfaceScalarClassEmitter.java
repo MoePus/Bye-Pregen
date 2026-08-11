@@ -1,7 +1,5 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import java.util.function.Supplier;
-import net.minecraft.core.Holder;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -38,14 +36,12 @@ final class SurfaceScalarClassEmitter {
         this.emitRoot();
         this.emitRegions();
         this.emitNoiseSamples();
-        new SurfaceBiomeCacheEmitter(this.context, this.writer).emit();
         this.writer.visitEnd();
         return this.writer.toByteArray();
     }
 
     static void emitColumnReset(MethodVisitor method, SurfaceEmissionContext context) {
-        if (context.target() != SurfaceScalarTarget.BUILD_POINT
-                || context.layout().noiseSampleBanks() == 0) {
+        if (context.layout().noiseSampleBanks() == 0) {
             return;
         }
         Label currentColumn = new Label();
@@ -98,8 +94,7 @@ final class SurfaceScalarClassEmitter {
     }
 
     private void emitCacheFields() {
-        if (this.context.target() == SurfaceScalarTarget.BUILD_POINT
-                && this.context.layout().noiseSampleBanks() != 0) {
+        if (this.context.layout().noiseSampleBanks() != 0) {
             this.writer.visitField(
                     Opcodes.ACC_PRIVATE,
                     SurfaceEmissionContext.COLUMN_EPOCH_FIELD,
@@ -125,38 +120,6 @@ final class SurfaceScalarClassEmitter {
                         null
                 ).visitEnd();
             }
-        }
-        if (!this.context.layout().biomeValues().isEmpty()) {
-            this.writer.visitField(
-                    Opcodes.ACC_PRIVATE,
-                    SurfaceEmissionContext.BIOME_SUPPLIER_FIELD,
-                    Type.getDescriptor(Supplier.class),
-                    null,
-                    null
-            ).visitEnd();
-            this.writer.visitField(
-                    Opcodes.ACC_PRIVATE,
-                    SurfaceEmissionContext.BIOME_HOLDER_FIELD,
-                    Type.getDescriptor(Holder.class),
-                    null,
-                    null
-            ).visitEnd();
-            this.writer.visitField(
-                    Opcodes.ACC_PRIVATE,
-                    SurfaceEmissionContext.BIOME_BITS_FIELD,
-                    "J",
-                    null,
-                    null
-            ).visitEnd();
-            this.writer.visitField(
-                    Opcodes.ACC_PRIVATE,
-                    SurfaceEmissionContext.BIOME_FALLBACKS_FIELD,
-                    "[" + this.context.abi().bindingDescriptor(
-                            SurfaceBindingLayout.Kind.CONDITION
-                    ),
-                    null,
-                    null
-            ).visitEnd();
         }
     }
 
@@ -201,7 +164,7 @@ final class SurfaceScalarClassEmitter {
     private void emitConstructorBinding(MethodVisitor method, SurfaceBindingLayout.Slot slot) {
         method.visitVarInsn(Opcodes.ALOAD, 0);
         method.visitVarInsn(Opcodes.ALOAD, 2);
-        SurfaceAsmSupport.pushInt(method, slot.valueIndex());
+        SurfaceAsmSupport.pushInt(method, slot.id().value());
         method.visitInsn(Opcodes.AALOAD);
         String descriptor = this.context.abi().bindingDescriptor(slot.kind());
         if (slot.kind() == SurfaceBindingLayout.Kind.RESOLVED_ANCHOR) {
@@ -249,9 +212,6 @@ final class SurfaceScalarClassEmitter {
     }
 
     private void emitNoiseSamples() {
-        if (this.context.target() != SurfaceScalarTarget.BUILD_POINT) {
-            return;
-        }
         SurfaceNoiseSampleEmitter emitter = new SurfaceNoiseSampleEmitter(
                 this.context, this.writer
         );
