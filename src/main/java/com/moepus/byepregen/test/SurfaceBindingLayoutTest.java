@@ -24,6 +24,7 @@ public final class SurfaceBindingLayoutTest {
         slotsFollowSourceOrderAndStopOnFailure();
         preservesGradientAndYAnchorRecipes();
         canonicalizesNoiseStorageWithoutSkippingBindingEvents();
+        delegatesBiomePredicatesUntilSpecializationIsProven();
         classifiesReferenceAndDirectBiomeHolders();
         doesNotSnapshotContextAcrossOpaqueBarrier();
     }
@@ -169,6 +170,21 @@ public final class SurfaceBindingLayoutTest {
         assertEquals(0L, table.behavior(customHolder()), "custom holder fallback marker");
     }
 
+    private static void delegatesBiomePredicatesUntilSpecializationIsProven() {
+        SurfaceScalarLayout layout = lower(test(
+                biome(List.of(Biomes.PLAINS)),
+                SurfaceRules.bandlands()
+        ));
+        assertEquals(
+                List.of(SurfaceBindingLayout.Kind.CONDITION),
+                layout.bindings().storedSlots().stream()
+                        .map(SurfaceBindingLayout.Slot::kind)
+                        .toList(),
+                "biome condition binding"
+        );
+        assertEquals(List.of(), layout.biomeValues(), "biome behavior specialization");
+    }
+
     @SuppressWarnings("unchecked")
     private static Holder<Biome> customHolder() {
         return (Holder<Biome>) Proxy.newProxyInstance(
@@ -305,6 +321,18 @@ public final class SurfaceBindingLayoutTest {
                     case "byepregen$noise" -> key;
                     case "byepregen$minimum" -> minimum;
                     case "byepregen$maximum" -> maximum;
+                    default -> null;
+                }
+        );
+    }
+
+    private static SurfaceRules.ConditionSource biome(List<ResourceKey<Biome>> biomes) {
+        return conditionProxy(
+                SurfaceRuleSourceAccess.BiomeCondition.class,
+                (method, arguments) -> switch (method) {
+                    case "byepregen$biomes" -> biomes;
+                    case "byepregen$biomeNameTest" ->
+                            (java.util.function.Predicate<ResourceKey<Biome>>) biomes::contains;
                     default -> null;
                 }
         );

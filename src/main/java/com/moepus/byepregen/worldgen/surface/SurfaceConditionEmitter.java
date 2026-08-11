@@ -84,9 +84,7 @@ final class SurfaceConditionEmitter {
                 .plan()
                 .conditionPlan(condition.value().id());
         switch (plan.kind()) {
-            case BIOME -> this.emitBiome(
-                    method, condition, branchOnTrue, target
-            );
+            case BIOME -> this.emitDelegate(method, condition, branchOnTrue, target);
             case NOISE -> this.noiseEmitter.emit(
                     method,
                     condition,

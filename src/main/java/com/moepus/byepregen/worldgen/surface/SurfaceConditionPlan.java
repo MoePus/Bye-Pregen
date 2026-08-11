@@ -49,7 +49,9 @@ public record SurfaceConditionPlan(
 
     private static BindingRecipe bindingRecipe(Kind kind) {
         return switch (kind) {
-            case BIOME -> BindingRecipe.BIOME_BEHAVIOR;
+            // Preserve the original BiomeConditionSource predicate until
+            // holder behavior specialization has a live-world proof.
+            case BIOME -> BindingRecipe.CONDITION_DELEGATE;
             case NOISE -> BindingRecipe.NOISE;
             case VERTICAL_GRADIENT -> BindingRecipe.GRADIENT;
             case Y_ABOVE -> BindingRecipe.Y_ANCHOR;
