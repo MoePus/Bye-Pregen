@@ -77,6 +77,7 @@ public final class ChunkDataSerializer {
     private ChunkDataSerializer() {}
 
     public static void write(ServerLevel level, ChunkAccess chunk, NbtWriter writer) {
+        ChunkSectionSerializationContext sectionContext = new ChunkSectionSerializationContext();
         ChunkPos pos = chunk.getPos();
         writer.putInt(DATA_VERSION, SharedConstants.getCurrentVersion().getDataVersion().getVersion());
         writer.putInt(X_POS, pos.x);
@@ -86,7 +87,7 @@ public final class ChunkDataSerializer {
         writer.putLong(INHABITED_TIME, chunk.getInhabitedTime());
         writer.putString(STATUS, statusName(chunk.getPersistedStatus()));
         ChunkInlineDataWriter.write(writer, chunk);
-        writeSections(writer, level, chunk, pos);
+        writeSections(writer, level, chunk, pos, sectionContext);
         if (chunk.isLightCorrect()) {
             writer.putBoolean(IS_LIGHT_ON, true);
         }
@@ -99,7 +100,9 @@ public final class ChunkDataSerializer {
         ChunkStructureDataWriter.write(writer, level, pos, chunk);
     }
 
-    private static void writeSections(NbtWriter writer, ServerLevel level, ChunkAccess chunk, ChunkPos pos) {
+    private static void writeSections(
+            NbtWriter writer, ServerLevel level, ChunkAccess chunk, ChunkPos pos,
+            ChunkSectionSerializationContext context) {
         LevelChunkSection[] sections = chunk.getSections();
         LevelLightEngine lightEngine = level.getChunkSource().getLightEngine();
         Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
@@ -133,7 +136,9 @@ public final class ChunkDataSerializer {
                 blockLight = lightBytes(blockLayer, blockFull);
                 skyLight = lightBytes(skyLayer, skyFull);
             }
-            if (writeSection(writer, hasSection ? sections[index] : null, biomeRegistry, blockLight, skyLight, blockFull, skyFull, y)) {
+            if (writeSection(
+                    writer, hasSection ? sections[index] : null, biomeRegistry, context,
+                    blockLight, skyLight, blockFull, skyFull, y)) {
                 ++count;
             }
         }
@@ -142,6 +147,7 @@ public final class ChunkDataSerializer {
 
     private static boolean writeSection(
             NbtWriter writer, LevelChunkSection section, Registry<Biome> biomeRegistry,
+            ChunkSectionSerializationContext context,
             byte[] blockLight, byte[] skyLight, boolean blockFull, boolean skyFull, int sectionY) {
         if (section == null && blockLight == null && skyLight == null && !blockFull && !skyFull) {
             return false;
@@ -149,8 +155,8 @@ public final class ChunkDataSerializer {
 
         writer.compoundEntryStart();
         if (section != null) {
-            writeBlockStates(writer, section.getStates());
-            writeBiomes(writer, section.getBiomes(), biomeRegistry);
+            writeBlockStates(writer, section.getStates(), context);
+            writeBiomes(writer, section.getBiomes(), biomeRegistry, context);
         }
         if (blockFull) {
             writer.putByteArrayFilled(BLOCK_LIGHT, YANibbleArray.SIZE, (byte)-1);
@@ -167,27 +173,52 @@ public final class ChunkDataSerializer {
         return true;
     }
 
-    private static void writeBlockStates(NbtWriter writer, PalettedContainer<BlockState> states) {
+    private static void writeBlockStates(
+            NbtWriter writer, PalettedContainer<BlockState> states,
+            ChunkSectionSerializationContext context) {
         if (states instanceof ArenaBlockStatePalettedContainer arena) {
             SectionWriter.write(writer, arena);
             return;
         }
 
-        PalettedContainerRO.PackedData<BlockState> data = states.pack(
-                Block.BLOCK_STATE_REGISTRY, PalettedContainer.Strategy.SECTION_STATES);
-        writer.startCompound(BLOCK_STATES);
-        writer.startFixedList(PALETTE, data.paletteEntries().size(), Tag.TAG_COMPOUND);
-        for (BlockState state : data.paletteEntries()) {
-            writer.compoundEntryStart();
-            SectionWriter.writeStateEntry(writer, state);
+        context.pack(states, 4);
+        try {
+            writer.startCompound(BLOCK_STATES);
+            writer.startFixedList(PALETTE, context.paletteSize(), Tag.TAG_COMPOUND);
+            for (int index = 0; index < context.paletteSize(); ++index) {
+                writer.compoundEntryStart();
+                SectionWriter.writeStateEntry(writer, context.paletteEntry(index));
+                writer.finishCompound();
+            }
+            if (context.packedLength() != 0) {
+                writer.putLongArray(DATA, context.packed(), context.packedLength());
+            }
             writer.finishCompound();
+        } finally {
+            context.clear();
         }
-        data.storage().ifPresent(stream -> writer.putLongArray(DATA, stream.toArray()));
-        writer.finishCompound();
     }
 
     private static void writeBiomes(
-            NbtWriter writer, PalettedContainerRO<Holder<Biome>> biomes, Registry<Biome> biomeRegistry) {
+            NbtWriter writer, PalettedContainerRO<Holder<Biome>> biomes, Registry<Biome> biomeRegistry,
+            ChunkSectionSerializationContext context) {
+        if (context.pack(biomes, 0)) {
+            try {
+                writer.startCompound(BIOMES);
+                writer.startFixedList(PALETTE, context.paletteSize(), Tag.TAG_STRING);
+                for (int index = 0; index < context.paletteSize(); ++index) {
+                    writer.write(BiomeNbtCache.nameBytes(context.paletteEntry(index)));
+                }
+                if (context.packedLength() != 0) {
+                    writer.putLongArray(DATA, context.packed(), context.packedLength());
+                }
+                writer.finishCompound();
+            } finally {
+                context.clear();
+            }
+            return;
+        }
+
         PalettedContainerRO.PackedData<Holder<Biome>> data =
                 biomes.pack(biomeRegistry.asHolderIdMap(), PalettedContainer.Strategy.SECTION_BIOMES);
         writer.startCompound(BIOMES);

@@ -125,6 +125,20 @@ def arenaHeightmapUpdateTest = tasks.register('testArenaHeightmapUpdate', JavaEx
     classpath = sourceSets.surfaceTest.runtimeClasspath
     mainClass.set('com.moepus.byepregen.worldgen.ArenaHeightmapUpdateTest')
 }
+def chunkSectionSerializationContextTest = tasks.register('testChunkSectionSerializationContext', JavaExec) {
+    group = 'verification'
+    description = 'Checks reusable chunk section packing against vanilla PalettedContainer.pack output.'
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.gcfree.ChunkSectionSerializationContextTest')
+}
+def chunkSavingBufferTest = tasks.register('testChunkSavingBuffer', JavaExec) {
+    group = 'verification'
+    description = 'Checks retained chunk saving buffers remain bounded and zlib-compatible.'
+    dependsOn(sourceSets.surfaceTest.classesTaskName)
+    classpath = sourceSets.surfaceTest.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.gcfree.ChunkSavingBufferTest')
+}
 def columnDensityFunctionRegistryTest = tasks.register('testColumnDensityFunctionRegistry', JavaExec) {
     group = 'verification'
     description = 'Checks exact and idempotent Y-independent delegate registration.'
@@ -193,6 +207,8 @@ tasks.named('check') {
             surfaceRuleAnalyzerTest,
             surfaceBindingLayoutTest,
             arenaHeightmapUpdateTest,
+            chunkSectionSerializationContextTest,
+            chunkSavingBufferTest,
             columnDensityFunctionRegistryTest,
             tasks.named('verifyPackagedSurfaceJar')
     )

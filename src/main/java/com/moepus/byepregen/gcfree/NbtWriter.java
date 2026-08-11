@@ -8,6 +8,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 import java.lang.reflect.Field;
+import java.lang.ref.Cleaner;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import net.minecraft.nbt.Tag;
@@ -17,11 +18,14 @@ public final class NbtWriter implements DataOutput {
     private static final int DEFAULT_CAPACITY = 64 * 1024;
     private static final int GROWTH_FACTOR = 2;
     private static final Unsafe UNSAFE = loadUnsafe();
+    private static final Cleaner CLEANER = Cleaner.create();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
 
     private long buffer;
     private long capacity;
     private long offset;
+    private NativeAllocation nativeAllocation;
+    private Cleaner.Cleanable cleanable;
 
     public NbtWriter() {
         this(DEFAULT_CAPACITY);
@@ -187,9 +191,37 @@ public final class NbtWriter implements DataOutput {
 
     public void release() {
         if (this.buffer != 0L) {
-            UNSAFE.freeMemory(this.buffer);
+            long allocation = this.buffer;
             this.buffer = 0L;
+            if (this.cleanable != null) {
+                this.cleanable.clean();
+                this.cleanable = null;
+                this.nativeAllocation = null;
+            } else {
+                UNSAFE.freeMemory(allocation);
+            }
         }
+    }
+
+    void enableAutomaticRelease() {
+        if (this.buffer == 0L) {
+            throw new IllegalStateException("NbtWriter has been released");
+        }
+        if (this.cleanable == null) {
+            this.nativeAllocation = new NativeAllocation(this.buffer);
+            this.cleanable = CLEANER.register(this, this.nativeAllocation);
+        }
+    }
+
+    void reset() {
+        if (this.buffer == 0L) {
+            throw new IllegalStateException("NbtWriter has been released");
+        }
+        this.offset = 0L;
+    }
+
+    long capacity() {
+        return this.capacity;
     }
 
     @Override
@@ -335,6 +367,9 @@ public final class NbtWriter implements DataOutput {
             this.capacity *= GROWTH_FACTOR;
         } while (required > this.capacity);
         this.buffer = UNSAFE.reallocateMemory(this.buffer, this.capacity);
+        if (this.nativeAllocation != null) {
+            this.nativeAllocation.address = this.buffer;
+        }
     }
 
     private long address() {
@@ -395,6 +430,23 @@ public final class NbtWriter implements DataOutput {
             return (Unsafe) field.get(null);
         } catch (ReflectiveOperationException exception) {
             throw new ExceptionInInitializerError(exception);
+        }
+    }
+
+    private static final class NativeAllocation implements Runnable {
+        private volatile long address;
+
+        private NativeAllocation(long address) {
+            this.address = address;
+        }
+
+        @Override
+        public void run() {
+            long allocation = this.address;
+            this.address = 0L;
+            if (allocation != 0L) {
+                UNSAFE.freeMemory(allocation);
+            }
         }
     }
 }

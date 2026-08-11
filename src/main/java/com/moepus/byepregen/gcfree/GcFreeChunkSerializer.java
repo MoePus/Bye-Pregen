@@ -25,36 +25,27 @@ public final class GcFreeChunkSerializer {
     }
 
     public static byte[] serializeRaw(ServerLevel level, ChunkAccess chunk) {
-        NbtWriter writer = writeRaw(level, chunk);
-        try {
+        try (ChunkSavingNbtWriterCache.Lease lease = ChunkSavingNbtWriterCache.acquire()) {
+            NbtWriter writer = lease.writer();
+            writeRaw(level, chunk, writer);
             return writer.toByteArray();
-        } finally {
-            writer.release();
         }
     }
 
     public static RawChunkData serializeRawData(ServerLevel level, ChunkAccess chunk) {
-        NbtWriter writer = writeRaw(level, chunk);
-        try {
+        try (ChunkSavingNbtWriterCache.Lease lease = ChunkSavingNbtWriterCache.acquire()) {
+            NbtWriter writer = lease.writer();
+            writeRaw(level, chunk, writer);
             return writer.toRawChunkData(MAX_RAW_BUFFER_SLACK_BYTES);
-        } finally {
-            writer.release();
         }
     }
 
-    private static NbtWriter writeRaw(ServerLevel level, ChunkAccess chunk) {
-        NbtWriter writer = new NbtWriter();
-        try {
-            writer.startRootCompound();
-            ChunkDataSerializer.write(level, chunk, writer);
-            writer.finishCompound();
-            if (chunk instanceof WorldgenChunkState state) {
-                state.byepregen$setFreshWorldgenChunk(false);
-            }
-            return writer;
-        } catch (RuntimeException | Error throwable) {
-            writer.release();
-            throw throwable;
+    private static void writeRaw(ServerLevel level, ChunkAccess chunk, NbtWriter writer) {
+        writer.startRootCompound();
+        ChunkDataSerializer.write(level, chunk, writer);
+        writer.finishCompound();
+        if (chunk instanceof WorldgenChunkState state) {
+            state.byepregen$setFreshWorldgenChunk(false);
         }
     }
 
