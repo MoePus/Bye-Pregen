@@ -210,6 +210,13 @@ final class SurfaceMethodLocals {
         }
 
         private void countStone(SurfaceConditionSpec.StoneDepth stone) {
+            if (stone.hasFixedLimit() && stone.baseLimit() <= 0) {
+                return;
+            }
+            if (stone.surfaceType() == CaveSurface.CEILING
+                    && this.layout.plan().boundedStoneDepthBelow()) {
+                return;
+            }
             this.add(stone.surfaceType() == CaveSurface.CEILING
                     ? Input.STONE_BELOW
                     : Input.STONE_ABOVE);

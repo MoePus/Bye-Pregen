@@ -15,6 +15,7 @@ import static org.objectweb.asm.Opcodes.DCMPG;
 import static org.objectweb.asm.Opcodes.DLOAD;
 import static org.objectweb.asm.Opcodes.DSTORE;
 import static org.objectweb.asm.Opcodes.F2D;
+import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.IADD;
 import static org.objectweb.asm.Opcodes.IFEQ;
 import static org.objectweb.asm.Opcodes.IFGE;
@@ -97,13 +98,25 @@ final class SurfaceConditionEmitter {
             boolean branchOnTrue,
             Label target
     ) {
+        int baseLimit = stone.baseLimit();
+        if (stone.hasFixedLimit() && baseLimit <= 0) {
+            if (!branchOnTrue) {
+                method.visitJumpInsn(GOTO, target);
+            }
+            return;
+        }
+        if (stone.surfaceType() == CaveSurface.CEILING
+                && this.context.layout().plan().boundedStoneDepthBelow()) {
+            this.emitAdjacentStoneDepthBelow(method, branchOnTrue, target);
+            return;
+        }
         this.loadContextInt(
                 method,
                 stone.surfaceType() == CaveSurface.CEILING
                         ? SurfaceRuntimeAbi.STONE_BELOW
                         : SurfaceRuntimeAbi.STONE_ABOVE
         );
-        pushInt(method, 1 + stone.offset());
+        pushInt(method, baseLimit);
         if (stone.addSurfaceDepth()) {
             this.loadContextInt(method, SurfaceRuntimeAbi.SURFACE_DEPTH);
             method.visitInsn(IADD);
@@ -113,6 +126,16 @@ final class SurfaceConditionEmitter {
             method.visitInsn(IADD);
         }
         method.visitJumpInsn(branchOnTrue ? IF_ICMPLE : IF_ICMPGT, target);
+    }
+
+    private void emitAdjacentStoneDepthBelow(
+            MethodVisitor method,
+            boolean branchOnTrue,
+            Label target
+    ) {
+        this.context.loadContext(method);
+        this.context.invokeContext(method, SurfaceRuntimeAbi.STONE_BELOW_AT_MOST_ONE, "()Z");
+        method.visitJumpInsn(branchOnTrue ? IFNE : IFEQ, target);
     }
 
     private void emitSecondaryDepth(MethodVisitor method, int range) {

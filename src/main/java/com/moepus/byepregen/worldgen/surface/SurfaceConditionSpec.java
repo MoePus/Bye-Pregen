@@ -41,6 +41,14 @@ public sealed interface SurfaceConditionSpec
         public StoneDepth {
             Objects.requireNonNull(surfaceType, "surfaceType");
         }
+
+        boolean hasFixedLimit() {
+            return !this.addSurfaceDepth && this.secondaryDepthRange == 0;
+        }
+
+        int baseLimit() {
+            return 1 + this.offset;
+        }
     }
 
     record VerticalGradient(

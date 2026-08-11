@@ -1,64 +1,103 @@
 package com.moepus.byepregen.mixin.surface;
 
 import com.moepus.byepregen.worldgen.surface.SurfaceContextAccess;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.SurfaceSystem;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(targets = "net.minecraft.world.level.levelgen.SurfaceRules$Context")
-public interface SurfaceRulesContextMixin extends SurfaceContextAccess {
+public abstract class SurfaceRulesContextMixin implements SurfaceContextAccess {
+    @Shadow
+    long lastUpdateY;
+
+    @Unique
+    private final BlockPos.MutableBlockPos byepregen$stoneDepthPosition =
+            new BlockPos.MutableBlockPos();
+
+    @Unique
+    private long byepregen$stoneDepthUpdateY = Long.MIN_VALUE;
+
+    @Unique
+    private boolean byepregen$stoneDepthBelowAtMostOne;
+
     @Override
     @Accessor("blockX")
-    int byepregen$blockX();
+    public abstract int byepregen$blockX();
 
     @Override
     @Accessor("blockY")
-    int byepregen$blockY();
+    public abstract int byepregen$blockY();
 
     @Override
     @Accessor("blockZ")
-    int byepregen$blockZ();
+    public abstract int byepregen$blockZ();
 
     @Override
     @Accessor("surfaceDepth")
-    int byepregen$surfaceDepth();
+    public abstract int byepregen$surfaceDepth();
 
     @Override
     @Accessor("waterHeight")
-    int byepregen$waterHeight();
+    public abstract int byepregen$waterHeight();
 
     @Override
     @Accessor("stoneDepthAbove")
-    int byepregen$stoneDepthAbove();
+    public abstract int byepregen$stoneDepthAbove();
 
     @Override
     @Accessor("stoneDepthBelow")
-    int byepregen$stoneDepthBelow();
+    public abstract int byepregen$stoneDepthBelow();
 
     @Override
     @Accessor("lastUpdateXZ")
-    long byepregen$lastUpdateXZ();
+    public abstract long byepregen$lastUpdateXZ();
 
     @Override
     @Accessor("randomState")
-    RandomState byepregen$randomState();
+    public abstract RandomState byepregen$randomState();
 
     @Override
     @Accessor("system")
-    SurfaceSystem byepregen$surfaceSystem();
+    public abstract SurfaceSystem byepregen$surfaceSystem();
 
     @Override
     @Accessor("context")
-    WorldGenerationContext byepregen$worldGenerationContext();
+    public abstract WorldGenerationContext byepregen$worldGenerationContext();
+
+    @Accessor("chunk")
+    public abstract ChunkAccess byepregen$chunk();
 
     @Override
     @Invoker("getSurfaceSecondary")
-    double byepregen$getSurfaceSecondary();
+    public abstract double byepregen$getSurfaceSecondary();
 
     @Override
     @Invoker("getMinSurfaceLevel")
-    int byepregen$getMinSurfaceLevel();
+    public abstract int byepregen$getMinSurfaceLevel();
+
+    @Override
+    @Unique
+    public boolean byepregen$isStoneDepthBelowAtMostOne() {
+        if (this.byepregen$stoneDepthUpdateY != this.lastUpdateY) {
+            BlockState state = this.byepregen$chunk().getBlockState(
+                    this.byepregen$stoneDepthPosition.set(
+                            this.byepregen$blockX(),
+                            this.byepregen$blockY() - 1,
+                            this.byepregen$blockZ()
+                    )
+            );
+            this.byepregen$stoneDepthBelowAtMostOne =
+                    state.isAir() || !state.getFluidState().isEmpty();
+            this.byepregen$stoneDepthUpdateY = this.lastUpdateY;
+        }
+        return this.byepregen$stoneDepthBelowAtMostOne;
+    }
 }

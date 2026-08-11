@@ -23,13 +23,19 @@ final class SurfaceScalarClassEmitter {
     }
 
     byte[] emit() {
+        String[] interfaces = this.context.layout().plan().boundedStoneDepthBelow()
+                ? new String[]{
+                        this.context.abi().ruleOwner(),
+                        Type.getInternalName(SurfaceBoundedStoneDepthRule.class)
+                }
+                : new String[]{this.context.abi().ruleOwner()};
         this.writer.visit(
                 Opcodes.V21,
                 CLASS_ACCESS,
                 this.context.owner(),
                 null,
                 "java/lang/Object",
-                new String[]{this.context.abi().ruleOwner()}
+                interfaces
         );
         this.emitFields();
         this.emitConstructor();

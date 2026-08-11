@@ -23,6 +23,7 @@ final class SurfaceRuntimeAbi {
     static final String MIN_SURFACE_LEVEL = "byepregen$getMinSurfaceLevel";
     static final String STONE_ABOVE = "byepregen$stoneDepthAbove";
     static final String STONE_BELOW = "byepregen$stoneDepthBelow";
+    static final String STONE_BELOW_AT_MOST_ONE = "byepregen$isStoneDepthBelowAtMostOne";
     static final String SURFACE_DEPTH = "byepregen$surfaceDepth";
     static final String SURFACE_SECONDARY = "byepregen$getSurfaceSecondary";
     static final String SURFACE_SYSTEM = "byepregen$surfaceSystem";
@@ -173,6 +174,7 @@ final class SurfaceRuntimeAbi {
         requireMethod(this.contextClass, WATER_HEIGHT, int.class);
         requireMethod(this.contextClass, STONE_ABOVE, int.class);
         requireMethod(this.contextClass, STONE_BELOW, int.class);
+        requireMethod(this.contextClass, STONE_BELOW_AT_MOST_ONE, boolean.class);
         requireMethod(this.contextClass, LAST_UPDATE_XZ, long.class);
         requireMethod(this.contextClass, SURFACE_SYSTEM, SurfaceSystem.class);
         requireMethod(this.contextClass, WORLD_CONTEXT, WorldGenerationContext.class);

@@ -31,6 +31,9 @@ public final class SurfaceRuleSourceAccess {
         SurfaceRules.ConditionSource byepregen$target();
     }
 
+    public interface BiomeCondition {
+    }
+
     public interface NoiseCondition {
         ResourceKey<NormalNoise.NoiseParameters> byepregen$noise();
 

@@ -3,16 +3,58 @@ package com.moepus.byepregen.worldgen.surface;
 import java.util.List;
 import java.util.Objects;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.placement.CaveSurface;
 
 public final class SurfaceRulePlan {
+    // Deeper checks can cost more reads per Y than vanilla's amortized run scan.
+    private static final int MAX_LAZY_STONE_DEPTH = 1;
+
     private final Rule root;
+    private final boolean boundedStoneDepthBelow;
 
     SurfaceRulePlan(Rule root) {
         this.root = Objects.requireNonNull(root, "root");
+        this.boundedStoneDepthBelow = canBoundStoneDepthBelow(root);
     }
 
     public Rule root() {
         return this.root;
+    }
+
+    public boolean boundedStoneDepthBelow() {
+        return this.boundedStoneDepthBelow;
+    }
+
+    private static boolean canBoundStoneDepthBelow(Rule rule) {
+        return switch (rule) {
+            case State ignored -> true;
+            case Bandlands ignored -> true;
+            case OpaqueRule ignored -> false;
+            case Sequence sequence -> sequence.rules().stream()
+                    .allMatch(SurfaceRulePlan::canBoundStoneDepthBelow);
+            case Test test -> canBoundStoneDepthBelow(test.condition())
+                    && canBoundStoneDepthBelow(test.followup());
+        };
+    }
+
+    private static boolean canBoundStoneDepthBelow(Condition condition) {
+        return switch (condition) {
+            case NotCondition not -> canBoundStoneDepthBelow(not.target());
+            case OpaqueCondition opaque ->
+                    opaque.source() instanceof SurfaceRuleSourceAccess.BiomeCondition;
+            case KnownCondition known -> canBoundStoneDepthBelow(known.value().spec());
+        };
+    }
+
+    private static boolean canBoundStoneDepthBelow(SurfaceConditionSpec spec) {
+        if (!(spec instanceof SurfaceConditionSpec.StoneDepth stone)
+                || stone.surfaceType() != CaveSurface.CEILING) {
+            return true;
+        }
+        if (!stone.hasFixedLimit()) {
+            return false;
+        }
+        return stone.baseLimit() <= MAX_LAZY_STONE_DEPTH;
     }
 
     private static int requireNonNegative(int value, String name) {

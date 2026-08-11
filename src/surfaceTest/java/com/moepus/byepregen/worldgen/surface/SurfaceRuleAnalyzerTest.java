@@ -4,6 +4,7 @@ import java.lang.reflect.Proxy;
 import java.util.List;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.SurfaceRules;
+import net.minecraft.world.level.levelgen.placement.CaveSurface;
 
 public final class SurfaceRuleAnalyzerTest {
     private SurfaceRuleAnalyzerTest() {
@@ -16,6 +17,7 @@ public final class SurfaceRuleAnalyzerTest {
         rejectsUnregisteredShapeImplementations();
         canonicalizesSingletonValues();
         fallsBackAtAnalysisLimits();
+        provesBoundedStoneDepthConservatively();
     }
 
     private static void preservesSourceOrderAndOpaqueSources() {
@@ -108,6 +110,69 @@ public final class SurfaceRuleAnalyzerTest {
                 plan.root(), SurfaceRulePlan.OpaqueRule.class
         );
         assertSame(source, opaque.source(), "limited source must remain delegated");
+    }
+
+    private static void provesBoundedStoneDepthConservatively() {
+        SurfaceConditionSpec.StoneDepth adjacent = new SurfaceConditionSpec.StoneDepth(
+                0, false, 0, CaveSurface.CEILING
+        );
+        assertEquals(true, planFor(adjacent).boundedStoneDepthBelow(), "adjacent ceiling");
+
+        SurfaceConditionSpec.StoneDepth dynamic = new SurfaceConditionSpec.StoneDepth(
+                0, true, 0, CaveSurface.CEILING
+        );
+        assertEquals(false, planFor(dynamic).boundedStoneDepthBelow(), "dynamic ceiling");
+
+        SurfaceConditionSpec.StoneDepth secondBelow = new SurfaceConditionSpec.StoneDepth(
+                1, false, 0, CaveSurface.CEILING
+        );
+        assertEquals(false, planFor(secondBelow).boundedStoneDepthBelow(), "second block below");
+
+        SurfaceConditionSpec.StoneDepth secondary = new SurfaceConditionSpec.StoneDepth(
+                0, false, 1, CaveSurface.CEILING
+        );
+        assertEquals(false, planFor(secondary).boundedStoneDepthBelow(), "secondary ceiling");
+
+        SurfaceConditionSpec.StoneDepth fixedFalse = new SurfaceConditionSpec.StoneDepth(
+                -1, false, 0, CaveSurface.CEILING
+        );
+        assertEquals(true, planFor(fixedFalse).boundedStoneDepthBelow(), "fixed false ceiling");
+
+        SurfaceRulePlan.OpaqueCondition biome = new SurfaceRulePlan.OpaqueCondition(
+                new SurfaceRuleSourceAccess.BiomeCondition() { },
+                new SurfaceRulePlan.ConditionValue(
+                        new SurfaceRulePlan.ValueId(0), new SurfaceConditionSpec.Opaque("biome")
+                )
+        );
+        assertEquals(true, planFor(biome).boundedStoneDepthBelow(), "biome delegate");
+        SurfaceRulePlan.OpaqueCondition unknown = new SurfaceRulePlan.OpaqueCondition(
+                new Object(),
+                new SurfaceRulePlan.ConditionValue(
+                        new SurfaceRulePlan.ValueId(0), new SurfaceConditionSpec.Opaque("unknown")
+                )
+        );
+        assertEquals(false, planFor(unknown).boundedStoneDepthBelow(), "opaque condition");
+        assertEquals(
+                false,
+                planFor(new SurfaceRulePlan.OpaqueRule(new Object())).boundedStoneDepthBelow(),
+                "opaque rule"
+        );
+    }
+
+    private static SurfaceRulePlan planFor(SurfaceConditionSpec spec) {
+        SurfaceRulePlan.KnownCondition condition = new SurfaceRulePlan.KnownCondition(
+                new Object(),
+                new SurfaceRulePlan.ConditionValue(new SurfaceRulePlan.ValueId(0), spec)
+        );
+        return planFor(condition);
+    }
+
+    private static SurfaceRulePlan planFor(SurfaceRulePlan.Condition condition) {
+        return planFor(new SurfaceRulePlan.Test(condition, new SurfaceRulePlan.Bandlands()));
+    }
+
+    private static SurfaceRulePlan planFor(SurfaceRulePlan.Rule rule) {
+        return new SurfaceRulePlan(rule);
     }
 
     private static SurfaceRulePlan analyze(SurfaceRules.RuleSource source) {

@@ -19,6 +19,8 @@ public interface SurfaceContextAccess {
 
     int byepregen$stoneDepthBelow();
 
+    boolean byepregen$isStoneDepthBelowAtMostOne();
+
     long byepregen$lastUpdateXZ();
 
     RandomState byepregen$randomState();

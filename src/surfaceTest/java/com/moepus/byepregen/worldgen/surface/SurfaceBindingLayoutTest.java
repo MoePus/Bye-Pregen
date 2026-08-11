@@ -10,6 +10,7 @@ import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
+import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 public final class SurfaceBindingLayoutTest {
@@ -22,6 +23,7 @@ public final class SurfaceBindingLayoutTest {
         canonicalizesNoiseStorageWithoutSkippingBindingEvents();
         delegatesBiomePredicates();
         doesNotSnapshotContextAcrossOpaqueBarrier();
+        doesNotSnapshotLazyStoneDepthBelow();
     }
 
     private static void eventsFollowSourceOrderAndStopOnFailure() {
@@ -174,6 +176,17 @@ public final class SurfaceBindingLayoutTest {
         }
     }
 
+    private static void doesNotSnapshotLazyStoneDepthBelow() {
+        SurfaceRules.ConditionSource ceiling = stoneDepth(CaveSurface.CEILING, 0);
+        SurfaceScalarLayout layout = lower(sequence(List.of(
+                test(ceiling, SurfaceRules.bandlands()),
+                test(ceiling, SurfaceRules.bandlands())
+        )));
+        if (rootLocals(layout).caches(SurfaceRuntimeAbi.STONE_BELOW)) {
+            throw new AssertionError("adjacent ceiling must not snapshot exact depth below");
+        }
+    }
+
     private static SurfaceMethodLocals rootLocals(SurfaceScalarLayout layout) {
         SurfaceRegionPlan regions = SurfaceRegionPlan.create(layout.plan().root());
         return SurfaceMethodLocals.create(
@@ -275,6 +288,19 @@ public final class SurfaceBindingLayoutTest {
                 (method, arguments) -> switch (method) {
                     case "byepregen$offset", "byepregen$surfaceDepthMultiplier" -> 0;
                     case "byepregen$addStoneDepth" -> false;
+                    default -> null;
+                }
+        );
+    }
+
+    private static SurfaceRules.ConditionSource stoneDepth(CaveSurface surface, int offset) {
+        return conditionProxy(
+                SurfaceRuleSourceAccess.StoneDepthCondition.class,
+                (method, arguments) -> switch (method) {
+                    case "byepregen$offset" -> offset;
+                    case "byepregen$addSurfaceDepth" -> false;
+                    case "byepregen$secondaryDepthRange" -> 0;
+                    case "byepregen$surfaceType" -> surface;
                     default -> null;
                 }
         );

@@ -52,6 +52,7 @@
     "SurfaceSystemBiomeCacheMixin",
     "surface.SurfaceRulesBoundConditionMixin",
     "surface.SurfaceRulesBoundRuleMixin",
+    "surface.SurfaceRulesBiomeSourceMixin",
     "surface.SurfaceRulesContextMixin",
     "surface.SurfaceRulesLookupMixin",
     "surface.SurfaceRulesBlockSourceMixin",
