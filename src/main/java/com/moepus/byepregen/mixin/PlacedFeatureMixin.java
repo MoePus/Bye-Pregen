@@ -1,6 +1,7 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.Feature.FastPlacementContext;
+import com.moepus.byepregen.Feature.FastPlacedFeature;
 import com.moepus.byepregen.MixinGate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -17,7 +18,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 @MixinGate(config = "enablePlacedFeatureMixin")
 @Mixin(value = PlacedFeature.class, remap = false)
-public abstract class PlacedFeatureMixin {
+public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     @Shadow
     @Final
     private Holder<ConfiguredFeature<?, ?>> feature;
@@ -32,6 +33,15 @@ public abstract class PlacedFeatureMixin {
      */
     @Overwrite
     public boolean placeWithContext(PlacementContext context, RandomSource random, BlockPos pos) {
+        return this.byepregen$place(context, random, pos);
+    }
+
+    @Override
+    public boolean byepregen$placeWithContext(FastPlacementContext parent, RandomSource random, BlockPos pos) {
+        return this.byepregen$place(parent.nestedPlacementContext(), random, pos);
+    }
+
+    private boolean byepregen$place(PlacementContext context, RandomSource random, BlockPos pos) {
         FastPlacementContext fastContext = FastPlacementContext.acquire(context, random, this.feature.value(), this.placement);
         try {
             return fastContext.apply(0, pos.getX(), pos.getY(), pos.getZ());

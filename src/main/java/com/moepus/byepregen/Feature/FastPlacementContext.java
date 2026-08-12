@@ -1,9 +1,12 @@
 package com.moepus.byepregen.Feature;
 
 import java.util.List;
+import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
@@ -35,6 +38,10 @@ public final class FastPlacementContext {
 
     public static void release(FastPlacementContext context) {
         STACK.get().release(context);
+    }
+
+    public static FastPlacementContext current() {
+        return STACK.get().current();
     }
 
     private void init(
@@ -80,6 +87,13 @@ public final class FastPlacementContext {
         return this.placementContext;
     }
 
+    public PlacementContext nestedPlacementContext() {
+        if (this.placementContext.topFeature().isEmpty()) {
+            return this.placementContext;
+        }
+        return STACK.get().nestedPlacementContext(this.placementContext);
+    }
+
     public RandomSource random() {
         return this.random;
     }
@@ -87,6 +101,7 @@ public final class FastPlacementContext {
     private static final class Stack {
         private FastPlacementContext[] contexts = new FastPlacementContext[INITIAL_STACK_SIZE];
         private int depth;
+        private PlacementContext nestedPlacementContext;
 
         private FastPlacementContext acquire() {
             if (this.depth == this.contexts.length) {
@@ -103,12 +118,28 @@ public final class FastPlacementContext {
             return context;
         }
 
+        private FastPlacementContext current() {
+            return this.depth == 0 ? null : this.contexts[this.depth - 1];
+        }
+
+        private PlacementContext nestedPlacementContext(PlacementContext source) {
+            if (this.nestedPlacementContext == null) {
+                WorldGenLevel level = source.getLevel();
+                ChunkGenerator generator = source.generator();
+                this.nestedPlacementContext = new PlacementContext(level, generator, Optional.empty());
+            }
+            return this.nestedPlacementContext;
+        }
+
         private void release(FastPlacementContext context) {
             this.depth--;
             if (this.contexts[this.depth] != context) {
                 throw new IllegalStateException("FastPlacementContext stack released out of order");
             }
             context.clear();
+            if (this.depth == 0) {
+                this.nestedPlacementContext = null;
+            }
         }
 
         private void grow() {

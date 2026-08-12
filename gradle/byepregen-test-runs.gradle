@@ -25,6 +25,7 @@ def worldGenConfig = [
                 .orElse('false')
                 .get(),
         noFeatures: prop('byepregenTestWorldGenNoFeatures', 'false'),
+        enablePlacedFeatureMixin: prop('byepregenTestEnablePlacedFeatureMixin', 'false'),
         logCompilation: prop('byepregenTestLogCompilation', 'false').toBoolean(),
         surfaceBiomeProfile: prop('byepregenTestSurfaceBiomeProfile', 'false'),
         datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
@@ -157,7 +158,7 @@ def prepareWorldGenRunDir = { Map options ->
     file("${dir}/config/byepregen.json").text = """\
 {
   "debugDisableFeatures": ${options.noFeatures ?: 'false'},
-  "enablePlacedFeatureMixin": false,
+  "enablePlacedFeatureMixin": ${options.enablePlacedFeatureMixin ?: 'false'},
   "enableArenaPalette": ${arenaPalette},
   "enableServerRuntimeArenaPalette": ${serverRuntimeArenaPalette},
   "enableYALightEngine": ${options.yaLight},
@@ -242,6 +243,7 @@ neoForge {
                     surfaceScalar: worldGenConfig.surfaceScalar,
                     surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
+                    enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
                     compilationLog: worldGenConfig.logCompilation ? worldGenConfig.compilationLog : null,
             ])
         }
@@ -316,6 +318,7 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 gcFree    : worldGenConfig.gcFree,
                 seed      : worldGenConfig.seed,
                 noFeatures: worldGenConfig.noFeatures,
+                enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
                 clearWorld: true,
         ])
         if (worldGenConfig.datapack != null) {
