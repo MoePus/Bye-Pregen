@@ -25,6 +25,7 @@ def worldGenConfig = [
                 .orElse('false')
                 .get(),
         noFeatures: prop('byepregenTestWorldGenNoFeatures', 'false'),
+        levelType: prop('byepregenTestWorldGenLevelType', 'minecraft:normal'),
         enablePlacedFeatureMixin: prop('byepregenTestEnablePlacedFeatureMixin', 'false'),
         logCompilation: prop('byepregenTestLogCompilation', 'false').toBoolean(),
         surfaceBiomeProfile: prop('byepregenTestSurfaceBiomeProfile', 'false'),
@@ -185,7 +186,7 @@ view-distance=2
 simulation-distance=2
 enable-command-block=false
 spawn-protection=0
-${options.flatWorld ? 'level-type=minecraft:flat\n' : ''}
+level-type=${options.levelType ?: (options.flatWorld ? 'minecraft:flat' : 'minecraft:normal')}
 """.stripIndent()
 }
 
@@ -318,6 +319,7 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 gcFree    : worldGenConfig.gcFree,
                 seed      : worldGenConfig.seed,
                 noFeatures: worldGenConfig.noFeatures,
+                levelType : worldGenConfig.levelType,
                 enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
                 clearWorld: true,
         ])

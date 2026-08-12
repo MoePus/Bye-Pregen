@@ -1,6 +1,8 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.Feature.FastBlockPredicateOptimizer;
+import com.moepus.byepregen.Feature.FastDiskBlockPredicate;
+import com.moepus.byepregen.Feature.FastDiskStateCursor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -10,7 +12,7 @@ import net.minecraft.world.level.levelgen.blockpredicates.HasSturdyFacePredicate
 import org.spongepowered.asm.mixin.*;
 
 @Mixin(value = HasSturdyFacePredicate.class, remap = false)
-public abstract class HasSturdyFacePredicateMixin {
+public abstract class HasSturdyFacePredicateMixin implements FastDiskBlockPredicate {
     @Shadow
     @Final
     private Vec3i offset;
@@ -28,6 +30,13 @@ public abstract class HasSturdyFacePredicateMixin {
         BlockState state = FastBlockPredicateOptimizer.getState(level, pos, this.offset);
         BlockPos queriedPos = byePregen$isZero(this.offset) ? pos : pos.offset(this.offset);
         return state.isFaceSturdy(level, queriedPos, this.direction);
+    }
+
+    @Override
+    public boolean bpg$test(FastDiskStateCursor cursor, BlockPos pos) {
+        BlockState state = cursor.getState(this.offset);
+        BlockPos queriedPos = byePregen$isZero(this.offset) ? pos : pos.offset(this.offset);
+        return state.isFaceSturdy(cursor.level(), queriedPos, this.direction);
     }
 
     @Unique
