@@ -441,7 +441,9 @@ def runtimeCheck = tasks.register('runtimeCheck') {
 
 if (gradle.startParameter.taskNames.any { it.tokenize(':').last() == runtimeCheck.name }) {
     tasks.named('runTestWorldGen', JavaExec) {
-        systemProperty 'byepregen.testWorldGen.radius', '16'
+        doFirst {
+            systemProperty 'byepregen.testWorldGen.radius', '16'
+        }
     }
 }
 
