@@ -59,7 +59,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String PROTO_CHUNK_ARENA_HEIGHTMAP_MIXIN =
             MIXIN_PACKAGE + "arena.ProtoChunkArenaHeightmapMixin";
     private static final String FASTNOISE_OCL_ARENA_MIXIN =
-            MIXIN_PACKAGE + "compat.FastNoiseOpenCLArenaMixin";
+            MIXIN_PACKAGE + "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "arena.compat.voxy.VoxyWorldConversionFactoryMixin";
     private static final String SURFACE_BIOME_CACHE_MIXIN =

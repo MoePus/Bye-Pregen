@@ -94,7 +94,7 @@
     "chunksave.compat.c2me.C2MEHookCompatibilityMixin",
     "chunksave.compat.c2me.C2MEChunkSavingCompressionMixin",
     "postprocess.compat.c2me.C2MEServerBlockTickingMixin",
-    "compat.FastNoiseOpenCLArenaMixin",
+    "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin",
     "compat.LithiumHashPaletteMixin",
     "compat.SableNaturalSpawnerMixin",
     "arena.compat.voxy.VoxyWorldConversionFactoryMixin",

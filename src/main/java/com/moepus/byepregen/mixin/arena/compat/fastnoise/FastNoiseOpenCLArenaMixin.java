@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.compat;
+package com.moepus.byepregen.mixin.arena.compat.fastnoise;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.ArenaOpenCLBufferImporter;
