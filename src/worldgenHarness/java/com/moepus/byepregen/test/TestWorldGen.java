@@ -15,6 +15,11 @@ public final class TestWorldGen {
         if (!Boolean.getBoolean(ENABLED_PROPERTY)) {
             return;
         }
+        String mode = System.getProperty("byepregen.testWorldGen.mode", "chunky");
+        if (ArenaPaletteDifferential.MODE.equals(mode)) {
+            ArenaPaletteDifferential.register();
+            return;
+        }
         if (!hasClass(CHUNKY_PROVIDER)) {
             LOGGER.error("ByePregen test worldgen requested, but Chunky is not loaded");
             return;
