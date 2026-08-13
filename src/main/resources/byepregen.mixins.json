@@ -95,7 +95,7 @@
     "chunksave.compat.c2me.C2MEChunkSavingCompressionMixin",
     "postprocess.compat.c2me.C2MEServerBlockTickingMixin",
     "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin",
-    "compat.LithiumHashPaletteMixin",
+    "palette.compat.lithium.LithiumHashPaletteMixin",
     "compat.SableNaturalSpawnerMixin",
     "arena.compat.voxy.VoxyWorldConversionFactoryMixin",
     "chunksave.ChunkMapGcFreeSaveMixin",

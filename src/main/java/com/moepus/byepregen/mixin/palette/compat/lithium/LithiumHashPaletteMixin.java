@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.compat;
+package com.moepus.byepregen.mixin.palette.compat.lithium;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PaletteContainer.PaletteRawIdAccess;
