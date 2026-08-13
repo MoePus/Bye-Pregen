@@ -38,10 +38,22 @@ final class MixinGateEvaluator {
     }
 
     boolean shouldApply(String targetClassName, String mixinClassName, Config config) {
+        return this.evaluate(targetClassName, mixinClassName, config).annotationEnabled();
+    }
+
+    GateEvaluation evaluate(String targetClassName, String mixinClassName, Config config) {
         GateSpec gate = readGate(mixinClassName);
         validate(gate, mixinClassName);
+        AnnotationGateContext context = new AnnotationGateContext(
+                targetClassName, mixinClassName, config);
+        return new GateEvaluation(
+                gate.feature(),
+                this.passesAnnotationGate(context, gate)
+        );
+    }
 
-        if (!isConfigEnabled(gate.config(), config, mixinClassName)) {
+    private boolean passesAnnotationGate(AnnotationGateContext context, GateSpec gate) {
+        if (!isConfigEnabled(gate.config(), context.config(), context.mixinClassName())) {
             return false;
         }
         if (!allModsExist(gate.requiredMods())) {
@@ -50,7 +62,7 @@ final class MixinGateEvaluator {
         if (hasConflictingMod(gate.conflictingMods())) {
             return false;
         }
-        return gate.requiredMods().isEmpty() || this.classExists.test(targetClassName);
+        return gate.requiredMods().isEmpty() || this.classExists.test(context.targetClassName());
     }
 
     private GateSpec readGate(String mixinClassName) {
@@ -127,15 +139,50 @@ final class MixinGateEvaluator {
         ClassNode get(String className) throws Exception;
     }
 
-    private record GateSpec(List<String> requiredMods, List<String> conflictingMods, String config) {
-        private static final GateSpec NONE = new GateSpec(List.of(), List.of(), "");
+    record GateEvaluation(MixinFeature feature, boolean annotationEnabled) {
+    }
+
+    private record AnnotationGateContext(
+            String targetClassName,
+            String mixinClassName,
+            Config config
+    ) {
+    }
+
+    private record GateSpec(
+            MixinFeature feature,
+            List<String> requiredMods,
+            List<String> conflictingMods,
+            String config
+    ) {
+        private static final GateSpec NONE = new GateSpec(
+                MixinFeature.NONE, List.of(), List.of(), ""
+        );
 
         static GateSpec from(AnnotationNode annotation, String mixinClassName) {
             return new GateSpec(
+                    featureValue(annotation, mixinClassName),
                     stringListValue(annotation, "requiredMods", mixinClassName),
                     stringListValue(annotation, "conflictingMods", mixinClassName),
                     stringValue(annotation, "config", mixinClassName)
             );
+        }
+
+        private static MixinFeature featureValue(AnnotationNode annotation, String mixinClassName) {
+            Object value = value(annotation, "feature");
+            if (value == null) {
+                return MixinFeature.NONE;
+            }
+            if (!(value instanceof String[] enumValue)
+                    || enumValue.length != 2
+                    || !Type.getDescriptor(MixinFeature.class).equals(enumValue[0])) {
+                throw invalidGate(mixinClassName, "feature must be a MixinFeature", null);
+            }
+            try {
+                return MixinFeature.valueOf(enumValue[1]);
+            } catch (IllegalArgumentException exception) {
+                throw invalidGate(mixinClassName, "unknown feature: " + enumValue[1], exception);
+            }
         }
 
         private static List<String> stringListValue(

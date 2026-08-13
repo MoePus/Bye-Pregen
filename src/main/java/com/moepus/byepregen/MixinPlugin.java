@@ -17,17 +17,11 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Plugin");
     private static final String MIXIN_PACKAGE = "com.moepus.byepregen.mixin.";
-    private static final String YA_LIGHT_MIXIN_PREFIX = MIXIN_PACKAGE + "yalight.";
-    private static final String DFC_MIXIN_PREFIX = MIXIN_PACKAGE + "dfc.";
     private static final String SURFACE_BIOME_CACHE_PROPERTY = "byepregen.surfaceBiomeCache";
     private static final String C2ME_DFC_MODULE_ENTRYPOINT =
             "com.ishland.c2me.opts.dfc.ModuleEntryPoint";
     private static final String C2ME_DFC_ENABLED_FIELD = "enabled";
 
-    private static final String C2ME_HOOK_COMPATIBILITY_MIXIN =
-            MIXIN_PACKAGE + "chunksave.compat.c2me.C2MEHookCompatibilityMixin";
-    private static final String ARCHITECTURY_EVENT_ACCESSOR =
-            MIXIN_PACKAGE + "chunksave.compat.architectury.ArchitecturyEventImplAccessor";
     private static final String CHUNK_STORAGE_ACCESSOR =
             MIXIN_PACKAGE + "accessor.chunksave.ChunkStorageAccessor";
     private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
@@ -36,49 +30,10 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             MIXIN_PACKAGE + "accessor.chunksave.RegionFileStorageAccessor";
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
-    private static final String AQUIFER_FLUID_STATUS_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.arena.AquiferFluidStatusAccessor";
-    private static final String CHUNK_ACCESS_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.ChunkAccessArenaMixin";
-    private static final String CHUNK_SERIALIZER_ARENA_READ_MIXIN =
-            MIXIN_PACKAGE + "arena.ChunkSerializerArenaReadMixin";
     private static final String LEVEL_CHUNK_ARENA_MIXIN =
             MIXIN_PACKAGE + "arena.LevelChunkArenaMixin";
-    private static final String NOISE_CHUNK_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.arena.NoiseChunkAccessor";
-    private static final String NOISE_CHUNK_AQUIFER_SURFACE_MIXIN =
-            MIXIN_PACKAGE + "arena.NoiseChunkAquiferSurfaceMixin";
-    private static final String NOISE_CHUNK_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.NoiseChunkArenaMixin";
-    private static final String NOISE_INTERPOLATOR_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.NoiseInterpolatorArenaMixin";
-    private static final String NOISE_BASED_AQUIFER_SURFACE_MIXIN =
-            MIXIN_PACKAGE + "arena.NoiseBasedAquiferSurfaceMixin";
-    private static final String NOISE_GENERATOR_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.NoiseBasedChunkGeneratorArenaMixin";
-    private static final String PROTO_CHUNK_ARENA_HEIGHTMAP_MIXIN =
-            MIXIN_PACKAGE + "arena.ProtoChunkArenaHeightmapMixin";
-    private static final String FASTNOISE_OCL_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "arena.compat.voxy.VoxyWorldConversionFactoryMixin";
-    private static final String SURFACE_BIOME_CACHE_MIXIN =
-            MIXIN_PACKAGE + "surface.biome.SurfaceSystemBiomeCacheMixin";
-    private static final String SURFACE_BIOME_MANAGER_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.surface.BiomeManagerAccessor";
-    private static final String SURFACE_SCALAR_MIXIN_PREFIX = MIXIN_PACKAGE + "surface.";
-
-    private static final Set<String> GC_FREE_SATELLITE_MIXINS = Set.of(
-            C2ME_HOOK_COMPATIBILITY_MIXIN,
-            ARCHITECTURY_EVENT_ACCESSOR
-    );
-    private static final Set<String> GC_FREE_MIXINS = Set.of(
-            MIXIN_PACKAGE + "chunksave.ChunkMapGcFreeSaveMixin",
-            MIXIN_PACKAGE + "chunksave.ChunkSerializerWorldgenStateMixin",
-            MIXIN_PACKAGE + "chunksave.ChunkStorageRawMixin",
-            MIXIN_PACKAGE + "chunksave.IOWorkerRawMixin",
-            MIXIN_PACKAGE + "chunksave.LevelChunkWorldgenStateMixin"
-    );
     private static final Set<String> RAW_GC_FREE_MIXINS = Set.of(
             MIXIN_PACKAGE + "chunksave.ChunkMapGcFreeSaveMixin",
             MIXIN_PACKAGE + "chunksave.ChunkStorageRawMixin",
@@ -87,24 +42,15 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             IO_WORKER_PENDING_STORE_ACCESSOR,
             REGION_FILE_STORAGE_ACCESSOR
     );
-    private static final Set<String> ARENA_MIXINS = Set.of(
-            AQUIFER_FLUID_STATUS_ACCESSOR,
-            CHUNK_ACCESS_ARENA_MIXIN,
-            CHUNK_SERIALIZER_ARENA_READ_MIXIN,
-            LEVEL_CHUNK_ARENA_MIXIN,
-            NOISE_CHUNK_ACCESSOR,
-            NOISE_CHUNK_AQUIFER_SURFACE_MIXIN,
-            NOISE_CHUNK_ARENA_MIXIN,
-            NOISE_INTERPOLATOR_ARENA_MIXIN,
-            NOISE_BASED_AQUIFER_SURFACE_MIXIN,
-            NOISE_GENERATOR_ARENA_MIXIN,
-            PROTO_CHUNK_ARENA_HEIGHTMAP_MIXIN,
-            FASTNOISE_OCL_ARENA_MIXIN,
-            VOXY_ARENA_MIXIN
-    );
-
     private static final MixinGateEvaluator MIXIN_GATE_EVALUATOR = MixinGateEvaluator.createDefault();
     private boolean c2meDfcEnabled;
+
+    public MixinPlugin() {
+    }
+
+    MixinPlugin(boolean c2meDfcEnabled) {
+        this.c2meDfcEnabled = c2meDfcEnabled;
+    }
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -120,37 +66,31 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         Config config = ConfigParser.getConfig();
-        boolean featureEnabled = this.passesFeatureGate(
-                mixinClassName, config, ModEnvironment::isClassAvailable);
-        boolean annotationEnabled = MIXIN_GATE_EVALUATOR.shouldApply(targetClassName, mixinClassName, config);
-        return featureEnabled && annotationEnabled;
+        MixinGateEvaluator.GateEvaluation gate = MIXIN_GATE_EVALUATOR.evaluate(
+                targetClassName, mixinClassName, config);
+        FeatureGateContext context = new FeatureGateContext(
+                config, ModEnvironment::isClassAvailable, ModEnvironment::isModLoaded);
+        return gate.annotationEnabled()
+                && this.passesFeatureGate(gate.feature(), mixinClassName, context);
     }
 
-    private boolean passesFeatureGate(
+    boolean passesFeatureGate(
+            MixinFeature feature,
             String mixinClassName,
-            Config config,
-            Predicate<String> classExists
+            FeatureGateContext context
     ) {
-        if (SURFACE_BIOME_CACHE_MIXIN.equals(mixinClassName)
-                || SURFACE_BIOME_MANAGER_ACCESSOR.equals(mixinClassName)) {
-            return Boolean.parseBoolean(System.getProperty(SURFACE_BIOME_CACHE_PROPERTY, "true"));
-        }
-        if (mixinClassName.startsWith(SURFACE_SCALAR_MIXIN_PREFIX)) {
-            return config.enableSurfaceRuleCompiler;
-        }
-        if (mixinClassName.startsWith(DFC_MIXIN_PREFIX)) {
-            return config.enableArenaPalette && this.c2meDfcEnabled;
-        }
-        if (mixinClassName.startsWith(YA_LIGHT_MIXIN_PREFIX)) {
-            return config.enableYALightEngine;
-        }
-        if (isGcFreeMixin(mixinClassName)) {
-            return passesGcFreeGate(mixinClassName, config, classExists);
-        }
-        if (ARENA_MIXINS.contains(mixinClassName)) {
-            return passesArenaGate(mixinClassName, config);
-        }
-        return true;
+        Config config = context.config();
+        return switch (feature) {
+            case NONE -> true;
+            case ARENA -> passesArenaGate(mixinClassName, config, context.modExists());
+            case DFC -> config.enableArenaPalette && this.c2meDfcEnabled;
+            case GC_FREE_CHUNK_SAVE -> passesGcFreeGate(
+                    mixinClassName, config, context.classExists());
+            case SURFACE_BIOME_CACHE -> Boolean.parseBoolean(
+                    System.getProperty(SURFACE_BIOME_CACHE_PROPERTY, "true"));
+            case SURFACE_RULE_COMPILER -> config.enableSurfaceRuleCompiler;
+            case YA_LIGHT -> config.enableYALightEngine;
+        };
     }
 
     private static boolean readC2meDfcEnabled() {
@@ -167,12 +107,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         }
     }
 
-    private static boolean isGcFreeMixin(String mixinClassName) {
-        return GC_FREE_MIXINS.contains(mixinClassName)
-                || GC_FREE_SATELLITE_MIXINS.contains(mixinClassName)
-                || RAW_GC_FREE_MIXINS.contains(mixinClassName);
-    }
-
     private static boolean passesGcFreeGate(
             String mixinClassName,
             Config config,
@@ -185,11 +119,15 @@ public final class MixinPlugin implements IMixinConfigPlugin {
                 || !classExists.test(C2ME_SERIALIZER_ACCESS);
     }
 
-    private static boolean passesArenaGate(String mixinClassName, Config config) {
+    private static boolean passesArenaGate(
+            String mixinClassName,
+            Config config,
+            Predicate<String> modExists
+    ) {
         if (!config.enableArenaPalette) {
             return false;
         }
-        if (ModEnvironment.isModLoaded("confluence")) {
+        if (modExists.test("confluence")) {
             return false;
         }
         if (LEVEL_CHUNK_ARENA_MIXIN.equals(mixinClassName)) {
@@ -199,6 +137,13 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             return config.enableClientArenaPalette;
         }
         return true;
+    }
+
+    record FeatureGateContext(
+            Config config,
+            Predicate<String> classExists,
+            Predicate<String> modExists
+    ) {
     }
 
     @Override

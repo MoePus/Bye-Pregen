@@ -1,6 +1,7 @@
 package com.moepus.byepregen;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,6 +38,22 @@ final class MixinGateEvaluatorTest {
         assertFalse(fixture.evaluator().shouldApply(TARGET, MIXIN, config));
         config.enablePlacedFeatureMixin = true;
         assertTrue(fixture.evaluator().shouldApply(TARGET, MIXIN, config));
+    }
+
+    @Test
+    void featureMetadataIsReturnedWithAnnotationResult() {
+        ClassNode gated = node(gate(
+                "feature", new String[] {Type.getDescriptor(MixinFeature.class), "YA_LIGHT"},
+                "config", "enableYALightEngine"
+        ));
+        MixinGateEvaluator evaluator = fixture(gated, Set.of(), Set.of()).evaluator();
+        Config config = new Config();
+
+        MixinGateEvaluator.GateEvaluation disabled = evaluator.evaluate(TARGET, MIXIN, config);
+        assertEquals(MixinFeature.YA_LIGHT, disabled.feature());
+        assertFalse(disabled.annotationEnabled());
+        config.enableYALightEngine = true;
+        assertTrue(evaluator.evaluate(TARGET, MIXIN, config).annotationEnabled());
     }
 
     @Test
