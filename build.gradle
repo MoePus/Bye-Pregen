@@ -130,11 +130,11 @@ def pureJavaTestAliases = [
                 description: 'Checks Arena heightmap update decisions at the current-top boundary.',
         ],
         testChunkSectionSerializationContext: [
-                className: 'com.moepus.byepregen.gcfree.ChunkSectionSerializationContextTest',
+                className: 'com.moepus.byepregen.chunksave.serialize.ChunkSectionSerializationContextTest',
                 description: 'Checks reusable chunk section packing against vanilla PalettedContainer.pack output.',
         ],
         testChunkSavingBuffer: [
-                className: 'com.moepus.byepregen.gcfree.ChunkSavingBufferTest',
+                className: 'com.moepus.byepregen.chunksave.serialize.ChunkSavingBufferTest',
                 description: 'Checks retained chunk saving buffers remain bounded and zlib-compatible.',
         ],
         testColumnDensityFunctionRegistry: [

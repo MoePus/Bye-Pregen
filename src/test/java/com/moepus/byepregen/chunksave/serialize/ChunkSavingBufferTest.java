@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.serialize;
 
 import com.moepus.byepregen.chunksave.storage.ChunkSavingCompression;
 

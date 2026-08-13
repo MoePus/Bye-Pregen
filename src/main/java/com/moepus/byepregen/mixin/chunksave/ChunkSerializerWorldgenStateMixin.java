@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.chunksave;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.gcfree.WorldgenChunkState;
+import com.moepus.byepregen.chunksave.serialize.WorldgenChunkState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;

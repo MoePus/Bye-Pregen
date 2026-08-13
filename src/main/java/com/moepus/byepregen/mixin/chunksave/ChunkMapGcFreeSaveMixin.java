@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.chunksave;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
+import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.chunksave.storage.RawChunkStorage;
 import com.moepus.byepregen.mixin.accessor.chunksave.ChunkStorageAccessor;

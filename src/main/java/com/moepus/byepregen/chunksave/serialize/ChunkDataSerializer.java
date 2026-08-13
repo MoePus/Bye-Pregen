@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.serialize;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 

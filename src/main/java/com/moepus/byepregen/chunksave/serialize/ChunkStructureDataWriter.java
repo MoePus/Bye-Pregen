@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.serialize;
 
 import com.moepus.byepregen.mixin.accessor.chunksave.StructurePieceSaveAccessor;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;

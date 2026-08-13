@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
+import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;

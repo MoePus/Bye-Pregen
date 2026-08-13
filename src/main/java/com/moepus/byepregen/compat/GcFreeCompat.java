@@ -4,7 +4,7 @@ import com.ibm.asyncutil.util.Either;
 import com.ishland.c2me.base.common.registry.SerializerAccess;
 import com.mojang.logging.LogUtils;
 import com.moepus.byepregen.config.ConfigParser;
-import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
+import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import org.slf4j.Logger;
 

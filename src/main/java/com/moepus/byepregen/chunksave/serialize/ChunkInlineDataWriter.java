@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.serialize;
 
 import com.moepus.byepregen.mixin.accessor.chunksave.BlendingDataAccessor;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
