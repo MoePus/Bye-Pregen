@@ -15,20 +15,20 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AllOfPredicate", remap = false)
 public abstract class AllOfPredicateMixin extends CombiningPredicate implements FastCombiningPredicate {
     @Unique
-    private BlockPredicate[] bpg$predicates;
+    private BlockPredicate[] byepregen$predicates;
 
     protected AllOfPredicateMixin(List<BlockPredicate> p_190455_) {
         super(p_190455_);
     }
 
     @InjectLite(method = "<init>", at = @At("TAIL"))
-    private void bpg$cachePredicates(List<BlockPredicate> predicates) {
-        this.bpg$predicates = predicates.toArray(new BlockPredicate[predicates.size()]);
+    private void byepregen$cachePredicates(List<BlockPredicate> predicates) {
+        this.byepregen$predicates = predicates.toArray(new BlockPredicate[predicates.size()]);
     }
 
     @Override
-    public final BlockPredicate[] bpg$getPredicates() {
-        return this.bpg$predicates;
+    public final BlockPredicate[] byepregen$getPredicates() {
+        return this.byepregen$predicates;
     }
 
     /**

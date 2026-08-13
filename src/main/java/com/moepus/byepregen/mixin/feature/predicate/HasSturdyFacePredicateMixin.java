@@ -28,19 +28,19 @@ public abstract class HasSturdyFacePredicateMixin implements FastDiskBlockPredic
     @Overwrite
     public boolean test(WorldGenLevel level, BlockPos pos) {
         BlockState state = FastBlockPredicateOptimizer.getState(level, pos, this.offset);
-        BlockPos queriedPos = byePregen$isZero(this.offset) ? pos : pos.offset(this.offset);
+        BlockPos queriedPos = byepregen$isZero(this.offset) ? pos : pos.offset(this.offset);
         return state.isFaceSturdy(level, queriedPos, this.direction);
     }
 
     @Override
-    public boolean bpg$test(FastDiskStateCursor cursor, BlockPos pos) {
+    public boolean byepregen$test(FastDiskStateCursor cursor, BlockPos pos) {
         BlockState state = cursor.getState(this.offset);
-        BlockPos queriedPos = byePregen$isZero(this.offset) ? pos : pos.offset(this.offset);
+        BlockPos queriedPos = byepregen$isZero(this.offset) ? pos : pos.offset(this.offset);
         return state.isFaceSturdy(cursor.level(), queriedPos, this.direction);
     }
 
     @Unique
-    private static boolean byePregen$isZero(Vec3i offset) {
+    private static boolean byepregen$isZero(Vec3i offset) {
         return offset.getX() == 0 && offset.getY() == 0 && offset.getZ() == 0;
     }
 }

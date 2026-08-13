@@ -21,10 +21,10 @@ public abstract class MatchingBlocksPredicateMixin {
     private HolderSet<Block> blocks;
 
     @Unique
-    private Block[] bpg$fastBlocks;
+    private Block[] byepregen$fastBlocks;
 
     @InjectLite(method = "<init>", at = @At("TAIL"))
-    private void bpg$initFastBlocks(Vec3i offset, HolderSet<Block> blocks) {
+    private void byepregen$initFastBlocks(Vec3i offset, HolderSet<Block> blocks) {
         List<Holder<Block>> holders = blocks.unwrap().right().orElse(null);
         if (holders == null) {
             return;
@@ -35,7 +35,7 @@ public abstract class MatchingBlocksPredicateMixin {
             directBlocks[i] = holders.get(i).value();
         }
 
-        this.bpg$fastBlocks = directBlocks;
+        this.byepregen$fastBlocks = directBlocks;
     }
 
     /**
@@ -44,7 +44,7 @@ public abstract class MatchingBlocksPredicateMixin {
      */
     @Overwrite
     protected boolean test(BlockState state) {
-        Block[] fastBlocks = this.bpg$fastBlocks;
+        Block[] fastBlocks = this.byepregen$fastBlocks;
         if (fastBlocks != null) {
             Block block = state.getBlock();
             int size = fastBlocks.length;

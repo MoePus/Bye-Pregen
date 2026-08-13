@@ -10,15 +10,15 @@ public final class DiskBlockPredicateEvaluator {
 
     public static boolean test(BlockPredicate predicate, FastDiskStateCursor cursor, BlockPos pos) {
         if (predicate instanceof FastDiskBlockPredicate fastPredicate) {
-            return fastPredicate.bpg$test(cursor, pos);
+            return fastPredicate.byepregen$test(cursor, pos);
         }
         if (predicate instanceof FastCombiningPredicate combiningPredicate) {
             BlockPredicateType<?> type = predicate.type();
             if (type == BlockPredicateType.ALL_OF) {
-                return testAll(combiningPredicate.bpg$getPredicates(), cursor, pos);
+                return testAll(combiningPredicate.byepregen$getPredicates(), cursor, pos);
             }
             if (type == BlockPredicateType.ANY_OF) {
-                return testAny(combiningPredicate.bpg$getPredicates(), cursor, pos);
+                return testAny(combiningPredicate.byepregen$getPredicates(), cursor, pos);
             }
         }
         return predicate.test(cursor.level(), pos);

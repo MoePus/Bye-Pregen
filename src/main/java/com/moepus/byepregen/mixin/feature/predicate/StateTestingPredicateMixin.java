@@ -23,7 +23,7 @@ public abstract class StateTestingPredicateMixin implements FastDiskBlockPredica
     protected abstract boolean test(BlockState state);
 
     @Override
-    public final boolean bpg$test(FastDiskStateCursor cursor, BlockPos pos) {
+    public final boolean byepregen$test(FastDiskStateCursor cursor, BlockPos pos) {
         return this.test(cursor.getState(this.offset));
     }
 

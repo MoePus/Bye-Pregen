@@ -16,7 +16,7 @@ public abstract class NotPredicateMixin implements FastDiskBlockPredicate {
     private BlockPredicate predicate;
 
     @Override
-    public boolean bpg$test(FastDiskStateCursor cursor, BlockPos pos) {
+    public boolean byepregen$test(FastDiskStateCursor cursor, BlockPos pos) {
         return !DiskBlockPredicateEvaluator.test(this.predicate, cursor, pos);
     }
 }
