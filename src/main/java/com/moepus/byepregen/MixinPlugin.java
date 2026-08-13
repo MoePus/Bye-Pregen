@@ -61,7 +61,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String FASTNOISE_OCL_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
-            MIXIN_PACKAGE + "compat.VoxyWorldConversionFactoryMixin";
+            MIXIN_PACKAGE + "arena.compat.voxy.VoxyWorldConversionFactoryMixin";
     private static final String SURFACE_BIOME_CACHE_MIXIN =
             MIXIN_PACKAGE + "surface.biome.SurfaceSystemBiomeCacheMixin";
     private static final String SURFACE_BIOME_MANAGER_ACCESSOR =

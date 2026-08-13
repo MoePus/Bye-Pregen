@@ -97,7 +97,7 @@
     "compat.FastNoiseOpenCLArenaMixin",
     "compat.LithiumHashPaletteMixin",
     "compat.SableNaturalSpawnerMixin",
-    "compat.VoxyWorldConversionFactoryMixin",
+    "arena.compat.voxy.VoxyWorldConversionFactoryMixin",
     "chunksave.ChunkMapGcFreeSaveMixin",
     "chunksave.ChunkSerializerWorldgenStateMixin",
     "chunksave.ChunkStorageRawMixin",
