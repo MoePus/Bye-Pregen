@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.server.tick;
+package com.moepus.byepregen.mixin.server.fasttick;
 
 import com.moepus.byepregen.MixinGate;
 import net.minecraft.core.BlockPos;

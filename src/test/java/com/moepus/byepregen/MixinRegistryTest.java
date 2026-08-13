@@ -33,7 +33,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 final class MixinRegistryTest {
     private static final String MIXIN_PREFIX = "com.moepus.byepregen.mixin.";
-    private static final String SERVER_TICK_PREFIX = MIXIN_PREFIX + "server.tick.";
+    private static final String FAST_TICK_PREFIX = MIXIN_PREFIX + "server.fasttick.";
     private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
     private static final String GATE_DESCRIPTOR = Type.getDescriptor(MixinGate.class);
     private static final String UNIQUE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Unique;";
@@ -128,7 +128,7 @@ final class MixinRegistryTest {
     }
 
     @Test
-    void serverTickMixinsKeepDistinctConflictPolicies() throws Exception {
+    void fastTickMixinsKeepDistinctConflictPolicies() throws Exception {
         AnnotationNode chunkTick = gate("ServerChunkCacheTickChunksMixin");
         AnnotationNode weatherTick = gate("ServerLevelWeatherTickMixin");
 
@@ -139,7 +139,7 @@ final class MixinRegistryTest {
     }
 
     private static AnnotationNode gate(String simpleName) throws IOException {
-        return annotation(readClass(SERVER_TICK_PREFIX + simpleName), GATE_DESCRIPTOR);
+        return annotation(readClass(FAST_TICK_PREFIX + simpleName), GATE_DESCRIPTOR);
     }
 
     private static Registry readRegistry() throws IOException {
