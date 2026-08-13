@@ -12,9 +12,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(value = ChunkMap.class, remap = false)
 public interface ChunkMapAccessor {
-    @Invoker("getVisibleChunkIfPresent")
-    ChunkHolder byepregen$invokeGetVisibleChunkIfPresent(long chunkPos);
-
     @Invoker("anyPlayerCloseEnoughForSpawning")
     boolean byepregen$anyPlayerCloseEnoughForSpawning(ChunkPos chunkPos);
 

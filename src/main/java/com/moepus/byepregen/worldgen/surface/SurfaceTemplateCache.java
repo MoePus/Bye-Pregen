@@ -1,6 +1,6 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import com.moepus.byepregen.MixinPlugin;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.Objects;
 import java.util.function.Function;
 import net.minecraft.world.level.levelgen.SurfaceRules;
@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 public final class SurfaceTemplateCache {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Surface Scalar");
-    private static final boolean TERRABLENDER_LOADED = MixinPlugin.isModExist("terrablender");
+    private static final boolean TERRABLENDER_LOADED = ModEnvironment.isModLoaded("terrablender");
 
     private final boolean outputDifferential;
     private volatile Entry current;
