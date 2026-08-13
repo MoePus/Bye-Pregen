@@ -1,28 +1,24 @@
 package com.moepus.byepregen.gcfree;
 
-import com.moepus.byepregen.Config;
-import com.moepus.byepregen.ConfigParser;
+import com.moepus.byepregen.config.Config;
+import com.moepus.byepregen.config.ConfigParser;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.zip.InflaterInputStream;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public final class ChunkSavingBufferTest {
     private static final int OVERSIZED_WRITE = (int) ChunkSavingNbtWriterCache.MAX_RETAINED_CAPACITY + 1;
 
     private ChunkSavingBufferTest() {}
 
-    public static void main(String[] args) throws Exception {
-        installConfig();
-        writesVanillaCompatibleZlib();
-        dropsOversizedNbtWriter();
-    }
-
-    private static void writesVanillaCompatibleZlib() throws Exception {
+    @Test
+    void writesVanillaCompatibleZlib() throws Exception {
         byte[] expected = "ByePregen chunk compression compatibility".getBytes(StandardCharsets.UTF_8);
         for (int iteration = 0; iteration < 2; ++iteration) {
             ByteArrayOutputStream compressed = new ByteArrayOutputStream();
@@ -41,7 +37,8 @@ public final class ChunkSavingBufferTest {
         }
     }
 
-    private static void dropsOversizedNbtWriter() {
+    @Test
+    void dropsOversizedNbtWriter() {
         long oversizedCapacity;
         try (ChunkSavingNbtWriterCache.Lease lease = ChunkSavingNbtWriterCache.acquire()) {
             lease.writer().write(new byte[OVERSIZED_WRITE]);
@@ -54,11 +51,10 @@ public final class ChunkSavingBufferTest {
         }
     }
 
-    private static void installConfig() throws ReflectiveOperationException {
+    @BeforeAll
+    static void installConfig() {
         Config config = new Config();
         config.retainChunkSavingBuffer = true;
-        Field field = ConfigParser.class.getDeclaredField("config");
-        field.setAccessible(true);
-        field.set(null, config);
+        ConfigParser.setConfig(config);
     }
 }

@@ -104,54 +104,45 @@ tasks.withType(JavaExec).configureEach {
     }
 }
 
-def surfaceBiomeCacheTest = tasks.register('testSurfaceBiomeCache', JavaExec) {
-    group = 'verification'
-    description = 'Checks flat-palette certificates against vanilla BiomeManager sampling.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheTest')
-}
-def surfaceRuleAnalyzerTest = tasks.register('testSurfaceRuleAnalyzer', JavaExec) {
-    group = 'verification'
-    description = 'Checks Surface source-order IDs, canonical values, and opaque barriers.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest')
-}
-def surfaceBindingLayoutTest = tasks.register('testSurfaceBindingLayout', JavaExec) {
-    group = 'verification'
-    description = 'Checks Surface binding order, failure stop, and eager/lazy recipes.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest')
-}
-def arenaHeightmapUpdateTest = tasks.register('testArenaHeightmapUpdate', JavaExec) {
-    group = 'verification'
-    description = 'Checks Arena heightmap update decisions at the current-top boundary.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.worldgen.ArenaHeightmapUpdateTest')
-}
-def chunkSectionSerializationContextTest = tasks.register('testChunkSectionSerializationContext', JavaExec) {
-    group = 'verification'
-    description = 'Checks reusable chunk section packing against vanilla PalettedContainer.pack output.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.gcfree.ChunkSectionSerializationContextTest')
-}
-def chunkSavingBufferTest = tasks.register('testChunkSavingBuffer', JavaExec) {
-    group = 'verification'
-    description = 'Checks retained chunk saving buffers remain bounded and zlib-compatible.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.gcfree.ChunkSavingBufferTest')
-}
-def columnDensityFunctionRegistryTest = tasks.register('testColumnDensityFunctionRegistry', JavaExec) {
-    group = 'verification'
-    description = 'Checks exact and idempotent Y-independent delegate registration.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.dfc.column.ColumnDensityFunctionRegistryTest')
+def pureJavaTestAliases = [
+        testSurfaceBiomeCache: [
+                className: 'com.moepus.byepregen.test.SurfaceBiomeCacheTest',
+                description: 'Checks flat-palette certificates against vanilla BiomeManager sampling.',
+        ],
+        testSurfaceRuleAnalyzer: [
+                className: 'com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest',
+                description: 'Checks Surface source-order IDs, canonical values, and opaque barriers.',
+        ],
+        testSurfaceBindingLayout: [
+                className: 'com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest',
+                description: 'Checks Surface binding order, failure stop, and eager/lazy recipes.',
+        ],
+        testArenaHeightmapUpdate: [
+                className: 'com.moepus.byepregen.worldgen.ArenaHeightmapUpdateTest',
+                description: 'Checks Arena heightmap update decisions at the current-top boundary.',
+        ],
+        testChunkSectionSerializationContext: [
+                className: 'com.moepus.byepregen.gcfree.ChunkSectionSerializationContextTest',
+                description: 'Checks reusable chunk section packing against vanilla PalettedContainer.pack output.',
+        ],
+        testChunkSavingBuffer: [
+                className: 'com.moepus.byepregen.gcfree.ChunkSavingBufferTest',
+                description: 'Checks retained chunk saving buffers remain bounded and zlib-compatible.',
+        ],
+        testColumnDensityFunctionRegistry: [
+                className: 'com.moepus.byepregen.dfc.column.ColumnDensityFunctionRegistryTest',
+                description: 'Checks exact and idempotent Y-independent delegate registration.',
+        ],
+]
+pureJavaTestAliases.each { taskName, testSpec ->
+    tasks.register(taskName, Test) {
+        group = 'verification'
+        description = testSpec.description
+        useJUnitPlatform()
+        filter {
+            includeTestsMatching(testSpec.className)
+        }
+    }
 }
 def surfaceOpaqueRuntimeVerification = tasks.register('testSurfaceOpaqueRuntime') {
     group = 'verification'
@@ -209,16 +200,7 @@ tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
     )
 }
 tasks.named('check') {
-    dependsOn(
-            surfaceBiomeCacheTest,
-            surfaceRuleAnalyzerTest,
-            surfaceBindingLayoutTest,
-            arenaHeightmapUpdateTest,
-            chunkSectionSerializationContextTest,
-            chunkSavingBufferTest,
-            columnDensityFunctionRegistryTest,
-            tasks.named('verifyPackagedSurfaceJar')
-    )
+    dependsOn(tasks.named('verifyPackagedSurfaceJar'))
 }
 
 neoForge {

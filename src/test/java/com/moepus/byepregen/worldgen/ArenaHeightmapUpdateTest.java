@@ -1,10 +1,13 @@
 package com.moepus.byepregen.worldgen;
 
+import org.junit.jupiter.api.Test;
+
 public final class ArenaHeightmapUpdateTest {
     private ArenaHeightmapUpdateTest() {
     }
 
-    public static void main(String[] args) {
+    @Test
+    void verifiesCurrentTopBoundary() {
         assertBoundary(true);
         assertBoundary(false);
     }

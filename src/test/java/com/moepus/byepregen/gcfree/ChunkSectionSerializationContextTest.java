@@ -6,11 +6,13 @@ import java.util.List;
 import net.minecraft.util.CrudeIncrementalIntIdentityHashBiMap;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
+import org.junit.jupiter.api.Test;
 
 public final class ChunkSectionSerializationContextTest {
     private ChunkSectionSerializationContextTest() {}
 
-    public static void main(String[] args) {
+    @Test
+    void matchesVanillaPackingStrategies() {
         assertEquivalent(PalettedContainer.Strategy.SECTION_STATES, 1, 4);
         assertEquivalent(PalettedContainer.Strategy.SECTION_STATES, 5, 4);
         assertEquivalent(PalettedContainer.Strategy.SECTION_STATES, 17, 4);

@@ -12,21 +12,14 @@ import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
+import org.junit.jupiter.api.Test;
 
 public final class SurfaceBindingLayoutTest {
     private SurfaceBindingLayoutTest() {
     }
 
-    public static void main(String[] args) {
-        eventsFollowSourceOrderAndStopOnFailure();
-        preservesGradientAndYAnchorRecipes();
-        canonicalizesNoiseStorageWithoutSkippingBindingEvents();
-        delegatesBiomePredicates();
-        doesNotSnapshotContextAcrossOpaqueBarrier();
-        doesNotSnapshotLazyStoneDepthBelow();
-    }
-
-    private static void eventsFollowSourceOrderAndStopOnFailure() {
+    @Test
+    void eventsFollowSourceOrderAndStopOnFailure() {
         SurfaceRules.RuleSource source = sequence(List.of(
                 test(unknownCondition(), unknownRule()),
                 unknownRule(),
@@ -67,7 +60,8 @@ public final class SurfaceBindingLayoutTest {
         }
     }
 
-    private static void preservesGradientAndYAnchorRecipes() {
+    @Test
+    void preservesGradientAndYAnchorRecipes() {
         VerticalAnchor lower = new TestAnchor(-8);
         VerticalAnchor upper = new TestAnchor(32);
         VerticalAnchor lazy = new TestAnchor(80);
@@ -89,7 +83,8 @@ public final class SurfaceBindingLayoutTest {
         assertSame(lazy, events.get(3).source(), "Y anchor must stay unresolved in the layout");
     }
 
-    private static void canonicalizesNoiseStorageWithoutSkippingBindingEvents() {
+    @Test
+    void canonicalizesNoiseStorageWithoutSkippingBindingEvents() {
         SurfaceScalarLayout layout = lower(sequence(List.of(
                 test(noise(Noises.SURFACE, -1.0D, 0.0D), SurfaceRules.bandlands()),
                 test(noise(Noises.SURFACE, 0.0D, 1.0D), SurfaceRules.bandlands()),
@@ -137,7 +132,8 @@ public final class SurfaceBindingLayoutTest {
         assertEquals("event-4", values[1], "later stored slot index");
     }
 
-    private static void delegatesBiomePredicates() {
+    @Test
+    void delegatesBiomePredicates() {
         SurfaceScalarLayout layout = lower(test(
                 biome(),
                 SurfaceRules.bandlands()
@@ -151,7 +147,8 @@ public final class SurfaceBindingLayoutTest {
         );
     }
 
-    private static void doesNotSnapshotContextAcrossOpaqueBarrier() {
+    @Test
+    void doesNotSnapshotContextAcrossOpaqueBarrier() {
         SurfaceScalarLayout safe = lower(sequence(List.of(
                 test(water(), SurfaceRules.bandlands()),
                 test(water(), SurfaceRules.bandlands())
@@ -176,7 +173,8 @@ public final class SurfaceBindingLayoutTest {
         }
     }
 
-    private static void doesNotSnapshotLazyStoneDepthBelow() {
+    @Test
+    void doesNotSnapshotLazyStoneDepthBelow() {
         SurfaceRules.ConditionSource ceiling = stoneDepth(CaveSurface.CEILING, 0);
         SurfaceScalarLayout layout = lower(sequence(List.of(
                 test(ceiling, SurfaceRules.bandlands()),

@@ -2,12 +2,14 @@ package com.moepus.byepregen.dfc.column;
 
 import com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistry;
 import net.minecraft.world.level.levelgen.DensityFunction;
+import org.junit.jupiter.api.Test;
 
 public final class ColumnDensityFunctionRegistryTest {
     private ColumnDensityFunctionRegistryTest() {
     }
 
-    public static void main(String[] args) {
+    @Test
+    void registersExactDelegateTypesIdempotently() {
         check(!ColumnDensityFunctionRegistry.isYIndependentDelegateType(UnknownDensityFunction.class),
                 "unknown type must remain unregistered");
 

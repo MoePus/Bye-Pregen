@@ -10,6 +10,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
+import org.junit.jupiter.api.Test;
 
 public final class SurfaceBiomeCacheTest {
     private static final int MIN_BUILD_Y = -64;
@@ -22,15 +23,8 @@ public final class SurfaceBiomeCacheTest {
     private SurfaceBiomeCacheTest() {
     }
 
-    public static void main(String[] args) {
-        skipsAllInteriorLookupsForUniformBiomes();
-        matchesBiomeManagerAcrossTheWholeChunk();
-        matchesMixedCertificatesAcrossTheWholeChunk();
-        handlesNonAlignedHeightAndNegativeChunkBoundaries();
-        rejectsExcessiveVerticalSpan();
-    }
-
-    private static void skipsAllInteriorLookupsForUniformBiomes() {
+    @Test
+    void skipsAllInteriorLookupsForUniformBiomes() {
         CountingSource source = new CountingSource(true, Pattern.UNIFORM);
         ChunkPos center = new ChunkPos(0, 0);
         SurfaceBiomeManager manager = createManager(source, center);
@@ -50,7 +44,8 @@ public final class SurfaceBiomeCacheTest {
         assertEquals(0, source.totalCalls(), "uniform interior must bypass the noise biome source");
     }
 
-    private static void matchesBiomeManagerAcrossTheWholeChunk() {
+    @Test
+    void matchesBiomeManagerAcrossTheWholeChunk() {
         ChunkPos center = new ChunkPos(-3, 2);
         CountingSource source = new CountingSource(true, Pattern.UNIQUE);
         BiomeManager original = new BiomeManager(source, ZOOM_SEED);
@@ -68,7 +63,8 @@ public final class SurfaceBiomeCacheTest {
         assertEquals(0, cached.uniformCertificateCount(), "unique quart cells must stay on the selector path");
     }
 
-    private static void matchesMixedCertificatesAcrossTheWholeChunk() {
+    @Test
+    void matchesMixedCertificatesAcrossTheWholeChunk() {
         ChunkPos center = new ChunkPos(-3, -2);
         CountingSource source = new CountingSource(true, Pattern.MIXED);
         BiomeManager original = new BiomeManager(source, ZOOM_SEED);
@@ -89,7 +85,8 @@ public final class SurfaceBiomeCacheTest {
         }
     }
 
-    private static void handlesNonAlignedHeightAndNegativeChunkBoundaries() {
+    @Test
+    void handlesNonAlignedHeightAndNegativeChunkBoundaries() {
         ChunkPos center = new ChunkPos(-1, -1);
         CountingSource source = new CountingSource(false, Pattern.UNIQUE);
         SurfaceBiomeManager manager = SurfaceBiomeManager.fromSource(new SurfaceBiomeManager.SourceOptions(
@@ -113,7 +110,8 @@ public final class SurfaceBiomeCacheTest {
         assertEquals(2, source.callsAt(minQuartX - 1, 37, minQuartZ), "neighbor fallback must preserve Y");
     }
 
-    private static void rejectsExcessiveVerticalSpan() {
+    @Test
+    void rejectsExcessiveVerticalSpan() {
         CountingSource source = new CountingSource(false, Pattern.UNIQUE);
         try {
             SurfaceBiomeManager.fromSource(new SurfaceBiomeManager.SourceOptions(

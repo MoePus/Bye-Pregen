@@ -5,22 +5,14 @@ import java.util.List;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
+import org.junit.jupiter.api.Test;
 
 public final class SurfaceRuleAnalyzerTest {
     private SurfaceRuleAnalyzerTest() {
     }
 
-    public static void main(String[] args) {
-        preservesSourceOrderAndOpaqueSources();
-        keepsUnknownSourcesAsOpaqueBarriers();
-        recognizesSingletonIdentityWithoutMixins();
-        rejectsUnregisteredShapeImplementations();
-        canonicalizesSingletonValues();
-        fallsBackAtAnalysisLimits();
-        provesBoundedStoneDepthConservatively();
-    }
-
-    private static void preservesSourceOrderAndOpaqueSources() {
+    @Test
+    void preservesSourceOrderAndOpaqueSources() {
         SurfaceRules.ConditionSource biome = fakeBiome();
         SurfaceRules.RuleSource unknown = unknownRule();
         SurfaceRules.RuleSource source = fakeSequence(List.of(
@@ -47,7 +39,8 @@ public final class SurfaceRuleAnalyzerTest {
         assertSame(unknown, opaque.source(), "opaque rule source");
     }
 
-    private static void keepsUnknownSourcesAsOpaqueBarriers() {
+    @Test
+    void keepsUnknownSourcesAsOpaqueBarriers() {
         SurfaceRules.ConditionSource condition = unknownCondition();
         SurfaceRules.RuleSource source = fakeSequence(List.of(
                 fakeTest(condition, SurfaceRules.bandlands()),
@@ -67,7 +60,8 @@ public final class SurfaceRuleAnalyzerTest {
         throw new AssertionError("unknown root rule was not preserved as opaque");
     }
 
-    private static void recognizesSingletonIdentityWithoutMixins() {
+    @Test
+    void recognizesSingletonIdentityWithoutMixins() {
         SurfaceRules.RuleSource source = fakeTest(
                 SurfaceRules.hole(), SurfaceRules.bandlands()
         );
@@ -84,12 +78,14 @@ public final class SurfaceRuleAnalyzerTest {
         );
     }
 
-    private static void rejectsUnregisteredShapeImplementations() {
+    @Test
+    void rejectsUnregisteredShapeImplementations() {
         SurfaceRules.RuleSource source = fakeSequence(List.of(SurfaceRules.bandlands()));
         requireType(SurfaceRuleAnalyzer.analyze(source).root(), SurfaceRulePlan.OpaqueRule.class);
     }
 
-    private static void canonicalizesSingletonValues() {
+    @Test
+    void canonicalizesSingletonValues() {
         SurfaceRulePlan.Sequence root = requireType(analyze(fakeSequence(List.of(
                 fakeTest(SurfaceRules.hole(), SurfaceRules.bandlands()),
                 fakeTest(SurfaceRules.hole(), SurfaceRules.bandlands())
@@ -99,7 +95,8 @@ public final class SurfaceRuleAnalyzerTest {
         assertSame(first.value(), second.value(), "singleton values must canonicalize");
     }
 
-    private static void fallsBackAtAnalysisLimits() {
+    @Test
+    void fallsBackAtAnalysisLimits() {
         SurfaceRules.RuleSource source = fakeSequence(List.of(unknownRule(), unknownRule()));
         SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(
                 source,
@@ -112,7 +109,8 @@ public final class SurfaceRuleAnalyzerTest {
         assertSame(source, opaque.source(), "limited source must remain delegated");
     }
 
-    private static void provesBoundedStoneDepthConservatively() {
+    @Test
+    void provesBoundedStoneDepthConservatively() {
         SurfaceConditionSpec.StoneDepth adjacent = new SurfaceConditionSpec.StoneDepth(
                 0, false, 0, CaveSurface.CEILING
         );
