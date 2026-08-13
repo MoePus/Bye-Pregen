@@ -24,29 +24,29 @@ public abstract class ClimateRTreeSearchMixin<T> implements FastClimateRTree<T> 
     private ThreadLocal<Climate.RTree.Leaf<T>> lastResult;
 
     @InjectLite(method = "<init>", at = @At("RETURN"))
-    private void bpg$installSearchContext() {
+    private void byepregen$installSearchContext() {
         this.lastResult = new ClimateRTreeSearchContext<>();
     }
 
     @Override
-    public final T bpg$search(final Climate.TargetPoint targetPoint) {
-        final ClimateRTreeSearchContext.State<T> state = this.bpg$context();
+    public final T byepregen$search(final Climate.TargetPoint targetPoint) {
+        final ClimateRTreeSearchContext.State<T> state = this.byepregen$context();
         state.setTarget(targetPoint);
-        state.bestDistance = state.bestLeaf == null ? Long.MAX_VALUE : bpg$distance(state.bestLeaf, state.values);
+        state.bestDistance = state.bestLeaf == null ? Long.MAX_VALUE : byepregen$distance(state.bestLeaf, state.values);
 
         if (state.bestDistance != 0L) {
-            this.bpg$searchNode(this.root, state);
+            this.byepregen$searchNode(this.root, state);
         }
 
         return state.bestLeaf.value;
     }
 
     @Unique
-    private boolean bpg$searchNode(
+    private boolean byepregen$searchNode(
             final Climate.RTree.Node<T> node,
             final ClimateRTreeSearchContext.State<T> state
     ) {
-        final long nodeDistance = bpg$distance(node, state.values);
+        final long nodeDistance = byepregen$distance(node, state.values);
         if (state.bestDistance <= nodeDistance) {
             return false;
         }
@@ -59,7 +59,7 @@ public abstract class ClimateRTreeSearchMixin<T> implements FastClimateRTree<T> 
 
         final Climate.RTree.SubTree<T> subtree = (Climate.RTree.SubTree<T>)node;
         for (Climate.RTree.Node<T> child : subtree.children) {
-            if (this.bpg$searchNode(child, state)) {
+            if (this.byepregen$searchNode(child, state)) {
                 return true;
             }
         }
@@ -67,12 +67,12 @@ public abstract class ClimateRTreeSearchMixin<T> implements FastClimateRTree<T> 
     }
 
     @Unique
-    private ClimateRTreeSearchContext.State<T> bpg$context() {
+    private ClimateRTreeSearchContext.State<T> byepregen$context() {
         return ((ClimateRTreeSearchContext<T>)this.lastResult).context();
     }
 
     @Unique
-    private static long bpg$distance(final Climate.RTree.Node<?> node, final long[] values) {
+    private static long byepregen$distance(final Climate.RTree.Node<?> node, final long[] values) {
         long distance = 0L;
         for (int index = 0; index < ClimateRTreeSearchContext.PARAMETER_COUNT; index++) {
             distance += Mth.square(node.parameterSpace[index].distance(values[index]));

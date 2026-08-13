@@ -20,6 +20,6 @@ public abstract class ClimateParameterListSearchMixin<T> {
     @Overwrite
     @SuppressWarnings("unchecked")
     public T findValueIndex(final Climate.TargetPoint targetPoint) {
-        return ((FastClimateRTree<T>)(Object)this.index).bpg$search(targetPoint);
+        return ((FastClimateRTree<T>)(Object)this.index).byepregen$search(targetPoint);
     }
 }
