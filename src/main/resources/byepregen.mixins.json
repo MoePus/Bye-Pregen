@@ -8,7 +8,7 @@
     "feature.predicate.AllOfPredicateMixin",
     "accessor.arena.AquiferFluidStatusAccessor",
     "feature.predicate.AnyOfPredicateMixin",
-    "CarvingMaskAccessor",
+    "accessor.worldgen.feature.CarvingMaskAccessor",
     "arena.ChunkAccessArenaMixin",
     "ChunkMapAccessor",
     "arena.ChunkSerializerArenaReadMixin",

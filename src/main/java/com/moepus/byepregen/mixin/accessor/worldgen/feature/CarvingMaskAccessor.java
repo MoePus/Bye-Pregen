@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.accessor.worldgen.feature;
 
 import java.util.BitSet;
 import net.minecraft.world.level.chunk.CarvingMask;
