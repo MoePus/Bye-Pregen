@@ -22,11 +22,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = ChunkSerializer.class, remap = false)
 public abstract class ChunkSerializerArenaReadMixin {
@@ -35,8 +34,8 @@ public abstract class ChunkSerializerArenaReadMixin {
     @Final
     private static Codec<PalettedContainer<BlockState>> BLOCK_STATE_CODEC;
 
-    @Inject(method = "<clinit>", at = @At("RETURN"))
-    private static void byepregen$replaceBlockStateCodec(CallbackInfo ci) {
+    @InjectLite(method = "<clinit>", at = @At("RETURN"))
+    private static void byepregen$replaceBlockStateCodec() {
         BLOCK_STATE_CODEC = new StateCodec(BLOCK_STATE_CODEC);
     }
 

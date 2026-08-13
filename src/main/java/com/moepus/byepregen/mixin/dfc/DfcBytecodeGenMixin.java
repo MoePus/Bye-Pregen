@@ -3,11 +3,10 @@ package com.moepus.byepregen.mixin.dfc;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.BytecodeGen;
 import com.moepus.byepregen.dfc.ColumnCodegenContextAccess;
 import com.moepus.byepregen.dfc.column.ColumnCodegenHooks;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = BytecodeGen.class, remap = false)
 public abstract class DfcBytecodeGenMixin {
@@ -24,7 +23,7 @@ public abstract class DfcBytecodeGenMixin {
         return ColumnCodegenHooks.addEntryInterface(interfaces);
     }
 
-    @Inject(
+    @InjectLite(
             method = "finalizeCompilation",
             at = @At(
                     value = "INVOKE",
@@ -32,10 +31,7 @@ public abstract class DfcBytecodeGenMixin {
                     shift = At.Shift.BEFORE
             )
     )
-    private static void byepregen$finishColumnCodegen(
-            BytecodeGen.Context context,
-            CallbackInfoReturnable<?> cir
-    ) {
+    private static void byepregen$finishColumnCodegen(BytecodeGen.Context context) {
         ((ColumnCodegenContextAccess) context).byepregen$finishColumnCodegen();
     }
 }

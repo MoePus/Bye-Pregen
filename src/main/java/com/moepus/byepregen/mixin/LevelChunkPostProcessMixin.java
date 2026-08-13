@@ -14,11 +14,10 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.levelgen.blending.BlendingData;
 import org.jetbrains.annotations.Nullable;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 
 @Mixin(value = LevelChunk.class, remap = false)
@@ -27,8 +26,8 @@ public abstract class LevelChunkPostProcessMixin extends ChunkAccess {
         super(p_187621_, p_187622_, p_187623_, p_187624_, p_187625_, p_187626_, p_187627_);
     }
 
-    @Inject(method = "postProcessGeneration", at = @At("HEAD"))
-    private void c6c$preprocessPostProcessingLists(CallbackInfo ci) {
+    @InjectLite(method = "postProcessGeneration", at = @At("HEAD"))
+    private void c6c$preprocessPostProcessingLists() {
         PostProcessGenerationOptimizer.preprocessPostProcessingLists((LevelChunk) (Object) this, this.postProcessing);
     }
 

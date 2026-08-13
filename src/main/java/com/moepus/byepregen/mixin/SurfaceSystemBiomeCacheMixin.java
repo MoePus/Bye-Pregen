@@ -4,12 +4,12 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.moepus.byepregen.worldgen.SurfaceBiomeManager;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.SurfaceSystem;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(SurfaceSystem.class)
 public abstract class SurfaceSystemBiomeCacheMixin {
@@ -21,10 +21,10 @@ public abstract class SurfaceSystemBiomeCacheMixin {
         return SurfaceBiomeManager.wrapForSurface(biomeManager, chunk);
     }
 
-    @Inject(method = "buildSurface", at = @At("RETURN"))
+    @InjectLite(method = "buildSurface", at = @At("RETURN"))
     private void byepregen$commitSurfaceBiomeProfile(
-            CallbackInfo callbackInfo,
-            @Local(argsOnly = true) BiomeManager biomeManager
+            RandomState randomState,
+            BiomeManager biomeManager
     ) {
         if (SurfaceBiomeManager.profilingEnabled()) {
             SurfaceBiomeManager.commitProfile(biomeManager);

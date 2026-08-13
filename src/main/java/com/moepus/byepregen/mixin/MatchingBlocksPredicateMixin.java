@@ -6,14 +6,13 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.MatchingBlocksPredicate", remap = false)
 public abstract class MatchingBlocksPredicateMixin {
@@ -24,8 +23,8 @@ public abstract class MatchingBlocksPredicateMixin {
     @Unique
     private Block[] bpg$fastBlocks;
 
-    @Inject(method = "<init>", at = @At("TAIL"))
-    private void bpg$initFastBlocks(Vec3i offset, HolderSet<Block> blocks, CallbackInfo ci) {
+    @InjectLite(method = "<init>", at = @At("TAIL"))
+    private void bpg$initFastBlocks(Vec3i offset, HolderSet<Block> blocks) {
         List<Holder<Block>> holders = blocks.unwrap().right().orElse(null);
         if (holders == null) {
             return;

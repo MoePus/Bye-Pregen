@@ -7,20 +7,18 @@ import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.objectweb.asm.Opcodes;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @MixinGate(requiredMods = "c2me_rewrites_chunk_system")
 @Mixin(value = ServerBlockTicking.class, remap = false)
 public abstract class C2MEServerBlockTickingMixin {
-    @Inject(method = "upgradeToThis(Lcom/ishland/c2me/rewrites/chunksystem/common/ChunkLoadingContext;Lcom/ishland/flowsched/scheduler/Cancellable;)Lio/reactivex/rxjava3/core/Completable;", at = @At("HEAD"), require = 0, remap = false)
+    @InjectLite(method = "upgradeToThis(Lcom/ishland/c2me/rewrites/chunksystem/common/ChunkLoadingContext;Lcom/ishland/flowsched/scheduler/Cancellable;)Lio/reactivex/rxjava3/core/Completable;", at = @At("HEAD"), require = 0, remap = false)
     private void byepregen$preNormalizePostProcessingLists(
             ChunkLoadingContext context,
-            Cancellable cancellable,
-            CallbackInfoReturnable<?> cir
+            Cancellable cancellable
     ) {
         ChunkAccess chunk = context.holder().getItem().get().chunk();
         PostProcessGenerationOptimizer.preNormalizeAndFilterChunkLocalPostProcessingLists(chunk, chunk.getPostProcessing());

@@ -5,13 +5,11 @@ import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nullable;
 
@@ -49,13 +47,13 @@ public abstract class ClientChunkCacheYALightMixin implements YAImmediateChunkAc
         return chunk;
     }
 
-    @Inject(method = {"drop", "updateViewCenter", "updateViewRadius"}, at = @At("RETURN"))
-    private void byepregen$clearLightChunkCache(CallbackInfo ci) {
+    @InjectLite(method = {"drop", "updateViewCenter", "updateViewRadius"}, at = @At("RETURN"))
+    private void byepregen$clearLightChunkCacheAfterMutation() {
         this.byepregen$clearLightChunkCache();
     }
 
-    @Inject(method = "replaceWithPacketData", at = @At("RETURN"))
-    private void byepregen$clearLightChunkCacheOnLoad(CallbackInfoReturnable<LevelChunk> cir) {
+    @InjectLite(method = "replaceWithPacketData", at = @At("RETURN"))
+    private void byepregen$clearLightChunkCacheOnLoad() {
         this.byepregen$clearLightChunkCache();
     }
 

@@ -14,11 +14,10 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @MixinGate(requiredMods = "voxy")
 @Pseudo
@@ -31,25 +30,26 @@ public abstract class VoxyWorldConversionFactoryMixin {
     private static final MethodHandle GET_BIOME_ID = byepregen$findMapperMethod(
             "getIdForBiome", Holder.class);
 
-    @Inject(
+    @InjectLite(
             method = "convert(Lme/cortex/voxy/common/voxelization/VoxelizedSection;Lme/cortex/voxy/common/world/other/Mapper;Lnet/minecraft/world/level/chunk/PalettedContainer;Lnet/minecraft/world/level/chunk/PalettedContainerRO;Lme/cortex/voxy/common/voxelization/ILightingSupplier;ZJ)Lme/cortex/voxy/common/voxelization/VoxelizedSection;",
             at = @At("HEAD"),
-            cancellable = true,
+            cancel = true,
+            cancelOnNonNull = true,
             require = 0
     )
-    private static void byepregen$convertArena(
+    private static VoxelizedSection byepregen$convertArena(
             VoxelizedSection section,
             Mapper mapper,
             PalettedContainer<BlockState> blockContainer,
             PalettedContainerRO<Holder<Biome>> biomeContainer,
             ILightingSupplier lightSupplier,
             boolean shouldZoom,
-            long zoomSeed,
-            CallbackInfoReturnable<VoxelizedSection> cir
+            long zoomSeed
     ) {
         if (blockContainer instanceof ArenaBlockStatePalettedContainer arena) {
-            cir.setReturnValue(byepregen$convertArena(section, mapper, arena, biomeContainer, lightSupplier));
+            return byepregen$convertArena(section, mapper, arena, biomeContainer, lightSupplier);
         }
+        return null;
     }
 
     private static VoxelizedSection byepregen$convertArena(

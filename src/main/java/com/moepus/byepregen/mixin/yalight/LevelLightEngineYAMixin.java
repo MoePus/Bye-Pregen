@@ -16,15 +16,14 @@ import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.lighting.LightEngine;
 import net.minecraft.world.level.lighting.BlockLightEngine;
 import net.minecraft.world.level.lighting.SkyLightEngine;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LevelLightEngine.class)
 public abstract class LevelLightEngineYAMixin implements YALightEngineHolder {
@@ -66,12 +65,11 @@ public abstract class LevelLightEngineYAMixin implements YALightEngineHolder {
         return new YASkyLightEngine(chunkGetter);
     }
 
-    @Inject(method = "<init>", at = @At("TAIL"))
+    @InjectLite(method = "<init>", at = @At("TAIL"))
     private void byepregen$initYALightEngine(
             LightChunkGetter chunkGetter,
             boolean blockLight,
-            boolean skyLight,
-            CallbackInfo ci
+            boolean skyLight
     ) {
         this.byepregen$yaLightEngine = new YALightEngine(
                 chunkGetter,
