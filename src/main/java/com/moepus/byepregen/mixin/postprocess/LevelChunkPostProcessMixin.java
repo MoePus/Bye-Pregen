@@ -1,6 +1,6 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.postprocess;
 
-import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
+import com.moepus.byepregen.worldgen.postprocess.PostProcessGenerationOptimizer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.world.level.ChunkPos;

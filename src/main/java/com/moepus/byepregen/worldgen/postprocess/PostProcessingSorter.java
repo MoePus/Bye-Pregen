@@ -1,4 +1,4 @@
-package com.moepus.byepregen.PostProcess;
+package com.moepus.byepregen.worldgen.postprocess;
 
 import it.unimi.dsi.fastutil.shorts.ShortList;
 

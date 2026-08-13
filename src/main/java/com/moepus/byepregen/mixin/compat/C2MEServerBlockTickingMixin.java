@@ -4,7 +4,7 @@ import com.ishland.c2me.rewrites.chunksystem.common.ChunkLoadingContext;
 import com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking;
 import com.ishland.flowsched.scheduler.Cancellable;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.PostProcess.PostProcessGenerationOptimizer;
+import com.moepus.byepregen.worldgen.postprocess.PostProcessGenerationOptimizer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.objectweb.asm.Opcodes;
 import org.mixinlite.injector.InjectLite;
