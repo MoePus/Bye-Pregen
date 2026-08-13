@@ -1,6 +1,7 @@
 package com.moepus.byepregen;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,7 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.Opcodes;
@@ -47,6 +49,24 @@ final class MixinRegistryTest {
             "Lorg/spongepowered/asm/mixin/injection/Redirect;"
     );
     private static final EnumMap<MixinFeature, Integer> FEATURE_COUNTS = featureCounts();
+    private static final Map<String, CompatGateContract> COMPAT_GATE_CONTRACTS = Map.of(
+            MIXIN_PREFIX + "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin",
+            new CompatGateContract(MixinFeature.ARENA, "zfastnoise"),
+            MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin",
+            new CompatGateContract(MixinFeature.ARENA, "voxy"),
+            MIXIN_PREFIX + "chunkio.compat.c2me.C2MEChunkSavingCompressionMixin",
+            new CompatGateContract(MixinFeature.NONE, "c2me_rewrites_chunkio"),
+            MIXIN_PREFIX + "chunksave.compat.architectury.ArchitecturyEventImplAccessor",
+            new CompatGateContract(MixinFeature.GC_FREE_CHUNK_SAVE, "architectury"),
+            MIXIN_PREFIX + "chunksave.compat.c2me.C2MEHookCompatibilityMixin",
+            new CompatGateContract(MixinFeature.GC_FREE_CHUNK_SAVE, "c2me_base"),
+            MIXIN_PREFIX + "palette.compat.lithium.LithiumHashPaletteMixin",
+            new CompatGateContract(MixinFeature.NONE, "lithium"),
+            MIXIN_PREFIX + "postprocess.compat.c2me.C2MEServerBlockTickingMixin",
+            new CompatGateContract(MixinFeature.NONE, "c2me_rewrites_chunk_system"),
+            MIXIN_PREFIX + "server.tick.compat.sable.SableNaturalSpawnerMixin",
+            new CompatGateContract(MixinFeature.NONE, "sable")
+    );
 
     @Test
     void registryIsCompleteAndReferencesCompiledMixins() throws Exception {
@@ -136,6 +156,55 @@ final class MixinRegistryTest {
         assertEquals(List.of("servercore"), annotationStrings(chunkTick, "conflictingMods"));
         assertEquals("enableFastTickChunks", annotationString(weatherTick, "config"));
         assertEquals(List.of(), annotationStrings(weatherTick, "conflictingMods"));
+    }
+
+    @Test
+    void compatMixinsKeepExactOptionalDependencyGates() throws Exception {
+        Set<String> registeredCompat = new HashSet<>();
+        for (String className : readRegistry().classes()) {
+            if (className.contains(".compat.")) {
+                registeredCompat.add(className);
+            }
+        }
+        assertEquals(COMPAT_GATE_CONTRACTS.keySet(), registeredCompat);
+
+        for (Map.Entry<String, CompatGateContract> entry : COMPAT_GATE_CONTRACTS.entrySet()) {
+            assertCompatGate(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static void assertCompatGate(
+            String mixinClassName,
+            CompatGateContract contract
+    ) throws Exception {
+        String targetClassName = "contract.Target";
+        AnnotationNode gate = annotation(readClass(mixinClassName), GATE_DESCRIPTOR);
+        assertEquals(contract.feature(), annotationFeature(gate), mixinClassName);
+        assertEquals(List.of(contract.requiredMod()), annotationStrings(gate, "requiredMods"), mixinClassName);
+        assertEquals(List.of(), annotationStrings(gate, "conflictingMods"), mixinClassName);
+
+        assertFalse(evaluateGate(mixinClassName, targetClassName, Set.of(), Set.of(targetClassName)), mixinClassName);
+        assertFalse(evaluateGate(mixinClassName, targetClassName, Set.of(contract.requiredMod()), Set.of()), mixinClassName);
+        assertTrue(evaluateGate(
+                mixinClassName,
+                targetClassName,
+                Set.of(contract.requiredMod()),
+                Set.of(targetClassName)
+        ), mixinClassName);
+    }
+
+    private static boolean evaluateGate(
+            String mixinClassName,
+            String targetClassName,
+            Set<String> mods,
+            Set<String> classes
+    ) throws Exception {
+        MixinGateEvaluator evaluator = new MixinGateEvaluator(
+                MixinRegistryTest::readClass,
+                mods::contains,
+                classes::contains
+        );
+        return evaluator.evaluate(targetClassName, mixinClassName, new Config()).annotationEnabled();
     }
 
     private static AnnotationNode gate(String simpleName) throws IOException {
@@ -285,5 +354,8 @@ final class MixinRegistryTest {
     }
 
     private record Registry(List<String> classes) {
+    }
+
+    private record CompatGateContract(MixinFeature feature, String requiredMod) {
     }
 }
