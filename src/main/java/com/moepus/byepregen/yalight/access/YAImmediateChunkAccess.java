@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.access;
 
 import net.minecraft.world.level.chunk.ChunkAccess;
 

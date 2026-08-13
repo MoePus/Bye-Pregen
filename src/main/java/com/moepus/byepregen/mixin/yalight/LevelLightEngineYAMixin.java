@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.yalight;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YALightEngine;
-import com.moepus.byepregen.yalight.YALightEngineHolder;
+import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YABlockLightEngine;
 import com.moepus.byepregen.yalight.YASkyLightEngine;
 import net.minecraft.core.BlockPos;

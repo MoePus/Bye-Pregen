@@ -1,7 +1,7 @@
 package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
-import com.moepus.byepregen.yalight.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import com.moepus.byepregen.yalight.YANibbleArray;
 import com.mojang.logging.LogUtils;

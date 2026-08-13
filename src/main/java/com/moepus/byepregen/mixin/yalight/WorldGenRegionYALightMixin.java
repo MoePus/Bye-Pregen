@@ -2,9 +2,9 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.yalight.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YALightEngine;
-import com.moepus.byepregen.yalight.YALightEngineHolder;
+import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.LightLayer;

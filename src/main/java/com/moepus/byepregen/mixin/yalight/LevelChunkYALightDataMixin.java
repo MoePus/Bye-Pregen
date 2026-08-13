@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.yalight.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LightLayer;

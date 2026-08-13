@@ -1,4 +1,8 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.access;
+
+import com.moepus.byepregen.yalight.YAChunkLightData;
+import com.moepus.byepregen.yalight.YANibbleArray;
+import com.moepus.byepregen.yalight.YAVisibleLightReader;
 
 import net.minecraft.world.level.LightLayer;
 

@@ -3,7 +3,7 @@ package com.moepus.byepregen.yalight;
 import net.minecraft.core.BlockPos;
 
 public final class YAVisibleLightReader {
-    static final YANibbleArray[] EMPTY_SECTIONS = new YANibbleArray[0];
+    public static final YANibbleArray[] EMPTY_SECTIONS = new YANibbleArray[0];
     private static final int FULL_LIGHT = 15;
 
     private YAVisibleLightReader() {

@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.yalight.YAImmediateChunkAccess;
+import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;

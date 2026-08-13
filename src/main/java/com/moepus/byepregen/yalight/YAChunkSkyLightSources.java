@@ -1,5 +1,6 @@
 package com.moepus.byepregen.yalight;
 
+import com.moepus.byepregen.yalight.access.YASkySourceDirtyAccess;
 import java.util.Arrays;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.yalight.YALightEngineHolder;
+import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YANibbleArray;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;

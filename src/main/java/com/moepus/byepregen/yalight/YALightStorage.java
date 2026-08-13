@@ -1,5 +1,6 @@
 package com.moepus.byepregen.yalight;
 
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;

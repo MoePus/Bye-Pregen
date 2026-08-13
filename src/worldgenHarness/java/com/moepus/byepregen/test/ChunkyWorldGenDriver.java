@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.yalight.YALightEngineHolder;
+import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.moepus.byepregen.worldgen.surface.SurfaceScalarMetrics;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;

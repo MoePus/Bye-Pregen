@@ -8,7 +8,7 @@ import com.moepus.byepregen.integration.c2me.C2MEAsyncSerializationCompat;
 import com.moepus.byepregen.serialization.nbt.BiomeNbtCache;
 import com.moepus.byepregen.serialization.nbt.BlockStateNbtCache;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
-import com.moepus.byepregen.yalight.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import com.moepus.byepregen.yalight.YANibbleArray;
 import com.mojang.logging.LogUtils;
