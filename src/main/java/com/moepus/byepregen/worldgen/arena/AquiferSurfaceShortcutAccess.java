@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen;
+package com.moepus.byepregen.worldgen.arena;
 
 public interface AquiferSurfaceShortcutAccess {
     void byepregen$beginAquiferSurfaceColumn(int fluidUpperBound);

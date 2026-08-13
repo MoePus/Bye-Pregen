@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen;
+package com.moepus.byepregen.worldgen.arena;
 
 import java.util.List;
 import net.minecraft.world.level.block.state.BlockState;

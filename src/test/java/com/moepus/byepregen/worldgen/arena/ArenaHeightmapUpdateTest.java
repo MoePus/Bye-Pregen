@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen;
+package com.moepus.byepregen.worldgen.arena;
 
 import org.junit.jupiter.api.Test;
 

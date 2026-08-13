@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen;
+package com.moepus.byepregen.worldgen.arena;
 
 import net.minecraft.world.level.levelgen.NoiseChunk;
 

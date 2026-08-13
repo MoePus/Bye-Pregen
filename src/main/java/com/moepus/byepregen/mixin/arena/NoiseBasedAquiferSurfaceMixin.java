@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.arena;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.worldgen.AquiferSurfaceShortcutAccess;
+import com.moepus.byepregen.worldgen.arena.AquiferSurfaceShortcutAccess;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Aquifer;

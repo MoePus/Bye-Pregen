@@ -126,7 +126,7 @@ def pureJavaTestAliases = [
                 description: 'Checks Surface binding order, failure stop, and eager/lazy recipes.',
         ],
         testArenaHeightmapUpdate: [
-                className: 'com.moepus.byepregen.worldgen.ArenaHeightmapUpdateTest',
+                className: 'com.moepus.byepregen.worldgen.arena.ArenaHeightmapUpdateTest',
                 description: 'Checks Arena heightmap update decisions at the current-top boundary.',
         ],
         testChunkSectionSerializationContext: [

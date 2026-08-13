@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.arena.compat.fastnoise;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.MixinFeature;
-import com.moepus.byepregen.worldgen.ArenaOpenCLBufferImporter;
+import com.moepus.byepregen.worldgen.arena.ArenaOpenCLBufferImporter;
 import java.nio.ByteBuffer;
 import net.minecraft.util.StaticCache2D;
 import net.minecraft.world.level.ChunkPos;

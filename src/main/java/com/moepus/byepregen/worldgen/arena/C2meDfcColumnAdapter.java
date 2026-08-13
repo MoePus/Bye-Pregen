@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen;
+package com.moepus.byepregen.worldgen.arena;
 
 import com.moepus.byepregen.dfc.FinalDensityColumnProvider;
 import com.moepus.byepregen.dfc.column.ColumnEvaluationContext;

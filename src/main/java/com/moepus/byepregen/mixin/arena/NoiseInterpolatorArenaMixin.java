@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.arena;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.worldgen.ArenaNoiseInterpolatorAccess;
+import com.moepus.byepregen.worldgen.arena.ArenaNoiseInterpolatorAccess;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Mixin;
