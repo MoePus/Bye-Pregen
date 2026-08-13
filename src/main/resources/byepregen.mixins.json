@@ -51,7 +51,7 @@
     "feature.placement.PlacementModifierMixin",
     "RegionFileCompressionMixin",
     "palette.SingleValuePaletteMixin",
-    "ServerChunkCacheTickChunksMixin",
+    "server.tick.ServerChunkCacheTickChunksMixin",
     "ServerLevelWeatherTickMixin",
     "feature.predicate.StateTestingPredicateMixin",
     "feature.tree.TreeFeatureFastSetMixin",

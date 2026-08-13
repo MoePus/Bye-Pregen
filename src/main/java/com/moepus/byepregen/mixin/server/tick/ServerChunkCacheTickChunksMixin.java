@@ -1,7 +1,8 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.server.tick;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.compat.C2MECompat;
+import com.moepus.byepregen.mixin.ChunkMapAccessor;
 import com.moepus.byepregen.optimization.FastNaturalSpawner;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import it.unimi.dsi.fastutil.objects.ObjectCollection;
