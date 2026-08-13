@@ -439,14 +439,6 @@ def runtimeCheck = tasks.register('runtimeCheck') {
     dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen')
 }
 
-if (gradle.startParameter.taskNames.any { it.tokenize(':').last() == runtimeCheck.name }) {
-    tasks.named('runTestWorldGen', JavaExec) {
-        doFirst {
-            systemProperty 'byepregen.testWorldGen.radius', '16'
-        }
-    }
-}
-
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

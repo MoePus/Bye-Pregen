@@ -11,10 +11,13 @@ def sanitizeRunName = { String value ->
 }
 
 def jfrSettings = prop('byepregenJfrSettings', 'profile')
+def runtimeCheckRequested = gradle.startParameter.taskNames.any {
+    it.tokenize(':').last() == 'runtimeCheck'
+}
 
 def worldGenConfig = [
         dir    : file(prop('byepregenTestWorldGenDir', 'run/test-worldgen')),
-        radius : prop('byepregenTestWorldGenRadius', '700'),
+        radius : runtimeCheckRequested ? '16' : prop('byepregenTestWorldGenRadius', '700'),
         seed   : prop('byepregenTestWorldGenSeed', 'byepregen-test-worldgen'),
         gcFree : prop('byepregenTestWorldGenGcFree', 'true'),
         yaLight: prop('byepregenTestWorldGenYALight', 'true'),
