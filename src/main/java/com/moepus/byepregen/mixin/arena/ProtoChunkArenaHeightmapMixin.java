@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.At;
 @MixinGate(feature = MixinFeature.ARENA)
 @Mixin(ProtoChunk.class)
 public abstract class ProtoChunkArenaHeightmapMixin {
-    @Unique private static final EnumSet<Heightmap.Types> BYEPREGEN$NO_HEIGHTMAPS =
+    @Unique private static final EnumSet<Heightmap.Types> byepregen$NO_HEIGHTMAPS =
             EnumSet.noneOf(Heightmap.Types.class);
 
     @Shadow private volatile ChunkStatus status;
@@ -78,7 +78,7 @@ public abstract class ProtoChunkArenaHeightmapMixin {
             this.byepregen$oceanFloorWg.update(x, y, z, state);
         }
 
-        return BYEPREGEN$NO_HEIGHTMAPS;
+        return byepregen$NO_HEIGHTMAPS;
     }
 
     @Unique
