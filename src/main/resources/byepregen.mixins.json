@@ -52,7 +52,7 @@
     "RegionFileCompressionMixin",
     "palette.SingleValuePaletteMixin",
     "server.tick.ServerChunkCacheTickChunksMixin",
-    "ServerLevelWeatherTickMixin",
+    "server.tick.ServerLevelWeatherTickMixin",
     "feature.predicate.StateTestingPredicateMixin",
     "feature.tree.TreeFeatureFastSetMixin",
     "surface.biome.SurfaceSystemBiomeCacheMixin",

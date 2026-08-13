@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.server.tick;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
