@@ -1,6 +1,5 @@
 plugins {
     id 'java-library'
-    id 'maven-publish'
     id 'idea'
     id 'net.neoforged.moddev' version '2.0.141'
 }
@@ -111,19 +110,6 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
-        gameTestServer {
-            type = "gameTestServer"
-            loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        data {
-            data()
-            loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
-
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
-        }
-
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
@@ -137,8 +123,6 @@ apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
 apply from: 'gradle/byepregen-worldgen-run-support.gradle'
 apply from: 'gradle/byepregen-worldgen-smoke.gradle'
 apply from: 'gradle/byepregen-light-verification.gradle'
-
-sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 tasks.named('jar', Jar) {
     exclude 'com/moepus/byepregen/test/**'
@@ -173,19 +157,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
 
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
-
-publishing {
-    publications {
-        register('mavenJava', MavenPublication) {
-            from components.java
-        }
-    }
-    repositories {
-        maven {
-            url "file://${project.projectDir}/repo"
-        }
-    }
-}
 
 idea {
     module {
