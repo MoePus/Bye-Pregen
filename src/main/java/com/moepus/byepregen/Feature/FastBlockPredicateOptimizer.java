@@ -41,7 +41,7 @@ public final class FastBlockPredicateOptimizer {
 
     private static LevelChunkSection getSection(WorldGenLevel level, int sectionX, int sectionIndex, int sectionZ) {
         if (level instanceof WorldGenRegionSectionCache sectionCache) {
-            return sectionCache.bpg$getCachedSection(sectionX, sectionIndex, sectionZ);
+            return sectionCache.byepregen$getCachedSection(sectionX, sectionIndex, sectionZ);
         }
 
         ChunkAccess chunk = level.getChunk(sectionX, sectionZ, ChunkStatus.EMPTY, true);

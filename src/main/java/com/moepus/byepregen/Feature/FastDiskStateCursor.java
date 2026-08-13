@@ -47,7 +47,7 @@ public final class FastDiskStateCursor {
         int sectionX = SectionPos.blockToSectionCoord(x);
         int sectionZ = SectionPos.blockToSectionCoord(z);
         if (sectionX != this.columnSectionX || sectionZ != this.columnSectionZ) {
-            this.columnChunk = this.chunkCache.bpg$getCachedChunk(sectionX, sectionZ);
+            this.columnChunk = this.chunkCache.byepregen$getCachedChunk(sectionX, sectionZ);
             this.columnSectionX = sectionX;
             this.columnSectionZ = sectionZ;
             this.columnSectionIndex = Integer.MIN_VALUE;
@@ -112,7 +112,7 @@ public final class FastDiskStateCursor {
     private LevelChunkSection getOtherSection(int sectionX, int sectionIndex, int sectionZ) {
         long chunkKey = ChunkPos.asLong(sectionX, sectionZ);
         if (!this.hasOtherChunkKey || chunkKey != this.otherChunkKey) {
-            this.otherChunk = this.chunkCache.bpg$getCachedChunk(sectionX, sectionZ);
+            this.otherChunk = this.chunkCache.byepregen$getCachedChunk(sectionX, sectionZ);
             this.otherChunkKey = chunkKey;
             this.hasOtherChunkKey = true;
             this.otherSectionIndex = Integer.MIN_VALUE;

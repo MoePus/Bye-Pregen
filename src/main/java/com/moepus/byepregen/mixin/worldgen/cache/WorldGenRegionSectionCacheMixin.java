@@ -15,11 +15,11 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(value = WorldGenRegion.class, remap = false)
 public abstract class WorldGenRegionSectionCacheMixin implements WorldGenRegionSectionCache {
     @Unique
-    private long bpg$chunkKey;
+    private long byepregen$chunkKey;
     @Unique
-    private boolean bpg$hasChunkKey;
+    private boolean byepregen$hasChunkKey;
     @Unique
-    private ChunkAccess bpg$chunk;
+    private ChunkAccess byepregen$chunk;
 
 
     @Shadow
@@ -27,13 +27,13 @@ public abstract class WorldGenRegionSectionCacheMixin implements WorldGenRegionS
     public abstract ChunkAccess getChunk(int sectionX, int sectionZ, ChunkStatus status, boolean load);
 
     @Override
-    public ChunkAccess bpg$getCachedChunk(int sectionX, int sectionZ) {
+    public ChunkAccess byepregen$getCachedChunk(int sectionX, int sectionZ) {
         long chunkKey = ChunkPos.asLong(sectionX, sectionZ);
-        if (!this.bpg$hasChunkKey || this.bpg$chunkKey != chunkKey) {
-            this.bpg$chunk = this.getChunk(sectionX, sectionZ, ChunkStatus.EMPTY, true);
-            this.bpg$chunkKey = chunkKey;
-            this.bpg$hasChunkKey = true;
+        if (!this.byepregen$hasChunkKey || this.byepregen$chunkKey != chunkKey) {
+            this.byepregen$chunk = this.getChunk(sectionX, sectionZ, ChunkStatus.EMPTY, true);
+            this.byepregen$chunkKey = chunkKey;
+            this.byepregen$hasChunkKey = true;
         }
-        return this.bpg$chunk;
+        return this.byepregen$chunk;
     }
 }
