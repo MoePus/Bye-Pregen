@@ -6,7 +6,7 @@ import com.ishland.c2me.opts.dfc.common.ast.EvalType;
 import com.ishland.c2me.opts.dfc.common.ducks.IFastCacheLike;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.util.DfcObjectCache;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.vif.NoisePosVanillaInterface;
-import com.moepus.byepregen.dfc.column.ColumnFlatCacheSource;
+import com.moepus.byepregen.dfc.runtime.ColumnFlatCacheSource;
 import net.minecraft.core.QuartPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;

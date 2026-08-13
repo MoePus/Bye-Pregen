@@ -1,6 +1,5 @@
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.api.dfc;
 
-import com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistry;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import org.junit.jupiter.api.Test;
 

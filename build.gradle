@@ -138,7 +138,7 @@ def pureJavaTestAliases = [
                 description: 'Checks retained chunk saving buffers remain bounded and zlib-compatible.',
         ],
         testColumnDensityFunctionRegistry: [
-                className: 'com.moepus.byepregen.dfc.column.ColumnDensityFunctionRegistryTest',
+                className: 'com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistryTest',
                 description: 'Checks exact and idempotent Y-independent delegate registration.',
         ],
 ]

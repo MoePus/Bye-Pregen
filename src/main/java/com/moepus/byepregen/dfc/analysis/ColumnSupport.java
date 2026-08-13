@@ -4,7 +4,7 @@
  * Copyright (c) 2021-2026 ishland
  */
 
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.analysis;
 
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.binary.*;
@@ -22,12 +22,12 @@ import java.util.IdentityHashMap;
 import java.util.Optional;
 import java.util.Set;
 
-final class ColumnSupport {
+public final class ColumnSupport {
 
     private ColumnSupport() {
     }
 
-    static Preparation prepare(AstNode root) {
+    public static Preparation prepare(AstNode root) {
         Optional<String> specializationFailure = findUnsupportedSpecialization(root);
         if (specializationFailure.isPresent()) {
             return new Rejected("unsupported column specialization: " + specializationFailure.get());
@@ -125,7 +125,7 @@ final class ColumnSupport {
                 || isSupportedBinary(node);
     }
 
-    static boolean isSupportedUnary(AstNode node) {
+    public static boolean isSupportedUnary(AstNode node) {
         Class<?> type = node.getClass();
         return type == AbsNode.class
                 || type == SquareNode.class
@@ -134,7 +134,7 @@ final class ColumnSupport {
                 || type == NegMulNode.class;
     }
 
-    static boolean isSupportedBinary(AstNode node) {
+    public static boolean isSupportedBinary(AstNode node) {
         Class<?> type = node.getClass();
         return type == AddNode.class
                 || type == MulNode.class
@@ -145,7 +145,7 @@ final class ColumnSupport {
                 || type == MaxShortNode.class;
     }
 
-    static boolean isSupportedDelegate(AstNode node) {
+    public static boolean isSupportedDelegate(AstNode node) {
         if (node.getClass() == BeardifierNode.class) return true;
         return node.getClass() == DelegateNode.class
                 && ColumnDensityFunctionRegistry.isYIndependentDelegate(
@@ -173,13 +173,13 @@ final class ColumnSupport {
         return Optional.of(node.getClass().getName() + ": " + reason);
     }
 
-    sealed interface Preparation permits Supported, Rejected {
+    public sealed interface Preparation permits Supported, Rejected {
     }
 
-    record Supported(AstNode root) implements Preparation {
+    public record Supported(AstNode root) implements Preparation {
     }
 
-    record Rejected(String reason) implements Preparation {
+    public record Rejected(String reason) implements Preparation {
     }
 }
 

@@ -4,7 +4,7 @@
  * Copyright (c) 2021-2026 ishland
  */
 
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.analysis;
 
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.misc.CacheLikeNode;
@@ -14,7 +14,7 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.function.Function;
 
-final class ColumnAstSpecializer {
+public final class ColumnAstSpecializer {
 
     private static final String WRAPPING_PREFIX = "wrapping, ";
 
@@ -35,7 +35,7 @@ final class ColumnAstSpecializer {
         return new MemoizingRewriter(plan).rewrite(canonical.root());
     }
 
-    static int countMemoized(AstNode root) {
+    public static int countMemoized(AstNode root) {
         Set<AstNode> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         return countMemoized(root, visited);
     }
@@ -102,4 +102,3 @@ final class ColumnAstSpecializer {
         }
     }
 }
-

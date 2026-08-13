@@ -4,7 +4,13 @@
  * Copyright (c) 2021-2026 ishland
  */
 
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.codegen;
+
+import com.moepus.byepregen.dfc.analysis.ColumnCacheNode;
+import com.moepus.byepregen.dfc.analysis.ColumnMemoized2DNode;
+import com.moepus.byepregen.dfc.analysis.ColumnSupport;
+import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
+import com.moepus.byepregen.dfc.runtime.ColumnFlatCacheSource;
 
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.EvalType;

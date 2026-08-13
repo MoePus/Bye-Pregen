@@ -4,14 +4,14 @@
  * Copyright (c) 2021-2026 ishland
  */
 
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.analysis;
 
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.AstTransformer;
 
 import java.util.Objects;
 
-final class ColumnMemoized2DNode implements AstNode {
+public final class ColumnMemoized2DNode implements AstNode {
 
     private final AstNode delegate;
     private final int slot;
@@ -22,11 +22,11 @@ final class ColumnMemoized2DNode implements AstNode {
         this.slot = slot;
     }
 
-    AstNode delegate() {
+    public AstNode delegate() {
         return this.delegate;
     }
 
-    int slot() {
+    public int slot() {
         return this.slot;
     }
 

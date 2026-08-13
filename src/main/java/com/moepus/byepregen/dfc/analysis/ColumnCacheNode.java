@@ -4,7 +4,7 @@
  * Copyright (c) 2021-2026 ishland
  */
 
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.analysis;
 
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.AstTransformer;
@@ -12,7 +12,7 @@ import com.ishland.c2me.opts.dfc.common.ducks.IFastCacheLike;
 
 import java.util.Objects;
 
-final class ColumnCacheNode implements AstNode {
+public final class ColumnCacheNode implements AstNode {
 
     private final IFastCacheLike cacheLike;
     private final Mode mode;
@@ -22,11 +22,11 @@ final class ColumnCacheNode implements AstNode {
         this.mode = Objects.requireNonNull(mode);
     }
 
-    IFastCacheLike cacheLike() {
+    public IFastCacheLike cacheLike() {
         return this.cacheLike;
     }
 
-    Mode mode() {
+    public Mode mode() {
         return this.mode;
     }
 
@@ -66,7 +66,7 @@ final class ColumnCacheNode implements AstNode {
         return 31 * result + this.mode.hashCode();
     }
 
-    enum Mode {
+    public enum Mode {
         FLAT,
         INTERPOLATED,
     }

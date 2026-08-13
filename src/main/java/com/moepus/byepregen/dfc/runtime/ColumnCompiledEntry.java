@@ -1,6 +1,4 @@
-package com.moepus.byepregen.dfc;
-
-import com.moepus.byepregen.dfc.column.ColumnEvaluationContext;
+package com.moepus.byepregen.dfc.runtime;
 
 /** Implemented directly by C2ME's generated DfcCompiled classes. */
 public interface ColumnCompiledEntry {

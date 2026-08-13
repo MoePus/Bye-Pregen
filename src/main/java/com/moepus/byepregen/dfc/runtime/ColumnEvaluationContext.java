@@ -4,7 +4,7 @@
  * Copyright (c) 2021-2026 ishland
  */
 
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.runtime;
 
 import com.ishland.c2me.opts.dfc.common.ducks.IFastCacheLike;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.util.DfcObjectCache;
@@ -19,7 +19,7 @@ import org.objectweb.asm.Type;
  */
 public final class ColumnEvaluationContext {
 
-    static final String METHOD_DESC = Type.getMethodDescriptor(
+    public static final String METHOD_DESC = Type.getMethodDescriptor(
             Type.VOID_TYPE, Type.getType(ColumnEvaluationContext.class));
 
     private final DfcObjectCache objectCache;

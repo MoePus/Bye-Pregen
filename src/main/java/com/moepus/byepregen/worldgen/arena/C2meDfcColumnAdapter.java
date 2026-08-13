@@ -1,7 +1,7 @@
 package com.moepus.byepregen.worldgen.arena;
 
-import com.moepus.byepregen.dfc.FinalDensityColumnProvider;
-import com.moepus.byepregen.dfc.column.ColumnEvaluationContext;
+import com.moepus.byepregen.dfc.runtime.FinalDensityColumnProvider;
+import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Map;

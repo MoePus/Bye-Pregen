@@ -1,9 +1,12 @@
-package com.moepus.byepregen.dfc.column;
+package com.moepus.byepregen.dfc.codegen;
 
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.ast.misc.RootNode;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.BytecodeGen;
-import com.moepus.byepregen.dfc.ColumnCompiledEntry;
+import com.moepus.byepregen.dfc.analysis.ColumnAstSpecializer;
+import com.moepus.byepregen.dfc.analysis.ColumnSupport;
+import com.moepus.byepregen.dfc.runtime.ColumnCompiledEntry;
+import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import java.util.Arrays;
 import java.util.Map;
 import org.objectweb.asm.Label;
