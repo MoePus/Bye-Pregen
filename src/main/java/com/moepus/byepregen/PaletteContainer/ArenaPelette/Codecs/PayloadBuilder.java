@@ -1,6 +1,6 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.serialization.nbt.BlockStateNbtCache;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.nbt.Tag;

@@ -3,7 +3,7 @@ package com.moepus.byepregen.PaletteContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.PayloadBuilder;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
 import com.mojang.logging.LogUtils;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

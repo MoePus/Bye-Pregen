@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.arena.compat.voxy;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.MixinFeature;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;

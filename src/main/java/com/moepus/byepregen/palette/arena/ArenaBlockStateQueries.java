@@ -1,6 +1,6 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette;
+package com.moepus.byepregen.palette.arena;
 
-import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
+import static com.moepus.byepregen.palette.arena.Layout.*;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;

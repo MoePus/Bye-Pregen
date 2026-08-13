@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.arena;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.worldgen.ArenaHeightmapUpdate;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;

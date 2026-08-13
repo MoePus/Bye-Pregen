@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.arena;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
+import com.moepus.byepregen.palette.arena.Layout;
 import com.moepus.byepregen.worldgen.ArenaNoiseChunkAccess;
 import com.moepus.byepregen.worldgen.ArenaNoiseInterpolatorAccess;
 import com.moepus.byepregen.worldgen.C2meDfcColumnAdapter;

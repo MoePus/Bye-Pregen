@@ -1,6 +1,6 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette;
+package com.moepus.byepregen.palette.arena;
 
-import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
+import static com.moepus.byepregen.palette.arena.Layout.*;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateImporter;

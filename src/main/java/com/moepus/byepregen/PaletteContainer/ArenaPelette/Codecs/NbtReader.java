@@ -3,7 +3,7 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 import java.util.HashMap;
 import java.util.Optional;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;

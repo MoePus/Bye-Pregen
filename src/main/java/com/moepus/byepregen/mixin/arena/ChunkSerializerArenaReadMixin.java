@@ -7,7 +7,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NbtReader;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateCodec;
 import net.minecraft.nbt.CompoundTag;

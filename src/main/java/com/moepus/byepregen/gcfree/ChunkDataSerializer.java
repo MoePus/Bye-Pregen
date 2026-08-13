@@ -2,7 +2,7 @@ package com.moepus.byepregen.gcfree;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SectionWriter;
 import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
 import com.moepus.byepregen.serialization.nbt.BiomeNbtCache;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette;
+package com.moepus.byepregen.palette.arena;
 
 public final class Layout {
     public static final int SECTION_SIZE = 4096;
@@ -18,7 +18,7 @@ public final class Layout {
 
     public static final int PAGE_STRIDE = INDEX_WORDS_PER_PAGE + PAGE_PALETTE_SIZE;
     static final int ARENA_INTS = PAGE_COUNT * PAGE_STRIDE;
-    static final int PALETTE_INDEX_MASK = PAGE_PALETTE_SIZE - 1;
+    public static final int PALETTE_INDEX_MASK = PAGE_PALETTE_SIZE - 1;
 
     private Layout() {
     }

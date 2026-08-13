@@ -1,8 +1,8 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
-import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
+import static com.moepus.byepregen.palette.arena.Layout.*;
 
 import java.util.Arrays;
 

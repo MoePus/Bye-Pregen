@@ -1,8 +1,8 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 
-import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
+import static com.moepus.byepregen.palette.arena.Layout.*;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.state.BlockState;

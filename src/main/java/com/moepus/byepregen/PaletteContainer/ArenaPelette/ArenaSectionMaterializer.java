@@ -1,6 +1,8 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
-import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
+import static com.moepus.byepregen.palette.arena.Layout.*;
+
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
 import com.moepus.byepregen.mixin.accessor.arena.LevelChunkSectionAccessor;

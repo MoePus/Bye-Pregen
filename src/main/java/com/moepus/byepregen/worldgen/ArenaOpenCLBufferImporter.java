@@ -1,7 +1,7 @@
 package com.moepus.byepregen.worldgen;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.Layout;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import java.nio.ByteBuffer;
 import java.util.Set;

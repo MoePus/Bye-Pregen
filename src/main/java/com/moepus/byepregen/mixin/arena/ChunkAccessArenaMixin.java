@@ -4,7 +4,7 @@ import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
 import javax.annotation.Nullable;
 
