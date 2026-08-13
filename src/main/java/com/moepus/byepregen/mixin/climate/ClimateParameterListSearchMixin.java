@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.climate;
 
-import com.moepus.byepregen.worldgen.climate.FastClimateRTree;
+import com.moepus.byepregen.worldgen.biome.FastClimateRTree;
 import net.minecraft.world.level.biome.Climate;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
