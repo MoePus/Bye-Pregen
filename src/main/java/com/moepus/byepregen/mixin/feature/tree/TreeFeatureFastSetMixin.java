@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.feature.tree;
 
 import com.moepus.byepregen.Feature.FastObjectHashSet;
 import java.util.HashSet;

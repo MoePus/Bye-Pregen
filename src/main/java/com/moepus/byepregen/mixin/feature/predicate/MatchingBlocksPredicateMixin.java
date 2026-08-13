@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.feature.predicate;
 
 import java.util.List;
 import net.minecraft.core.Holder;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.placement;
+package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.Feature.FastPlacementContext;
 import com.moepus.byepregen.Feature.FastPlacementModifier;

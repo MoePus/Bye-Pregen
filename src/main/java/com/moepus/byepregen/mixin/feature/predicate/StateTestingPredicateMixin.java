@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.feature.predicate;
 
 import com.moepus.byepregen.Feature.FastBlockPredicateOptimizer;
 import com.moepus.byepregen.Feature.FastDiskBlockPredicate;

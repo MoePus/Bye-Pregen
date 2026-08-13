@@ -1,23 +1,23 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.feature.predicate;
 
 import com.moepus.byepregen.Feature.FastCombiningPredicate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
+import net.minecraft.world.level.levelgen.blockpredicates.CombiningPredicate;
 import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import net.minecraft.world.level.levelgen.blockpredicates.CombiningPredicate;
 
-@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AnyOfPredicate", remap = false)
-public abstract class AnyOfPredicateMixin extends CombiningPredicate implements FastCombiningPredicate {
+@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AllOfPredicate", remap = false)
+public abstract class AllOfPredicateMixin extends CombiningPredicate implements FastCombiningPredicate {
     @Unique
     private BlockPredicate[] bpg$predicates;
 
-    protected AnyOfPredicateMixin(List<BlockPredicate> p_190455_) {
+    protected AllOfPredicateMixin(List<BlockPredicate> p_190455_) {
         super(p_190455_);
     }
 
@@ -39,11 +39,11 @@ public abstract class AnyOfPredicateMixin extends CombiningPredicate implements 
     public boolean test(final WorldGenLevel level, final BlockPos pos) {
         final List<BlockPredicate> predicates = this.predicates;
         for (int i = 0, size = predicates.size(); i < size; i++) {
-            if (predicates.get(i).test(level, pos)) {
-                return true;
+            if (!predicates.get(i).test(level, pos)) {
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 }

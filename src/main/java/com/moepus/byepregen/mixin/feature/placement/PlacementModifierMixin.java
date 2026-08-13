@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.Feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;

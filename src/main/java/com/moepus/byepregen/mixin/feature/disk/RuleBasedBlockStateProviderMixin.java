@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.feature.disk;
 
 import com.moepus.byepregen.Feature.DiskBlockPredicateEvaluator;
 import com.moepus.byepregen.Feature.FastDiskStateCursor;
