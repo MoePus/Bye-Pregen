@@ -1,0 +1,89 @@
+def runtimeCheckRequested = gradle.startParameter.taskNames.any {
+    it.tokenize(':').last() == 'runtimeCheck'
+}
+
+def worldGenConfig = [
+        dir    : file(byepregenProp('byepregenTestWorldGenDir', 'run/test-worldgen')),
+        radius : runtimeCheckRequested ? '16' : byepregenProp('byepregenTestWorldGenRadius', '700'),
+        seed   : byepregenProp('byepregenTestWorldGenSeed', 'byepregen-test-worldgen'),
+        gcFree : byepregenProp('byepregenTestWorldGenGcFree', 'true'),
+        yaLight: byepregenProp('byepregenTestWorldGenYALight', 'true'),
+        surfaceBiomeCache: byepregenProp('byepregenTestSurfaceBiomeCache', 'true'),
+        surfaceScalar: byepregenProp('byepregenTestSurfaceScalar', 'true'),
+        surfaceOutputDifferential: providers.gradleProperty('byepregenTestSurfaceOutputDifferential')
+                .orElse(providers.gradleProperty('byepregenTestSurfaceDifferential'))
+                .orElse('false')
+                .get(),
+        noFeatures: byepregenProp('byepregenTestWorldGenNoFeatures', 'false'),
+        levelType: byepregenProp('byepregenTestWorldGenLevelType', 'minecraft:normal'),
+        enablePlacedFeatureMixin: byepregenProp('byepregenTestEnablePlacedFeatureMixin', 'false'),
+        logCompilation: byepregenProp('byepregenTestLogCompilation', 'false').toBoolean(),
+        surfaceBiomeProfile: byepregenProp('byepregenTestSurfaceBiomeProfile', 'false'),
+        datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
+]
+def defaultWorldGenLabel = "gc${worldGenConfig.gcFree}" +
+        "-scalar${worldGenConfig.surfaceScalar}" +
+        "-cache${worldGenConfig.surfaceBiomeCache}" +
+        "-noFeatures${worldGenConfig.noFeatures}" +
+        "-outputDiff${worldGenConfig.surfaceOutputDifferential}" +
+        "-biomeProfile${worldGenConfig.surfaceBiomeProfile}"
+worldGenConfig.label = byepregenProp('byepregenTestWorldGenLabel', defaultWorldGenLabel)
+worldGenConfig.jfr = file(
+        "${worldGenConfig.dir}/byepregen-worldgen-radius" +
+                "${byepregenSanitizeRunName(worldGenConfig.radius)}-" +
+                "${byepregenSanitizeRunName(worldGenConfig.label)}.jfr"
+)
+worldGenConfig.jfrRepository = file("${worldGenConfig.dir}/jfr-repository")
+worldGenConfig.tmpDir = file("${worldGenConfig.dir}/tmp")
+worldGenConfig.compilationLog = file(byepregenProp(
+        'byepregenTestCompilationLog',
+        "${worldGenConfig.dir}/hotspot-compilation.log"
+))
+
+neoForge {
+    runs {
+        testWorldGen {
+            byepregenConfigureWorldgenRun(delegate, [
+                    dir          : worldGenConfig.dir,
+                    radius       : worldGenConfig.radius,
+                    jfrFile      : worldGenConfig.jfr,
+                    jfrRepository: worldGenConfig.jfrRepository,
+                    surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
+                    surfaceScalar: worldGenConfig.surfaceScalar,
+                    surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
+                    surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
+                    enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
+                    compilationLog: worldGenConfig.logCompilation ? worldGenConfig.compilationLog : null,
+            ])
+        }
+    }
+}
+
+tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
+    notCompatibleWithConfigurationCache('Prepares a disposable test world before launching the server')
+    doFirst {
+        delete(worldGenConfig.jfr)
+        if (worldGenConfig.logCompilation) {
+            delete(worldGenConfig.compilationLog)
+            worldGenConfig.compilationLog.parentFile.mkdirs()
+        }
+        worldGenConfig.jfrRepository.mkdirs()
+        worldGenConfig.tmpDir.mkdirs()
+        byepregenPrepareWorldgenRunDir([
+                dir       : worldGenConfig.dir,
+                yaLight   : worldGenConfig.yaLight,
+                gcFree    : worldGenConfig.gcFree,
+                seed      : worldGenConfig.seed,
+                noFeatures: worldGenConfig.noFeatures,
+                levelType : worldGenConfig.levelType,
+                enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
+                clearWorld: true,
+        ])
+        if (worldGenConfig.datapack != null) {
+            copy {
+                from file(worldGenConfig.datapack)
+                into file("${worldGenConfig.dir}/world/datapacks")
+            }
+        }
+    }
+}

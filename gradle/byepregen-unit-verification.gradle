@@ -1,0 +1,69 @@
+def pureJavaTestAliases = [
+        testSurfaceBiomeCache: [
+                className: 'com.moepus.byepregen.test.SurfaceBiomeCacheTest',
+                description: 'Checks flat-palette certificates against vanilla BiomeManager sampling.',
+        ],
+        testSurfaceRuleAnalyzer: [
+                className: 'com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest',
+                description: 'Checks Surface source-order IDs, canonical values, and opaque barriers.',
+        ],
+        testSurfaceBindingLayout: [
+                className: 'com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest',
+                description: 'Checks Surface binding order, failure stop, and eager/lazy recipes.',
+        ],
+        testArenaHeightmapUpdate: [
+                className: 'com.moepus.byepregen.worldgen.arena.ArenaHeightmapUpdateTest',
+                description: 'Checks Arena heightmap update decisions at the current-top boundary.',
+        ],
+        testChunkSectionSerializationContext: [
+                className: 'com.moepus.byepregen.chunksave.serialize.ChunkSectionSerializationContextTest',
+                description: 'Checks reusable chunk section packing against vanilla PalettedContainer.pack output.',
+        ],
+        testChunkSavingBuffer: [
+                className: 'com.moepus.byepregen.chunksave.serialize.ChunkSavingBufferTest',
+                description: 'Checks retained chunk saving buffers remain bounded and zlib-compatible.',
+        ],
+        testColumnDensityFunctionRegistry: [
+                className: 'com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistryTest',
+                description: 'Checks exact and idempotent Y-independent delegate registration.',
+        ],
+]
+
+pureJavaTestAliases.each { taskName, testSpec ->
+    tasks.register(taskName, Test) {
+        group = 'verification'
+        description = testSpec.description
+        useJUnitPlatform()
+        filter {
+            includeTestsMatching(testSpec.className)
+        }
+    }
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+def verifyMixinRegistry = tasks.register('verifyMixinRegistry', Test) {
+    group = 'verification'
+    description = 'Checks mixin registry completeness, compiled classes, gates, and plugin references.'
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching('com.moepus.byepregen.MixinRegistryTest')
+    }
+}
+
+def verifyOverwriteContracts = tasks.register('verifyOverwriteContracts', Test) {
+    group = 'verification'
+    description = 'Checks the explicit 44-method overwrite ABI contract.'
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching('com.moepus.byepregen.OverwriteContractTest')
+    }
+}
+
+tasks.register('quickCheck') {
+    group = 'verification'
+    description = 'Runs unit, pure-Java, mixin registry, overwrite, and production-jar checks.'
+    dependsOn(tasks.named('check'), verifyMixinRegistry, verifyOverwriteContracts)
+}

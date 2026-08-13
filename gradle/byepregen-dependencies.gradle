@@ -1,0 +1,110 @@
+repositories {
+    maven { url = 'https://moepus.github.io/MixinLite/' }
+    mavenCentral()
+    mavenLocal()
+    maven {
+        url 'https://cursemaven.com'
+    }
+    maven {
+        url 'https://maven.caffeinemc.net/releases'
+    }
+    maven {
+        url 'https://maven.su5ed.dev/releases'
+    }
+    maven {
+        url 'https://jitpack.io'
+        content {
+            includeGroup 'com.github.bawnorton.mixinsquared'
+        }
+    }
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = 'vendoredMixinSquared'
+                url = uri('libs')
+                patternLayout {
+                    artifact '[artifact]-[revision].[ext]'
+                }
+                metadataSources {
+                    artifact()
+                }
+            }
+        }
+        filter {
+            includeGroup 'com.github.bawnorton.mixinsquared'
+        }
+    }
+}
+
+def sodiumOuterRuntime = configurations.detachedConfiguration(
+        dependencies.create("net.caffeinemc:sodium-neoforge:${sodium_version}+mc${minecraft_version}")
+)
+sodiumOuterRuntime.transitive = false
+
+def sodiumModRuntime = configurations.detachedConfiguration(
+        dependencies.create("net.caffeinemc:sodium-neoforge-mod:${sodium_version}+mc${minecraft_version}")
+)
+sodiumModRuntime.transitive = false
+
+def sodiumDevRuntimeMod = tasks.register('sodiumDevRuntimeMod', Zip) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { zipTree(sodiumModRuntime.singleFile) }
+    from({ zipTree(sodiumOuterRuntime.singleFile) }) {
+        exclude 'META-INF/neoforge.mods.toml'
+        exclude 'META-INF/jarjar/**'
+    }
+    archiveBaseName = 'sodium-neoforge-dev-runtime-mod'
+    archiveVersion = "${sodium_version}+mc${minecraft_version}"
+    archiveExtension = 'jar'
+    destinationDirectory = layout.buildDirectory.dir('runtime-libs')
+}
+
+// This unreleased version is vendored in libs, but retains its real coordinates for JarJar deduplication.
+def mixinSquaredVersion = '0.3.7-beta.1'
+def mixinSquaredCommon = "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinSquaredVersion}"
+def mixinSquaredNeoForge = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinSquaredVersion}"
+def c2meExperimentJar = providers.gradleProperty('byepregen.c2meExperimentJar').orNull
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'curse.maven:zfastnoise-1460602:8294347'
+    compileOnly 'curse.maven:terrablender-neoforge-940057:6054947'
+    implementation 'org.mixinlite:mixinlite:0.2.0'
+    annotationProcessor 'org.mixinlite:mixinlite:0.2.0'
+    jarJar 'org.mixinlite:mixinlite:0.2.0'
+    compileOnly mixinSquaredCommon
+    annotationProcessor mixinSquaredCommon
+    runtimeOnly mixinSquaredNeoForge
+    jarJar mixinSquaredNeoForge
+    compileOnly files('libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.116-all.jar')
+    compileOnly files('libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar')
+    compileOnly files('libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar')
+    compileOnly files('libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar')
+    compileOnly files('libs/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar')
+//    additionalRuntimeClasspath 'curse.maven:c2me-ocl-1563823:8436419'
+    compileOnly 'com.ibm.async:asyncutil:0.1.0'
+    compileOnly files('libs/voxy-0.2.15-beta-3.jar')
+    if (c2meExperimentJar != null) {
+        runtimeOnly files(c2meExperimentJar)
+    } else {
+        runtimeOnly 'curse.maven:c2me-533097:8480771'
+    }
+    runtimeOnly 'curse.maven:lithium-360438:7740400'
+    runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"
+    runtimeOnly files(sodiumDevRuntimeMod.flatMap { it.archiveFile }) {
+        builtBy sodiumDevRuntimeMod
+    }
+    runtimeOnly 'org.sinytra.forgified-fabric-api:fabric-api-base:0.4.42+d1308ded19'
+    runtimeOnly 'org.sinytra.forgified-fabric-api:fabric-renderer-api-v1:3.4.1+9125b6dc19'
+    runtimeOnly 'org.sinytra.forgified-fabric-api:fabric-rendering-data-attachment-v1:0.3.48+73761d2e19'
+    runtimeOnly 'org.sinytra.forgified-fabric-api:fabric-block-view-api-v2:1.0.10+9afaaf8c19'
+
+    compileOnly 'curse.maven:architectury-api-419699:5786327'
+
+    compileOnly 'curse.maven:chunky-pregenerator-forge-485681:6383261'
+    runtimeOnly 'curse.maven:chunky-pregenerator-forge-485681:6383261'
+
+    compileOnly 'curse.maven:sable-1312371:8263584'
+}

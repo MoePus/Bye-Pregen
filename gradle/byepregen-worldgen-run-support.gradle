@@ -1,0 +1,113 @@
+ext.byepregenProp = { String name, String fallback ->
+    providers.gradleProperty(name).orElse(fallback).get()
+}
+
+ext.byepregenSlashPath = { File value ->
+    value.absolutePath.replace('\\', '/')
+}
+
+ext.byepregenSanitizeRunName = { String value ->
+    value.replaceAll('[^0-9A-Za-z._-]', '_')
+}
+
+def jfrSettings = byepregenProp('byepregenJfrSettings', 'profile')
+
+ext.byepregenConfigureWorldgenRun = { run, Map options ->
+    run.server()
+    run.sourceSet.set(sourceSets.worldgenHarness)
+    run.loadedMods.set([
+            neoForge.mods.named(project.mod_id).get(),
+            neoForge.mods.named('byepregen_worldgen_harness').get(),
+    ] as Set)
+    run.gameDirectory = options.dir
+    run.programArgument('--nogui')
+    run.systemProperty('byepregen.testWorldGen', 'true')
+    run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
+    run.systemProperty(
+            'byepregen.surfaceOutputDifferential',
+            options.surfaceOutputDifferential ?: 'false'
+    )
+    run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
+    run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
+    run.logLevel = org.slf4j.event.Level.INFO
+    run.jvmArgument("-Djava.io.tmpdir=${byepregenSlashPath(file("${options.dir}/tmp"))}")
+
+    if (options.radius != null) {
+        run.systemProperty('byepregen.testWorldGen.radius', options.radius)
+    }
+    if (options.mode != null) {
+        run.systemProperty('byepregen.testWorldGen.mode', options.mode)
+    }
+    if (options.yaSchedulerWakeOnAdd != null) {
+        run.systemProperty('byepregen.yaLightSchedulerWakeOnAdd', options.yaSchedulerWakeOnAdd)
+    }
+    if (options.jfrFile != null) {
+        run.jvmArgument(
+                "-XX:FlightRecorderOptions=stackdepth=128,repository=${byepregenSlashPath(options.jfrRepository)}"
+        )
+        run.jvmArgument(
+                "-XX:StartFlightRecording=filename=${byepregenSlashPath(options.jfrFile)}," +
+                        "settings=${jfrSettings},dumponexit=true"
+        )
+    }
+    if (options.compilationLog != null) {
+        run.jvmArgument('-XX:+UnlockDiagnosticVMOptions')
+        run.jvmArgument('-XX:+LogCompilation')
+        run.jvmArgument("-XX:LogFile=${byepregenSlashPath(options.compilationLog)}")
+    }
+}
+
+ext.byepregenPrepareWorldgenRunDir = { Map options ->
+    File dir = options.dir
+    String arenaPalette = options.get('arenaPalette') ?: 'true'
+    String serverRuntimeArenaPalette = options.get('serverRuntimeArenaPalette')
+            ?: options.get('yaLight')
+            ?: 'false'
+    if (options.clearWorld) {
+        delete(file("${dir}/world"))
+    }
+    prepareDisposableServer([
+            directory: dir,
+            byepregenConfig: [
+                    debugDisableFeatures          : (options.noFeatures ?: 'false').toBoolean(),
+                    enablePlacedFeatureMixin      : (options.enablePlacedFeatureMixin ?: 'false').toBoolean(),
+                    enableArenaPalette            : arenaPalette.toBoolean(),
+                    enableServerRuntimeArenaPalette: serverRuntimeArenaPalette.toBoolean(),
+                    enableYALightEngine           : (options.yaLight ?: 'false').toBoolean(),
+                    enableGcFreeWorldgenSave      : (options.gcFree ?: 'false').toBoolean(),
+                    enableSurfaceRuleCompiler     : (options.surfaceScalar ?: 'true').toBoolean(),
+            ],
+            chunkyConfig: [
+                    version                : 2,
+                    language               : 'en',
+                    continueOnRestart      : false,
+                    forceLoadExistingChunks: true,
+                    silent                 : false,
+                    updateInterval         : 1,
+            ],
+            serverProperties: [
+                    'level-seed'          : options.seed ?: 'byepregen-test-worldgen',
+                    'level-name'          : 'world',
+                    'online-mode'         : false,
+                    'max-tick-time'       : 0,
+                    'view-distance'       : 2,
+                    'simulation-distance' : 2,
+                    'enable-command-block': false,
+                    'spawn-protection'    : 0,
+                    'level-type'          : options.levelType
+                            ?: (options.flatWorld ? 'minecraft:flat' : 'minecraft:normal'),
+            ],
+    ])
+}
+
+ext.byepregenPrepareRunTask = { String taskName, Map options ->
+    tasks.matching { it.name == taskName }.configureEach {
+        notCompatibleWithConfigurationCache(options.reason)
+        if (options.mustRunAfter != null) {
+            mustRunAfter(options.mustRunAfter)
+        }
+        doFirst {
+            byepregenPrepareWorldgenRunDir(options.prepare)
+        }
+    }
+}

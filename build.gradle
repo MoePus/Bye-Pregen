@@ -8,44 +8,6 @@ plugins {
 version = mod_version
 group = mod_group_id
 
-repositories {
-    maven { url = "https://moepus.github.io/MixinLite/" }
-    mavenCentral()
-    mavenLocal()
-    maven {
-        url "https://cursemaven.com"
-    }
-    maven {
-        url "https://maven.caffeinemc.net/releases"
-    }
-    maven {
-        url "https://maven.su5ed.dev/releases"
-    }
-    maven {
-        url "https://jitpack.io"
-        content {
-            includeGroup "com.github.bawnorton.mixinsquared"
-        }
-    }
-    exclusiveContent {
-        forRepository {
-            ivy {
-                name = "vendoredMixinSquared"
-                url = uri("libs")
-                patternLayout {
-                    artifact "[artifact]-[revision].[ext]"
-                }
-                metadataSources {
-                    artifact()
-                }
-            }
-        }
-        filter {
-            includeGroup "com.github.bawnorton.mixinsquared"
-        }
-    }
-}
-
 base {
     archivesName = mod_id
 }
@@ -88,21 +50,16 @@ configurations {
     testAnnotationProcessor.extendsFrom annotationProcessor
 }
 
-def terraBlenderDependency = "curse.maven:terrablender-neoforge-940057:6054947"
-def terraBlenderTestRuntime = configurations.detachedConfiguration(
-        dependencies.create(terraBlenderDependency)
-)
-terraBlenderTestRuntime.transitive = false
-
-apply from: 'gradle/byepregen-server-fixtures.gradle'
-apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
-
 def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
         .map(Integer::parseInt)
         .orElse(21)
 def runJavaLauncher = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
 }
+ext.byepregenRunJavaLauncher = runJavaLauncher
+
+apply from: 'gradle/byepregen-dependencies.gradle'
+apply from: 'gradle/byepregen-server-fixtures.gradle'
 def surfaceDumpClassesDirectory = providers.systemProperty('byepregen.surfaceDumpClasses')
 afterEvaluate {
     tasks.named('runTestWorldGen', JavaExec) {
@@ -118,105 +75,6 @@ tasks.withType(JavaExec).configureEach {
     if (surfaceDumpClassesDirectory.present) {
         systemProperty 'byepregen.surfaceDumpClasses', surfaceDumpClassesDirectory.get()
     }
-}
-
-def pureJavaTestAliases = [
-        testSurfaceBiomeCache: [
-                className: 'com.moepus.byepregen.test.SurfaceBiomeCacheTest',
-                description: 'Checks flat-palette certificates against vanilla BiomeManager sampling.',
-        ],
-        testSurfaceRuleAnalyzer: [
-                className: 'com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest',
-                description: 'Checks Surface source-order IDs, canonical values, and opaque barriers.',
-        ],
-        testSurfaceBindingLayout: [
-                className: 'com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest',
-                description: 'Checks Surface binding order, failure stop, and eager/lazy recipes.',
-        ],
-        testArenaHeightmapUpdate: [
-                className: 'com.moepus.byepregen.worldgen.arena.ArenaHeightmapUpdateTest',
-                description: 'Checks Arena heightmap update decisions at the current-top boundary.',
-        ],
-        testChunkSectionSerializationContext: [
-                className: 'com.moepus.byepregen.chunksave.serialize.ChunkSectionSerializationContextTest',
-                description: 'Checks reusable chunk section packing against vanilla PalettedContainer.pack output.',
-        ],
-        testChunkSavingBuffer: [
-                className: 'com.moepus.byepregen.chunksave.serialize.ChunkSavingBufferTest',
-                description: 'Checks retained chunk saving buffers remain bounded and zlib-compatible.',
-        ],
-        testColumnDensityFunctionRegistry: [
-                className: 'com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistryTest',
-                description: 'Checks exact and idempotent Y-independent delegate registration.',
-        ],
-]
-pureJavaTestAliases.each { taskName, testSpec ->
-    tasks.register(taskName, Test) {
-        group = 'verification'
-        description = testSpec.description
-        useJUnitPlatform()
-        filter {
-            includeTestsMatching(testSpec.className)
-        }
-    }
-}
-def surfaceOpaqueRuntimeVerification = tasks.register('testSurfaceOpaqueRuntime') {
-    group = 'verification'
-    description = 'Runs opaque SurfaceRule continuation checks against generated hidden classes.'
-    dependsOn('runSurfaceOpaqueRuntimeTest')
-}
-def surfaceOpaqueRuntimeHarnessJar = tasks.register('surfaceOpaqueRuntimeHarnessJar', Jar) {
-    group = 'verification'
-    description = 'Builds the isolated mod used by the transformed Surface runtime test.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    archiveBaseName = 'byepregen-surface-runtime-test'
-    archiveVersion = '1'
-    destinationDirectory = layout.buildDirectory.dir('surface-runtime-test')
-    from(sourceSets.surfaceTest.output) {
-        include 'com/moepus/byepregen/surfacetest/**'
-        include 'META-INF/neoforge.mods.toml'
-    }
-}
-def surfaceOpaqueRuntimeHarnessFile = surfaceOpaqueRuntimeHarnessJar.flatMap { it.archiveFile }
-tasks.register('compareSurfaceWorlds', JavaExec) {
-    group = 'verification'
-    description = 'Compares saved Surface block-state, heightmap, and postprocessing hashes.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.test.SurfaceWorldHash')
-    args(
-            providers.gradleProperty('byepregenSurfaceExpectedWorld').orElse('').get(),
-            providers.gradleProperty('byepregenSurfaceActualWorld').orElse('').get()
-    )
-    [
-            minChunkX: 'byepregenSurfaceHashMinChunkX',
-            maxChunkX: 'byepregenSurfaceHashMaxChunkX',
-            minChunkZ: 'byepregenSurfaceHashMinChunkZ',
-            maxChunkZ: 'byepregenSurfaceHashMaxChunkZ',
-    ].each { suffix, propertyName ->
-        def value = providers.gradleProperty(propertyName)
-        if (value.present) {
-            systemProperty "byepregen.surfaceHash.${suffix}", value.get()
-        }
-    }
-}
-tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
-    group = 'verification'
-    description = 'Microbenchmarks flat-palette certificate hit and miss paths.'
-    dependsOn(sourceSets.benchmark.classesTaskName)
-    classpath = sourceSets.benchmark.runtimeClasspath
-    mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheBenchmark')
-    systemProperty(
-            'byepregen.surfaceBiomeCacheBenchmarkMode',
-            providers.gradleProperty('byepregenSurfaceBiomeCacheBenchmarkMode').orElse('OFF').get()
-    )
-    systemProperty(
-            'byepregen.surfaceBiomeCacheBenchmarkPattern',
-            providers.gradleProperty('byepregenSurfaceBiomeCacheBenchmarkPattern').orElse('NON_UNIFORM').get()
-    )
-}
-tasks.named('check') {
-    dependsOn(tasks.named('verifyPackagedSurfaceJar'))
 }
 
 neoForge {
@@ -266,17 +124,6 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
-        surfaceOpaqueRuntimeTest {
-            server()
-            loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
-            gameDirectory = file('run/surface-opaque-runtime-test')
-            programArgument '--nogui'
-            systemProperty 'byepregen.surfaceScalar', 'true'
-            systemProperty 'byepregen.surfaceOpaqueRuntimeTest', 'true'
-            taskBefore(surfaceOpaqueRuntimeHarnessJar)
-            logLevel = org.slf4j.event.Level.INFO
-        }
-
         data {
             data()
             loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
@@ -306,31 +153,10 @@ neoForge {
 
 }
 
-apply from: 'gradle/byepregen-test-runs.gradle'
-
-tasks.named('runSurfaceOpaqueRuntimeTest', JavaExec) {
-    javaLauncher.set(runJavaLauncher)
-    notCompatibleWithConfigurationCache('Prepares a disposable runtime-test server directory')
-    doFirst {
-        def runDirectory = file('run/surface-opaque-runtime-test')
-        def modsDirectory = file("${runDirectory}/mods")
-        delete(modsDirectory)
-        modsDirectory.mkdirs()
-        copy {
-            from(surfaceOpaqueRuntimeHarnessFile)
-            from(terraBlenderTestRuntime)
-            into(modsDirectory)
-        }
-        prepareDisposableServer([
-                directory: runDirectory,
-                byepregenConfig: [
-                        enableArenaPalette    : false,
-                        enableGcFreeWorldgenSave: false,
-                        enableYALightEngine   : false,
-                ],
-        ])
-    }
-}
+apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
+apply from: 'gradle/byepregen-worldgen-run-support.gradle'
+apply from: 'gradle/byepregen-worldgen-smoke.gradle'
+apply from: 'gradle/byepregen-light-verification.gradle'
 
 // Include resources generated by data generators.
 sourceSets.main.resources { srcDir 'src/generated/resources' }
@@ -340,106 +166,7 @@ tasks.named('jar', Jar) {
     exclude 'com/moepus/byepregen/bootstrap/TestWorldGenBootstrap.class'
 }
 
-def sodiumOuterRuntime = configurations.detachedConfiguration(
-        dependencies.create("net.caffeinemc:sodium-neoforge:${sodium_version}+mc${minecraft_version}")
-)
-sodiumOuterRuntime.transitive = false
-
-def sodiumModRuntime = configurations.detachedConfiguration(
-        dependencies.create("net.caffeinemc:sodium-neoforge-mod:${sodium_version}+mc${minecraft_version}")
-)
-sodiumModRuntime.transitive = false
-
-def sodiumDevRuntimeMod = tasks.register('sodiumDevRuntimeMod', Zip) {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from { zipTree(sodiumModRuntime.singleFile) }
-    from({ zipTree(sodiumOuterRuntime.singleFile) }) {
-        exclude 'META-INF/neoforge.mods.toml'
-        exclude 'META-INF/jarjar/**'
-    }
-    archiveBaseName = 'sodium-neoforge-dev-runtime-mod'
-    archiveVersion = "${sodium_version}+mc${minecraft_version}"
-    archiveExtension = 'jar'
-    destinationDirectory = layout.buildDirectory.dir('runtime-libs')
-}
-
-// This unreleased version is vendored in libs, but retains its real coordinates for JarJar deduplication.
-def mixinSquaredVersion = '0.3.7-beta.1'
-def mixinSquaredCommon = "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinSquaredVersion}"
-def mixinSquaredNeoForge = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinSquaredVersion}"
-def c2meExperimentJar = providers.gradleProperty('byepregen.c2meExperimentJar').orNull
-
-dependencies {
-    testImplementation platform("org.junit:junit-bom:5.11.3")
-    testImplementation "org.junit.jupiter:junit-jupiter"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-    implementation "curse.maven:zfastnoise-1460602:8294347"
-    compileOnly terraBlenderDependency
-    implementation "org.mixinlite:mixinlite:0.2.0"
-    annotationProcessor "org.mixinlite:mixinlite:0.2.0"
-    jarJar "org.mixinlite:mixinlite:0.2.0"
-    compileOnly mixinSquaredCommon
-    annotationProcessor mixinSquaredCommon
-    runtimeOnly mixinSquaredNeoForge
-    jarJar mixinSquaredNeoForge
-    compileOnly files("libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.116-all.jar")
-    compileOnly files("libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar")
-    compileOnly files("libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar")
-    compileOnly files("libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar")
-    compileOnly files("libs/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar")
-//    additionalRuntimeClasspath "curse.maven:c2me-ocl-1563823:8436419"
-    compileOnly "com.ibm.async:asyncutil:0.1.0"
-    compileOnly files("libs/voxy-0.2.15-beta-3.jar")
-    if (c2meExperimentJar != null) {
-        runtimeOnly files(c2meExperimentJar)
-    } else {
-        runtimeOnly "curse.maven:c2me-533097:8480771"
-    }
-    runtimeOnly "curse.maven:lithium-360438:7740400"
-    runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"
-    runtimeOnly files(sodiumDevRuntimeMod.flatMap { it.archiveFile }) {
-        builtBy sodiumDevRuntimeMod
-    }
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-api-base:0.4.42+d1308ded19"
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-renderer-api-v1:3.4.1+9125b6dc19"
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-rendering-data-attachment-v1:0.3.48+73761d2e19"
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-block-view-api-v2:1.0.10+9afaaf8c19"
-
-    compileOnly "curse.maven:architectury-api-419699:5786327"
-
-    compileOnly "curse.maven:chunky-pregenerator-forge-485681:6383261"
-    runtimeOnly "curse.maven:chunky-pregenerator-forge-485681:6383261"
-
-    compileOnly "curse.maven:sable-1312371:8263584"
-}
-
-tasks.named('test', Test) {
-    useJUnitPlatform()
-}
-
-def verifyMixinRegistry = tasks.register('verifyMixinRegistry', Test) {
-    group = 'verification'
-    description = 'Checks mixin registry completeness, compiled classes, gates, and plugin references.'
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching('com.moepus.byepregen.MixinRegistryTest')
-    }
-}
-
-def verifyOverwriteContracts = tasks.register('verifyOverwriteContracts', Test) {
-    group = 'verification'
-    description = 'Checks the explicit 44-method overwrite ABI contract.'
-    useJUnitPlatform()
-    filter {
-        includeTestsMatching('com.moepus.byepregen.OverwriteContractTest')
-    }
-}
-
-tasks.register('quickCheck') {
-    group = 'verification'
-    description = 'Runs unit, pure-Java, mixin registry, overwrite, and production-jar checks.'
-    dependsOn(tasks.named('check'), verifyMixinRegistry, verifyOverwriteContracts)
-}
+apply from: 'gradle/byepregen-unit-verification.gradle'
 
 def runtimeCheck = tasks.register('runtimeCheck') {
     group = 'verification'
