@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.surface.biome;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import com.moepus.byepregen.worldgen.SurfaceBiomeManager;

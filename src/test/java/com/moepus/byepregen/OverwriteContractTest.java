@@ -25,8 +25,8 @@ final class OverwriteContractTest {
     private static final Set<String> EXPECTED = Set.of(
             "com.moepus.byepregen.mixin.AllOfPredicateMixin#test(Lnet/minecraft/world/level/WorldGenLevel;Lnet/minecraft/core/BlockPos;)Z",
             "com.moepus.byepregen.mixin.AnyOfPredicateMixin#test(Lnet/minecraft/world/level/WorldGenLevel;Lnet/minecraft/core/BlockPos;)Z",
-            "com.moepus.byepregen.mixin.ClimateRTreeBuildMixin#build(ILjava/util/List;)Lnet/minecraft/world/level/biome/Climate$RTree$Node;",
-            "com.moepus.byepregen.mixin.ClimateRTreeBuildMixin#buildParameterSpace(Ljava/util/List;)Ljava/util/List;",
+            "com.moepus.byepregen.mixin.climate.ClimateRTreeBuildMixin#build(ILjava/util/List;)Lnet/minecraft/world/level/biome/Climate$RTree$Node;",
+            "com.moepus.byepregen.mixin.climate.ClimateRTreeBuildMixin#buildParameterSpace(Ljava/util/List;)Ljava/util/List;",
             "com.moepus.byepregen.mixin.DiskFeatureMixin#place(Lnet/minecraft/world/level/levelgen/feature/FeaturePlaceContext;)Z",
             "com.moepus.byepregen.mixin.HasSturdyFacePredicateMixin#test(Lnet/minecraft/world/level/WorldGenLevel;Lnet/minecraft/core/BlockPos;)Z",
             "com.moepus.byepregen.mixin.MatchingBlocksPredicateMixin#test(Lnet/minecraft/world/level/block/state/BlockState;)Z",

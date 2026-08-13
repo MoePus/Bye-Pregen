@@ -60,9 +60,9 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.VoxyWorldConversionFactoryMixin";
     private static final String SURFACE_BIOME_CACHE_MIXIN =
-            MIXIN_PACKAGE + "SurfaceSystemBiomeCacheMixin";
+            MIXIN_PACKAGE + "surface.biome.SurfaceSystemBiomeCacheMixin";
     private static final String SURFACE_BIOME_MANAGER_ACCESSOR =
-            MIXIN_PACKAGE + "BiomeManagerAccessor";
+            MIXIN_PACKAGE + "accessor.surface.BiomeManagerAccessor";
     private static final String SURFACE_SCALAR_MIXIN_PREFIX = MIXIN_PACKAGE + "surface.";
 
     private static final Set<String> GC_FREE_SATELLITE_MIXINS = Set.of(

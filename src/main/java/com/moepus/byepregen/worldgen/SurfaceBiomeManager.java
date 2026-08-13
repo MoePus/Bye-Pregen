@@ -1,7 +1,7 @@
 package com.moepus.byepregen.worldgen;
 
 import com.moepus.byepregen.jfr.ByepregenJfrEvents;
-import com.moepus.byepregen.mixin.BiomeManagerAccessor;
+import com.moepus.byepregen.mixin.accessor.surface.BiomeManagerAccessor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;

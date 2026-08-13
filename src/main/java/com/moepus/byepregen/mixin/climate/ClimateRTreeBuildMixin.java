@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.climate;
 
 import com.moepus.byepregen.optimization.ClimateRTreeBuildOptimizer;
 import java.util.List;

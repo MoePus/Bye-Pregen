@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.accessor.surface;
 
 import net.minecraft.world.level.biome.BiomeManager;
 import org.spongepowered.asm.mixin.Mixin;
