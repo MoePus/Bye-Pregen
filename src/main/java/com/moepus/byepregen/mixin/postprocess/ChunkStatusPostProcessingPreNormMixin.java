@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(ChunkStatusTasks.class)
 public abstract class ChunkStatusPostProcessingPreNormMixin {
     @InjectLite(method = "full", at = @At("HEAD"))
-    private static void bpg$preNormalizeFullChunkPostProcessing(
+    private static void byepregen$preNormalizeFullChunkPostProcessing(
             WorldGenContext context,
             ChunkStep step,
             StaticCache2D<GenerationChunkHolder> cache,
