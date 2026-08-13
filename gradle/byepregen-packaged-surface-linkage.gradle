@@ -35,12 +35,18 @@ def surfaceLinkageHarnessJar = tasks.register('surfaceLinkageHarnessJar', Jar) {
 
 def productionSurfaceJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
 def surfaceTestClassDirectories = sourceSets.surfaceTest.output.classesDirs
+def worldgenHarnessClassDirectories = sourceSets.worldgenHarness.output.classesDirs
 def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
     group = 'verification'
-    description = 'Checks that the production jar contains the Surface scalar runtime and no test driver.'
-    dependsOn(tasks.named('jar'), sourceSets.surfaceTest.classesTaskName)
+    description = 'Checks production runtime contents and excludes all verification harnesses.'
+    dependsOn(
+            tasks.named('jar'),
+            sourceSets.surfaceTest.classesTaskName,
+            sourceSets.worldgenHarness.classesTaskName
+    )
     inputs.file(productionSurfaceJar)
     inputs.files(surfaceTestClassDirectories)
+    inputs.files(worldgenHarnessClassDirectories)
     doLast {
         File productionJar = productionSurfaceJar.get().asFile
         new ZipFile(productionJar).withCloseable { zip ->
@@ -57,6 +63,16 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
             if (zip.entries().any { it.name.startsWith('com/moepus/byepregen/test/') }) {
                 throw new GradleException("Production jar contains excluded test classes: ${productionJar}")
             }
+            if (zip.getEntry('com/moepus/byepregen/bootstrap/TestWorldGenBootstrap.class') != null) {
+                throw new GradleException("Production jar contains the worldgen test bootstrap: ${productionJar}")
+            }
+            def metadataEntry = zip.getEntry('META-INF/neoforge.mods.toml')
+            String metadata = zip.getInputStream(metadataEntry).withCloseable {
+                it.getText('UTF-8')
+            }
+            if (metadata.contains('byepregen_worldgen_harness')) {
+                throw new GradleException("Production jar contains worldgen harness metadata: ${productionJar}")
+            }
             surfaceTestClassDirectories.files.each { classesDirectory ->
                 if (!classesDirectory.isDirectory()) {
                     return
@@ -70,6 +86,23 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
                     if (zip.getEntry(entry) != null) {
                         throw new GradleException(
                                 "Production jar contains Surface test class ${entry}: ${productionJar}"
+                        )
+                    }
+                }
+            }
+            worldgenHarnessClassDirectories.files.each { classesDirectory ->
+                if (!classesDirectory.isDirectory()) {
+                    return
+                }
+                classesDirectory.eachFileRecurse { harnessClass ->
+                    if (!harnessClass.isFile() || !harnessClass.name.endsWith('.class')) {
+                        return
+                    }
+                    String entry = classesDirectory.toPath().relativize(harnessClass.toPath())
+                            .toString().replace('\\', '/')
+                    if (zip.getEntry(entry) != null) {
+                        throw new GradleException(
+                                "Production jar contains worldgen harness class ${entry}: ${productionJar}"
                         )
                     }
                 }

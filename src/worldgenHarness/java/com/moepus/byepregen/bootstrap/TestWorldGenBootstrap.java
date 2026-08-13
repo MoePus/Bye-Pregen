@@ -1,12 +1,13 @@
 package com.moepus.byepregen.bootstrap;
 
 import com.moepus.byepregen.test.TestWorldGen;
+import net.neoforged.fml.common.Mod;
 
+@Mod(TestWorldGenBootstrap.MOD_ID)
 public final class TestWorldGenBootstrap {
-    private TestWorldGenBootstrap() {
-    }
+    public static final String MOD_ID = "byepregen_worldgen_harness";
 
-    public static void register() {
+    public TestWorldGenBootstrap() {
         TestWorldGen.registerIfEnabled();
     }
 }

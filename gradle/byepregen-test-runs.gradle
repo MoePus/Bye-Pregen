@@ -105,6 +105,11 @@ def lightFuzzConfig = [
 
 def configureWorldgenRun = { run, Map options ->
     run.server()
+    run.sourceSet.set(sourceSets.worldgenHarness)
+    run.loadedMods.set([
+            neoForge.mods.named(project.mod_id).get(),
+            neoForge.mods.named('byepregen_worldgen_harness').get(),
+    ] as Set)
     run.gameDirectory = options.dir
     run.programArgument('--nogui')
     run.systemProperty('byepregen.testWorldGen', 'true')
@@ -372,7 +377,7 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
 tasks.register('prepareLightGoldenRelight', JavaExec) {
     group = 'verification'
     description = 'Copies one source terrain world into vanilla/YA worlds and strips saved light data.'
-    classpath = sourceSets.main.runtimeClasspath
+    classpath = sourceSets.worldgenHarness.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.LightGoldenPrepareRelight')
     args file("${lightGoldenConfig.sourceDir}/world").absolutePath,
             file("${lightGoldenConfig.vanillaDir}/world").absolutePath,
@@ -436,7 +441,7 @@ tasks.register('diffLightGolden', JavaExec) {
     group = 'verification'
     description = 'Compares saved BlockLight/SkyLight section data between two generated worlds.'
     mustRunAfter('runLightGoldenYA', 'runLightGoldenRelightYA')
-    classpath = sourceSets.main.runtimeClasspath
+    classpath = sourceSets.worldgenHarness.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.LightGoldenDiff')
     args lightGoldenConfig.expectedWorld, lightGoldenConfig.actualWorld
     systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
@@ -472,7 +477,7 @@ tasks.register('diffLightFuzz', JavaExec) {
     group = 'verification'
     description = 'Compares saved light data after deterministic block-update light fuzzing.'
     mustRunAfter('runLightFuzzYA')
-    classpath = sourceSets.main.runtimeClasspath
+    classpath = sourceSets.worldgenHarness.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.LightGoldenDiff')
     args file("${lightFuzzConfig.vanillaDir}/world").absolutePath, file("${lightFuzzConfig.yaDir}/world").absolutePath
     systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
