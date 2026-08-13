@@ -23,14 +23,14 @@ public abstract class FixedPlacementMixin implements FastPlacementModifier {
         int chunkZ = SectionPos.blockToSectionCoord(z);
         for (int i = 0, size = this.positions.size(); i < size; i++) {
             BlockPos pos = this.positions.get(i);
-            if (bpg$isSameChunk(chunkX, chunkZ, pos)) {
+            if (byepregen$isSameChunk(chunkX, chunkZ, pos)) {
                 context.apply(nextIndex, pos.getX(), pos.getY(), pos.getZ());
             }
         }
     }
 
     @Unique
-    private static boolean bpg$isSameChunk(int chunkX, int chunkZ, BlockPos pos) {
+    private static boolean byepregen$isSameChunk(int chunkX, int chunkZ, BlockPos pos) {
         return chunkX == SectionPos.blockToSectionCoord(pos.getX()) && chunkZ == SectionPos.blockToSectionCoord(pos.getZ());
     }
 }

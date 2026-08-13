@@ -56,7 +56,7 @@ public abstract class CountOnEveryLayerPlacementMixin implements FastPlacementMo
         for (int currentY = y; currentY >= placementContext.getMinBuildHeight() + 1; currentY--) {
             pos.setY(currentY - 1);
             BlockState currentState = placementContext.getBlockState(pos);
-            if (!bpg$isEmpty(currentState) && bpg$isEmpty(previousState) && !currentState.is(Blocks.BEDROCK)) {
+            if (!byepregen$isEmpty(currentState) && byepregen$isEmpty(previousState) && !currentState.is(Blocks.BEDROCK)) {
                 if (foundLayers == layer) {
                     return pos.getY() + 1;
                 }
@@ -69,7 +69,7 @@ public abstract class CountOnEveryLayerPlacementMixin implements FastPlacementMo
     }
 
     @Unique
-    private static boolean bpg$isEmpty(BlockState state) {
+    private static boolean byepregen$isEmpty(BlockState state) {
         return state.isAir() || state.is(Blocks.WATER) || state.is(Blocks.LAVA);
     }
 }
