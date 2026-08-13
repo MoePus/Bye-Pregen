@@ -1,4 +1,4 @@
-package com.moepus.byepregen.compat;
+package com.moepus.byepregen.integration.architectury;
 
 import com.moepus.byepregen.mixin.chunksave.compat.architectury.ArchitecturyEventImplAccessor;
 import dev.architectury.event.events.common.ChunkEvent;

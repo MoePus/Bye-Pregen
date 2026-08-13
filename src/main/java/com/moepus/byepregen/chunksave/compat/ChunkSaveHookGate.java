@@ -1,7 +1,7 @@
 package com.moepus.byepregen.chunksave.compat;
 
 import com.mojang.logging.LogUtils;
-import com.moepus.byepregen.compat.ArchitecturyChunkSaveCompat;
+import com.moepus.byepregen.integration.architectury.ArchitecturyChunkSaveCompat;
 import com.moepus.byepregen.compat.NeoForgeEventBusCompat;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.List;
