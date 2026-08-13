@@ -36,7 +36,7 @@ final class OverwriteContractTest {
             "com.moepus.byepregen.mixin.server.tick.ServerChunkCacheTickChunksMixin#tickChunks()V",
             "com.moepus.byepregen.mixin.feature.predicate.StateTestingPredicateMixin#test(Lnet/minecraft/world/level/WorldGenLevel;Lnet/minecraft/core/BlockPos;)Z",
             "com.moepus.byepregen.mixin.climate.ClimateParameterListSearchMixin#findValueIndex(Lnet/minecraft/world/level/biome/Climate$TargetPoint;)Ljava/lang/Object;",
-            "com.moepus.byepregen.mixin.compat.C2MEHookCompatibilityMixin#isChunkSaveEventFree()Z",
+            "com.moepus.byepregen.mixin.chunksave.compat.c2me.C2MEHookCompatibilityMixin#isChunkSaveEventFree()Z",
             "com.moepus.byepregen.mixin.compat.FastNoiseOpenCLArenaMixin#copyData(Lnet/minecraft/util/StaticCache2D;[Lnet/minecraft/world/level/block/state/BlockState;ILnet/minecraft/world/level/levelgen/NoiseGeneratorSettings;ILjava/nio/ByteBuffer;Lnet/minecraft/world/level/ChunkPos;I)V",
             "com.moepus.byepregen.mixin.nbt.CompoundTagFastRuntimeMixin#copy()Lnet/minecraft/nbt/CompoundTag;",
             "com.moepus.byepregen.mixin.nbt.CompoundTagLoadSizingMixin#loadCompound(Ljava/io/DataInput;Lnet/minecraft/nbt/NbtAccounter;)Lnet/minecraft/nbt/CompoundTag;",

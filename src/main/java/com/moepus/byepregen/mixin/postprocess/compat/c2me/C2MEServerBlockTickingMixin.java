@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.compat;
+package com.moepus.byepregen.mixin.postprocess.compat.c2me;
 
 import com.ishland.c2me.rewrites.chunksystem.common.ChunkLoadingContext;
 import com.ishland.c2me.rewrites.chunksystem.common.statuses.ServerBlockTicking;

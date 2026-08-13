@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.compat;
+package com.moepus.byepregen.mixin.chunksave.compat.c2me;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.gcfree.ChunkSaveHookGate;
