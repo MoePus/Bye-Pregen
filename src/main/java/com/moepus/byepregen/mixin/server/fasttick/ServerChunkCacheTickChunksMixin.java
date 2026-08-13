@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.server.fasttick;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.integration.c2me.C2MECompat;
 import com.moepus.byepregen.mixin.accessor.server.tick.ChunkMapTickAccessor;
-import com.moepus.byepregen.optimization.FastNaturalSpawner;
+import com.moepus.byepregen.server.tick.FastNaturalSpawner;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import it.unimi.dsi.fastutil.objects.ObjectCollection;
 import net.minecraft.server.level.ChunkHolder;

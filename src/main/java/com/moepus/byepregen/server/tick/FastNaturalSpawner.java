@@ -1,4 +1,4 @@
-package com.moepus.byepregen.optimization;
+package com.moepus.byepregen.server.tick;
 
 import com.moepus.byepregen.mixin.accessor.entity.ClassInstanceMultiMapAccessor;
 import com.moepus.byepregen.mixin.accessor.entity.EntitySectionAccessor;
