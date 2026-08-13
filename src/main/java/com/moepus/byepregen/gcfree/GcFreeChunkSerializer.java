@@ -9,13 +9,13 @@ package com.moepus.byepregen.gcfree;
 
 import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
+import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkType;
 
 public final class GcFreeChunkSerializer {
-    private static final int MAX_RAW_BUFFER_SLACK_BYTES = 8192;
     private static final String C2ME_ASYNC_SERIALIZATION_MANAGER =
             "com.ishland.c2me.rewrites.chunksystem.common.async_chunkio.AsyncSerializationManager";
     private static final boolean HAS_C2ME_ASYNC_SERIALIZATION_MANAGER =
@@ -36,7 +36,8 @@ public final class GcFreeChunkSerializer {
         try (ChunkSavingNbtWriterCache.Lease lease = ChunkSavingNbtWriterCache.acquire()) {
             NbtWriter writer = lease.writer();
             writeRaw(level, chunk, writer);
-            return writer.toRawChunkData(MAX_RAW_BUFFER_SLACK_BYTES);
+            byte[] bytes = writer.toByteArray();
+            return new RawChunkData(bytes, bytes.length);
         }
     }
 

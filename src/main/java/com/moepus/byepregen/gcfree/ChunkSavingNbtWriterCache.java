@@ -1,6 +1,7 @@
 package com.moepus.byepregen.gcfree;
 
 import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.serialization.nbt.NbtWriter;
 
 final class ChunkSavingNbtWriterCache {
     static final long MAX_RETAINED_CAPACITY = 512L * 1024L;

@@ -1,6 +1,7 @@
 package com.moepus.byepregen.gcfree;
 
 import com.moepus.byepregen.mixin.accessor.StructurePieceSaveAccessor;
+import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.Map;
 import net.minecraft.core.Direction;

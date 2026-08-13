@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.serialization.nbt;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 
-final public class BlockStateNbtCache {
+public final class BlockStateNbtCache {
     private static final int STATE_ENTRY_INITIAL_CAPACITY = 128;
     private static final byte[] NAME = NbtWriter.asciiName("Name");
     private static final byte[] PROPERTIES = NbtWriter.asciiName("Properties");

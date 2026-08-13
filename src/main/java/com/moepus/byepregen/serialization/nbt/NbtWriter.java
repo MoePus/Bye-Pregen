@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.serialization.nbt;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
@@ -184,11 +184,6 @@ public final class NbtWriter implements DataOutput {
         return bytes;
     }
 
-    public RawChunkData toRawChunkData(int maxSlackBytes) {
-        byte[] bytes = this.toByteArray();
-        return new RawChunkData(bytes, bytes.length);
-    }
-
     public void release() {
         if (this.buffer != 0L) {
             long allocation = this.buffer;
@@ -203,7 +198,7 @@ public final class NbtWriter implements DataOutput {
         }
     }
 
-    void enableAutomaticRelease() {
+    public void enableAutomaticRelease() {
         if (this.buffer == 0L) {
             throw new IllegalStateException("NbtWriter has been released");
         }
@@ -213,14 +208,14 @@ public final class NbtWriter implements DataOutput {
         }
     }
 
-    void reset() {
+    public void reset() {
         if (this.buffer == 0L) {
             throw new IllegalStateException("NbtWriter has been released");
         }
         this.offset = 0L;
     }
 
-    long capacity() {
+    public long capacity() {
         return this.capacity;
     }
 

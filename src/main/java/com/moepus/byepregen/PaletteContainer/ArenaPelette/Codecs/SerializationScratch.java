@@ -3,7 +3,7 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
-import com.moepus.byepregen.gcfree.NbtWriter;
+import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.network.FriendlyByteBuf;
 
 public final class SerializationScratch {
