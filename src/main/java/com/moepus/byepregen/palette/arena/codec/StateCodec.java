@@ -1,6 +1,5 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
+package com.moepus.byepregen.palette.arena.codec;
 
-import com.moepus.byepregen.PaletteContainer.ByteStreamTag;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

@@ -1,7 +1,5 @@
-package com.moepus.byepregen.PaletteContainer;
+package com.moepus.byepregen.palette.arena.codec;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.PayloadBuilder;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
 import com.mojang.logging.LogUtils;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 

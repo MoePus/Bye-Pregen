@@ -3,8 +3,8 @@ package com.moepus.byepregen.palette.arena;
 import static com.moepus.byepregen.palette.arena.Layout.*;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateImporter;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NetworkWriter;
+import com.moepus.byepregen.palette.arena.codec.StateImporter;
+import com.moepus.byepregen.palette.arena.codec.NetworkWriter;
 import com.moepus.byepregen.UnsafeIntArrayAccess;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.Arrays;

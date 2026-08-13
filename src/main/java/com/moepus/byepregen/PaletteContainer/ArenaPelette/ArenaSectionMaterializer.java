@@ -4,7 +4,7 @@ import static com.moepus.byepregen.palette.arena.Layout.*;
 
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
+import com.moepus.byepregen.palette.arena.codec.SerializationScratch;
 import com.moepus.byepregen.mixin.accessor.arena.LevelChunkSectionAccessor;
 import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.Block;

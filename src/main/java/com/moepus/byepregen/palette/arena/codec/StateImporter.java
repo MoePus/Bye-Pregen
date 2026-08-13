@@ -1,4 +1,4 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
+package com.moepus.byepregen.palette.arena.codec;
 
 import static com.moepus.byepregen.palette.arena.Layout.*;
 

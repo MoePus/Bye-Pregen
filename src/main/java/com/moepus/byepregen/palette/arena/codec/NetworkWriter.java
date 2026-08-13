@@ -1,4 +1,4 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
+package com.moepus.byepregen.palette.arena.codec;
 
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import net.minecraft.network.FriendlyByteBuf;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
+package com.moepus.byepregen.palette.arena.codec;
 
 public final class PayloadWriter {
     private final byte[] bytes;
