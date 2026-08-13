@@ -23,17 +23,29 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.MethodNode;
 
 final class MixinRegistryTest {
     private static final String MIXIN_PREFIX = "com.moepus.byepregen.mixin.";
     private static final String SERVER_TICK_PREFIX = MIXIN_PREFIX + "server.tick.";
     private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
     private static final String GATE_DESCRIPTOR = Type.getDescriptor(MixinGate.class);
+    private static final String UNIQUE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Unique;";
+    private static final Set<String> INJECTION_DESCRIPTORS = Set.of(
+            "Lcom/llamalad7/mixinextras/injector/ModifyExpressionValue;",
+            "Lorg/mixinlite/injector/InjectLite;",
+            "Lorg/spongepowered/asm/mixin/injection/Inject;",
+            "Lorg/spongepowered/asm/mixin/injection/ModifyArg;",
+            "Lorg/spongepowered/asm/mixin/injection/ModifyConstant;",
+            "Lorg/spongepowered/asm/mixin/injection/ModifyVariable;",
+            "Lorg/spongepowered/asm/mixin/injection/Redirect;"
+    );
     private static final EnumMap<MixinFeature, Integer> FEATURE_COUNTS = featureCounts();
 
     @Test
@@ -75,6 +87,27 @@ final class MixinRegistryTest {
         }
 
         assertEquals(FEATURE_COUNTS, actual);
+    }
+
+    @Test
+    void privateInjectedAndUniqueMembersUseProjectPrefix() throws Exception {
+        List<String> violations = new ArrayList<>();
+        for (String className : readRegistry().classes()) {
+            ClassNode node = readClass(className);
+            node.fields.stream()
+                    .filter(field -> isPrivate(field.access))
+                    .filter(field -> hasAnnotation(field.visibleAnnotations, UNIQUE_DESCRIPTOR)
+                            || hasAnnotation(field.invisibleAnnotations, UNIQUE_DESCRIPTOR))
+                    .filter(field -> !field.name.startsWith("byepregen$"))
+                    .forEach(field -> violations.add(className + "#" + field.name));
+            node.methods.stream()
+                    .filter(method -> isPrivate(method.access))
+                    .filter(MixinRegistryTest::isInjectedOrUnique)
+                    .filter(method -> !method.name.startsWith("byepregen$"))
+                    .forEach(method -> violations.add(className + "#" + method.name + method.desc));
+        }
+
+        assertTrue(violations.isEmpty(), "private mixin members lack byepregen$ prefix: " + violations);
     }
 
     @Test
@@ -181,6 +214,25 @@ final class MixinRegistryTest {
             return null;
         }
         return annotations.stream().filter(item -> descriptor.equals(item.desc)).findFirst().orElse(null);
+    }
+
+    private static boolean isPrivate(int access) {
+        return (access & Opcodes.ACC_PRIVATE) != 0;
+    }
+
+    private static boolean isInjectedOrUnique(MethodNode method) {
+        return hasAnnotation(method.visibleAnnotations, UNIQUE_DESCRIPTOR)
+                || hasAnnotation(method.invisibleAnnotations, UNIQUE_DESCRIPTOR)
+                || hasAnyAnnotation(method.visibleAnnotations, INJECTION_DESCRIPTORS)
+                || hasAnyAnnotation(method.invisibleAnnotations, INJECTION_DESCRIPTORS);
+    }
+
+    private static boolean hasAnnotation(List<AnnotationNode> annotations, String descriptor) {
+        return findAnnotation(annotations, descriptor) != null;
+    }
+
+    private static boolean hasAnyAnnotation(List<AnnotationNode> annotations, Set<String> descriptors) {
+        return annotations != null && annotations.stream().anyMatch(item -> descriptors.contains(item.desc));
     }
 
     private static String annotationString(AnnotationNode annotation, String name) {
