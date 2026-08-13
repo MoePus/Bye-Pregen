@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.chunksave.compat.architectury;
 
 import com.moepus.byepregen.MixinGate;
 import java.util.ArrayList;

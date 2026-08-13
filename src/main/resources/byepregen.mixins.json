@@ -75,7 +75,7 @@
     "WorldGenRegionSectionCacheMixin",
     "climate.ClimateParameterListSearchMixin",
     "climate.ClimateRTreeSearchMixin",
-    "accessor.ArchitecturyEventImplAccessor",
+    "chunksave.compat.architectury.ArchitecturyEventImplAccessor",
     "accessor.surface.BiomeManagerAccessor",
     "accessor.chunksave.BlendingDataAccessor",
     "accessor.chunksave.ChunkStorageAccessor",

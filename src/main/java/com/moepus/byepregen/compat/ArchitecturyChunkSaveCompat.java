@@ -1,6 +1,6 @@
 package com.moepus.byepregen.compat;
 
-import com.moepus.byepregen.mixin.accessor.ArchitecturyEventImplAccessor;
+import com.moepus.byepregen.mixin.chunksave.compat.architectury.ArchitecturyEventImplAccessor;
 import dev.architectury.event.events.common.ChunkEvent;
 import java.util.ArrayList;
 import java.util.List;

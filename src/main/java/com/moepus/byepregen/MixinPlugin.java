@@ -27,7 +27,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String C2ME_HOOK_COMPATIBILITY_MIXIN =
             MIXIN_PACKAGE + "chunksave.compat.c2me.C2MEHookCompatibilityMixin";
     private static final String ARCHITECTURY_EVENT_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.ArchitecturyEventImplAccessor";
+            MIXIN_PACKAGE + "chunksave.compat.architectury.ArchitecturyEventImplAccessor";
     private static final String CHUNK_STORAGE_ACCESSOR =
             MIXIN_PACKAGE + "accessor.chunksave.ChunkStorageAccessor";
     private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
