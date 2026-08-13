@@ -1,0 +1,32 @@
+import groovy.json.JsonOutput
+import java.nio.charset.StandardCharsets
+
+ext.writeUtf8File = { File target, String content ->
+    target.parentFile?.mkdirs()
+    target.setText(content, StandardCharsets.UTF_8.name())
+}
+
+ext.writeJsonFile = { File target, Map<String, ?> value ->
+    writeUtf8File(target, JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n')
+}
+
+ext.prepareDisposableServer = { Map<String, ?> options ->
+    File directory = options.directory as File
+    directory.mkdirs()
+    file("${directory}/config").mkdirs()
+    file("${directory}/tmp").mkdirs()
+
+    writeUtf8File(file("${directory}/eula.txt"), 'eula=true\n')
+    if (options.serverProperties != null) {
+        String properties = (options.serverProperties as Map<String, ?>)
+                .collect { key, value -> "${key}=${value}" }
+                .join('\n')
+        writeUtf8File(file("${directory}/server.properties"), properties + '\n')
+    }
+    if (options.byepregenConfig != null) {
+        writeJsonFile(file("${directory}/config/byepregen.json"), options.byepregenConfig as Map<String, ?>)
+    }
+    if (options.chunkyConfig != null) {
+        writeJsonFile(file("${directory}/config/chunky/config.json"), options.chunkyConfig as Map<String, ?>)
+    }
+}

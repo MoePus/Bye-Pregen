@@ -157,42 +157,38 @@ def prepareWorldGenRunDir = { Map options ->
     if (options.clearWorld) {
         delete(file("${dir}/world"))
     }
-    dir.mkdirs()
-    file("${dir}/config/chunky").mkdirs()
-    file("${dir}/tmp").mkdirs()
-    file("${dir}/eula.txt").text = "eula=true\n"
-    file("${dir}/config/byepregen.json").text = """\
-{
-  "debugDisableFeatures": ${options.noFeatures ?: 'false'},
-  "enablePlacedFeatureMixin": ${options.enablePlacedFeatureMixin ?: 'false'},
-  "enableArenaPalette": ${arenaPalette},
-  "enableServerRuntimeArenaPalette": ${serverRuntimeArenaPalette},
-  "enableYALightEngine": ${options.yaLight},
-  "enableGcFreeWorldgenSave": ${options.gcFree},
-  "enableSurfaceRuleCompiler": ${options.surfaceScalar ?: 'true'}
-}
-""".stripIndent()
-    file("${dir}/config/chunky/config.json").text = """\
-{
-  "version": 2,
-  "language": "en",
-  "continueOnRestart": false,
-  "forceLoadExistingChunks": true,
-  "silent": false,
-  "updateInterval": 1
-}
-""".stripIndent()
-    file("${dir}/server.properties").text = """\
-level-seed=${options.seed ?: 'byepregen-test-worldgen'}
-level-name=world
-online-mode=false
-max-tick-time=0
-view-distance=2
-simulation-distance=2
-enable-command-block=false
-spawn-protection=0
-level-type=${options.levelType ?: (options.flatWorld ? 'minecraft:flat' : 'minecraft:normal')}
-""".stripIndent()
+    prepareDisposableServer([
+            directory: dir,
+            byepregenConfig: [
+                    debugDisableFeatures          : (options.noFeatures ?: 'false').toBoolean(),
+                    enablePlacedFeatureMixin      : (options.enablePlacedFeatureMixin ?: 'false').toBoolean(),
+                    enableArenaPalette            : arenaPalette.toBoolean(),
+                    enableServerRuntimeArenaPalette: serverRuntimeArenaPalette.toBoolean(),
+                    enableYALightEngine           : (options.yaLight ?: 'false').toBoolean(),
+                    enableGcFreeWorldgenSave      : (options.gcFree ?: 'false').toBoolean(),
+                    enableSurfaceRuleCompiler     : (options.surfaceScalar ?: 'true').toBoolean(),
+            ],
+            chunkyConfig: [
+                    version                : 2,
+                    language               : 'en',
+                    continueOnRestart      : false,
+                    forceLoadExistingChunks: true,
+                    silent                 : false,
+                    updateInterval         : 1,
+            ],
+            serverProperties: [
+                    'level-seed'          : options.seed ?: 'byepregen-test-worldgen',
+                    'level-name'          : 'world',
+                    'online-mode'         : false,
+                    'max-tick-time'       : 0,
+                    'view-distance'       : 2,
+                    'simulation-distance' : 2,
+                    'enable-command-block': false,
+                    'spawn-protection'    : 0,
+                    'level-type'          : options.levelType
+                            ?: (options.flatWorld ? 'minecraft:flat' : 'minecraft:normal'),
+            ],
+    ])
 }
 
 def prepareRunTask = { String taskName, Map options ->

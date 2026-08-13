@@ -86,6 +86,7 @@ def terraBlenderTestRuntime = configurations.detachedConfiguration(
 )
 terraBlenderTestRuntime.transitive = false
 
+apply from: 'gradle/byepregen-server-fixtures.gradle'
 apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
 
 def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
@@ -307,20 +308,19 @@ tasks.named('runSurfaceOpaqueRuntimeTest', JavaExec) {
         def modsDirectory = file("${runDirectory}/mods")
         delete(modsDirectory)
         modsDirectory.mkdirs()
-        file("${runDirectory}/config").mkdirs()
         copy {
             from(surfaceOpaqueRuntimeHarnessFile)
             from(terraBlenderTestRuntime)
             into(modsDirectory)
         }
-        file("${runDirectory}/eula.txt").setText('eula=true\n', 'UTF-8')
-        file("${runDirectory}/config/byepregen.json").setText('''\
-{
-  "enableArenaPalette": false,
-  "enableGcFreeWorldgenSave": false,
-  "enableYALightEngine": false
-}
-'''.stripIndent(), 'UTF-8')
+        prepareDisposableServer([
+                directory: runDirectory,
+                byepregenConfig: [
+                        enableArenaPalette    : false,
+                        enableGcFreeWorldgenSave: false,
+                        enableYALightEngine   : false,
+                ],
+        ])
     }
 }
 

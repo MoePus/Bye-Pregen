@@ -119,9 +119,6 @@ def preparePackagedSurfaceLinkage = tasks.register('preparePackagedSurfaceLinkag
     doLast {
         delete(packagedSurfaceRoot)
         file("${packagedSurfaceRoot}/mods").mkdirs()
-        file("${packagedSurfaceRoot}/config").mkdirs()
-        file("${packagedSurfaceRoot}/tmp").mkdirs()
-
         copy {
             from(tasks.named('jar', Jar).flatMap { it.archiveFile })
             from(surfaceLinkageHarnessJar.flatMap { it.archiveFile })
@@ -138,28 +135,28 @@ def preparePackagedSurfaceLinkage = tasks.register('preparePackagedSurfaceLinkag
             }
         }
 
-        file("${packagedSurfaceRoot}/eula.txt").setText('eula=true\n', 'UTF-8')
-        file("${packagedSurfaceRoot}/server.properties").setText('''\
-level-name=world
-level-seed=byepregen-packaged-surface-linkage
-online-mode=false
-server-port=25569
-max-tick-time=0
-view-distance=2
-simulation-distance=2
-spawn-protection=0
-'''.stripIndent(), 'UTF-8')
-        file("${packagedSurfaceRoot}/config/byepregen.json").setText('''\
-{
-  "debugDisableFeatures": true,
-  "enablePlacedFeatureMixin": false,
-  "enableArenaPalette": false,
-  "enableServerRuntimeArenaPalette": false,
-  "enableYALightEngine": false,
-  "enableGcFreeWorldgenSave": false,
-  "enableSurfaceRuleCompiler": true
-}
-'''.stripIndent(), 'UTF-8')
+        prepareDisposableServer([
+                directory: packagedSurfaceRoot,
+                serverProperties: [
+                        'level-name'         : 'world',
+                        'level-seed'         : 'byepregen-packaged-surface-linkage',
+                        'online-mode'        : false,
+                        'server-port'        : 25569,
+                        'max-tick-time'      : 0,
+                        'view-distance'      : 2,
+                        'simulation-distance': 2,
+                        'spawn-protection'   : 0,
+                ],
+                byepregenConfig: [
+                        debugDisableFeatures          : true,
+                        enablePlacedFeatureMixin      : false,
+                        enableArenaPalette            : false,
+                        enableServerRuntimeArenaPalette: false,
+                        enableYALightEngine           : false,
+                        enableGcFreeWorldgenSave      : false,
+                        enableSurfaceRuleCompiler     : true,
+                ],
+        ])
     }
 }
 
