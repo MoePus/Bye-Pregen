@@ -97,19 +97,25 @@ tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
 }
 
 def productionSurfaceJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
-def surfaceTestClassDirectories = sourceSets.surfaceTest.output.classesDirs
-def worldgenHarnessClassDirectories = sourceSets.worldgenHarness.output.classesDirs
+def verificationSourceSets = [
+        [label: 'unit test', sourceSet: sourceSets.test],
+        [label: 'benchmark', sourceSet: sourceSets.benchmark],
+        [label: 'Surface test', sourceSet: sourceSets.surfaceTest],
+        [label: 'Surface linkage harness', sourceSet: sourceSets.surfaceLinkageHarness],
+        [label: 'worldgen harness', sourceSet: sourceSets.worldgenHarness],
+]
+def verificationClassDirectories = files(
+        verificationSourceSets.collect { it.sourceSet.output.classesDirs }
+)
 def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
     group = 'verification'
     description = 'Checks production runtime contents and excludes all verification harnesses.'
     dependsOn(
             tasks.named('jar'),
-            sourceSets.surfaceTest.classesTaskName,
-            sourceSets.worldgenHarness.classesTaskName
+            verificationSourceSets.collect { it.sourceSet.classesTaskName }
     )
     inputs.file(productionSurfaceJar)
-    inputs.files(surfaceTestClassDirectories)
-    inputs.files(worldgenHarnessClassDirectories)
+    inputs.files(verificationClassDirectories)
     doLast {
         File productionJar = productionSurfaceJar.get().asFile
         new ZipFile(productionJar).withCloseable { zip ->
@@ -136,37 +142,23 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
             if (metadata.contains('byepregen_worldgen_harness')) {
                 throw new GradleException("Production jar contains worldgen harness metadata: ${productionJar}")
             }
-            surfaceTestClassDirectories.files.each { classesDirectory ->
-                if (!classesDirectory.isDirectory()) {
-                    return
-                }
-                classesDirectory.eachFileRecurse { testClass ->
-                    if (!testClass.isFile() || !testClass.name.endsWith('.class')) {
+            verificationSourceSets.each { verification ->
+                verification.sourceSet.output.classesDirs.files.each { classesDirectory ->
+                    if (!classesDirectory.isDirectory()) {
                         return
                     }
-                    String entry = classesDirectory.toPath().relativize(testClass.toPath())
-                            .toString().replace('\\', '/')
-                    if (zip.getEntry(entry) != null) {
-                        throw new GradleException(
-                                "Production jar contains Surface test class ${entry}: ${productionJar}"
-                        )
-                    }
-                }
-            }
-            worldgenHarnessClassDirectories.files.each { classesDirectory ->
-                if (!classesDirectory.isDirectory()) {
-                    return
-                }
-                classesDirectory.eachFileRecurse { harnessClass ->
-                    if (!harnessClass.isFile() || !harnessClass.name.endsWith('.class')) {
-                        return
-                    }
-                    String entry = classesDirectory.toPath().relativize(harnessClass.toPath())
-                            .toString().replace('\\', '/')
-                    if (zip.getEntry(entry) != null) {
-                        throw new GradleException(
-                                "Production jar contains worldgen harness class ${entry}: ${productionJar}"
-                        )
+                    classesDirectory.eachFileRecurse { verificationClass ->
+                        if (!verificationClass.isFile() || !verificationClass.name.endsWith('.class')) {
+                            return
+                        }
+                        String entry = classesDirectory.toPath().relativize(verificationClass.toPath())
+                                .toString().replace('\\', '/')
+                        if (zip.getEntry(entry) != null) {
+                            throw new GradleException(
+                                    "Production jar contains ${verification.label} class " +
+                                            "${entry}: ${productionJar}"
+                            )
+                        }
                     }
                 }
             }
