@@ -113,7 +113,6 @@
     "yalight.ChunkAccessYASkyLightSourcesMixin",
     "yalight.ChunkSkyLightSourcesDirtyMixin",
     "yalight.ChunkSkyLightSourcesStorageMixin",
-    "yalight.ClientPacketListenerYALightMixin",
     "yalight.ClientboundLightUpdatePacketDataYALightMixin",
     "yalight.LightEngineYASuperMixin",
     "yalight.BlockLightEngineYASuperMixin",
@@ -135,6 +134,7 @@
   ],
   "client": [
     "yalight.ClientChunkCacheYALightMixin",
+    "yalight.ClientPacketListenerYALightMixin",
     "yalight.LevelRendererYALightMixin"
   ],
   "injectors": {
