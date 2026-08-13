@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.compat;
+package com.moepus.byepregen.mixin.server.tick.compat.sable;
 
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalDoubleRef;
