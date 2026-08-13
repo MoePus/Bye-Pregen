@@ -89,7 +89,7 @@
     "accessor.chunksave.RegionFileStorageAccessor",
     "accessor.server.tick.ServerLevelEntityManagerAccessor",
     "accessor.chunksave.StructurePieceSaveAccessor",
-    "accessor.CompoundTagAccessor",
+    "accessor.nbt.CompoundTagAccessor",
     "server.chunk.ServerChunkCacheReadyChunkMixin",
     "chunksave.compat.c2me.C2MEHookCompatibilityMixin",
     "chunksave.compat.c2me.C2MEChunkSavingCompressionMixin",

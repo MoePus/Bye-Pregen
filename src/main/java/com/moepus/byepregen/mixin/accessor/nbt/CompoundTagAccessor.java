@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.nbt;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;

@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.nbt;
 
-import com.moepus.byepregen.mixin.accessor.CompoundTagAccessor;
+import com.moepus.byepregen.mixin.accessor.nbt.CompoundTagAccessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.nbt.CompoundTag;
