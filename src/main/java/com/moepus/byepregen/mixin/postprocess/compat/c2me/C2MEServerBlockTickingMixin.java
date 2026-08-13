@@ -33,7 +33,7 @@ public abstract class C2MEServerBlockTickingMixin {
             ),
             require = 0
     )
-    private boolean c6c$disableC2MEFluidPostProcessingFilter() {
+    private boolean byepregen$disableC2MEFluidPostProcessingFilter() {
         return false;
     }
 }

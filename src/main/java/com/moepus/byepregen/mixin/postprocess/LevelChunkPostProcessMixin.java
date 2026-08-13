@@ -27,7 +27,7 @@ public abstract class LevelChunkPostProcessMixin extends ChunkAccess {
     }
 
     @InjectLite(method = "postProcessGeneration", at = @At("HEAD"))
-    private void c6c$preprocessPostProcessingLists() {
+    private void byepregen$preprocessPostProcessingLists() {
         PostProcessGenerationOptimizer.preprocessPostProcessingLists((LevelChunk) (Object) this, this.postProcessing);
     }
 
@@ -38,7 +38,7 @@ public abstract class LevelChunkPostProcessMixin extends ChunkAccess {
                     target = "Lnet/minecraft/world/level/block/Block;updateFromNeighbourShapes(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
             )
     )
-    private BlockState c6c$skipNoOpNeighbourShapeUpdates(BlockState state, LevelAccessor level, BlockPos pos) {
+    private BlockState byepregen$skipNoOpNeighbourShapeUpdates(BlockState state, LevelAccessor level, BlockPos pos) {
         return PostProcessGenerationOptimizer.updateFromNeighbourShapes(state, level, pos);
     }
 }
