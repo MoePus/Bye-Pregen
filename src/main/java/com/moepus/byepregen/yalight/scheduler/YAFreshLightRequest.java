@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.scheduler;
 
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -16,7 +16,7 @@ public final class YAFreshLightRequest extends CompletableFuture<ChunkAccess> {
     private YAFreshLightRequest nextBlockQueue;
     private YAFreshLightRequest nextSkyQueue;
 
-    static YAFreshLightRequest create(ChunkAccess owner, boolean hasBlock, boolean hasSky) {
+    public static YAFreshLightRequest create(ChunkAccess owner, boolean hasBlock, boolean hasSky) {
         int requiredLayers = (hasBlock ? BLOCK_LAYER : 0) | (hasSky ? SKY_LAYER : 0);
         return new YAFreshLightRequest(owner, requiredLayers);
     }
@@ -26,27 +26,27 @@ public final class YAFreshLightRequest extends CompletableFuture<ChunkAccess> {
         this.state = state;
     }
 
-    ChunkAccess owner() {
+    public ChunkAccess owner() {
         return this.owner;
     }
 
-    void markExecuted(LightLayer layer) {
+    public void markExecuted(LightLayer layer) {
         this.state &= ~mask(layer);
     }
 
-    void markFailed() {
+    public void markFailed() {
         this.state |= FAILED;
     }
 
-    void cancel() {
+    public void cancel() {
         this.markFailed();
     }
 
-    YAFreshLightRequest nextQueued(LightLayer layer) {
+    public YAFreshLightRequest nextQueued(LightLayer layer) {
         return layer == LightLayer.BLOCK ? this.nextBlockQueue : this.nextSkyQueue;
     }
 
-    void setNextQueued(LightLayer layer, YAFreshLightRequest next) {
+    public void setNextQueued(LightLayer layer, YAFreshLightRequest next) {
         if (layer == LightLayer.BLOCK) {
             this.nextBlockQueue = next;
         } else {
@@ -62,11 +62,11 @@ public final class YAFreshLightRequest extends CompletableFuture<ChunkAccess> {
         return sameOwner(this.owner, other);
     }
 
-    static boolean sameOwner(ChunkAccess first, ChunkAccess second) {
+    public static boolean sameOwner(ChunkAccess first, ChunkAccess second) {
         return canonicalOwner(first) == canonicalOwner(second);
     }
 
-    static ChunkAccess canonicalOwner(ChunkAccess chunk) {
+    public static ChunkAccess canonicalOwner(ChunkAccess chunk) {
         return chunk instanceof ImposterProtoChunk imposter ? imposter.getWrapped() : chunk;
     }
 

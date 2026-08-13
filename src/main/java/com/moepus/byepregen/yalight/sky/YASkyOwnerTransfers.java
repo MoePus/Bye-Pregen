@@ -1,4 +1,6 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.sky;
+
+import com.moepus.byepregen.yalight.engine.YALightMath;
 
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;

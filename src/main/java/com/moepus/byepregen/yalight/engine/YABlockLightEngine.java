@@ -1,4 +1,9 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.engine;
+
+import com.moepus.byepregen.yalight.storage.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YALightStorage;
+import com.moepus.byepregen.yalight.storage.YANibbleArray;
+import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
 
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;

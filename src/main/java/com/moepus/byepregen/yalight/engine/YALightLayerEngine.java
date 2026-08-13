@@ -1,4 +1,9 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.engine;
+
+import com.moepus.byepregen.yalight.scheduler.YAFreshLightRequest;
+import com.moepus.byepregen.yalight.scheduler.YASourceHalo;
+import com.moepus.byepregen.yalight.storage.YALightStorage;
+import com.moepus.byepregen.yalight.storage.YANibbleArray;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -9,7 +14,7 @@ import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 
-interface YALightLayerEngine extends LayerLightEventListener {
+public interface YALightLayerEngine extends LayerLightEventListener {
     LightChunkGetter chunkGetter();
 
     LightLayer lightLayer();

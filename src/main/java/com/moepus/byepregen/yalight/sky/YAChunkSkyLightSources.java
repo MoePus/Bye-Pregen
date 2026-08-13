@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.sky;
 
 import com.moepus.byepregen.yalight.access.YASkySourceDirtyAccess;
 import java.util.Arrays;

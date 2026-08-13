@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.yalight.YAChunkSkyLightSources;
+import com.moepus.byepregen.yalight.sky.YAChunkSkyLightSources;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.lighting.ChunkSkyLightSources;

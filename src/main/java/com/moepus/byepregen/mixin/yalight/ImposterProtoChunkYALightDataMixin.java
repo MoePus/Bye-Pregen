@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.yalight;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
-import com.moepus.byepregen.yalight.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ImposterProtoChunk;
 import net.minecraft.world.level.chunk.LevelChunk;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.storage;
 
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import net.minecraft.core.SectionPos;
@@ -32,23 +32,23 @@ public final class YALightStorage {
         return chunk == null ? null : (ChunkAccess)chunk;
     }
 
-    LightChunkGetter chunkGetter() {
+    public LightChunkGetter chunkGetter() {
         return this.chunkGetter;
     }
 
-    int minLightSection() {
+    public int minLightSection() {
         return this.minLightSection;
     }
 
-    int maxLightSection() {
+    public int maxLightSection() {
         return this.maxLightSection;
     }
 
-    int lightSectionCount() {
+    public int lightSectionCount() {
         return this.lightSectionCount;
     }
 
-    int sectionIndex(int sectionY) {
+    public int sectionIndex(int sectionY) {
         return sectionY - this.minLightSection;
     }
 
@@ -73,7 +73,7 @@ public final class YALightStorage {
         return this.getOrCreateSection(this.data(chunk), sectionY);
     }
 
-    YANibbleArray getOrCreateSection(YAChunkLightData data, int sectionY) {
+    public YANibbleArray getOrCreateSection(YAChunkLightData data, int sectionY) {
         return data == null ? null : data.getOrCreateUpdatingSection(sectionY);
     }
 
@@ -89,13 +89,13 @@ public final class YALightStorage {
         data.setSection(pos.y(), nibble, this);
     }
 
-    void setFullSection(YAChunkLightData data, int sectionY) {
+    public void setFullSection(YAChunkLightData data, int sectionY) {
         if (data != null) {
             data.setFullSection(sectionY, this);
         }
     }
 
-    void markDirtySection(YAChunkLightData data, int sectionY) {
+    public void markDirtySection(YAChunkLightData data, int sectionY) {
         int index = this.sectionIndex(sectionY);
         if (data != null && index >= 0 && index < this.lightSectionCount) {
             this.markDirty(data, index);

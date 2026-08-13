@@ -1,4 +1,6 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.scheduler;
+
+import com.moepus.byepregen.yalight.engine.YALightEngine;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

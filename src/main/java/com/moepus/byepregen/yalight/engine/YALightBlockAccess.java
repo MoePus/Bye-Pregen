@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.engine;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -10,7 +10,7 @@ import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-final class YALightBlockAccess {
+public final class YALightBlockAccess {
     private static final int RAW_ID_BITS = 30;
     private static final int RAW_ID_MASK = (1 << RAW_ID_BITS) - 1;
     private static final int SLOW_BIT = 1 << RAW_ID_BITS;
@@ -28,7 +28,7 @@ final class YALightBlockAccess {
     private final BlockGetter level;
     private final BlockPos.MutableBlockPos mutablePos;
 
-    YALightBlockAccess(
+    public YALightBlockAccess(
             YAChunkRunCache cache,
             LightChunkGetter chunkGetter,
             BlockGetter level,
@@ -40,11 +40,11 @@ final class YALightBlockAccess {
         this.mutablePos = mutablePos;
     }
 
-    int blockAt(int x, int y, int z) {
+    public int blockAt(int x, int y, int z) {
         return this.blockFromRawId(this.cache.getRawId(this.chunkGetter, x, y, z));
     }
 
-    int residentBlockAt(int x, int y, int z) {
+    public int residentBlockAt(int x, int y, int z) {
         return this.blockFromRawId(this.cache.getResidentRawId(x, y, z));
     }
 
@@ -65,19 +65,19 @@ final class YALightBlockAccess {
         return SLOW_BLOCK | (rawId & RAW_ID_MASK);
     }
 
-    int rawId(int block) {
+    public int rawId(int block) {
         return block & RAW_ID_MASK;
     }
 
-    boolean isFull(int block) {
+    public boolean isFull(int block) {
         return block == FULL_BLOCK;
     }
 
-    boolean isSlow(int block) {
+    public boolean isSlow(int block) {
         return block < 0 && (block & SLOW_BIT) != 0;
     }
 
-    BlockState toState(int block) {
+    public BlockState toState(int block) {
         if (block == EMPTY_BLOCK) {
             return Blocks.AIR.defaultBlockState();
         }
@@ -88,7 +88,7 @@ final class YALightBlockAccess {
     }
 
     // Callers must reject FULL_BLOCK before reaching this hot-path helper.
-    int attenuatedLevel(int level, int x, int y, int z, int block) {
+    public int attenuatedLevel(int level, int x, int y, int z, int block) {
         if (!this.isSlow(block)) {
             return level - 1;
         }
@@ -96,7 +96,7 @@ final class YALightBlockAccess {
         return Math.max(0, level - opacity);
     }
 
-    boolean shapeOccludes(
+    public boolean shapeOccludes(
             int fromX, int fromY, int fromZ, int fromBlock,
             int toX, int toY, int toZ, int toBlock,
             Direction direction

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.storage;
 
 import net.minecraft.core.BlockPos;
 

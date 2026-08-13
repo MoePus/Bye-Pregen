@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.engine;
 
 import java.util.Arrays;
 
@@ -11,7 +11,7 @@ public final class YADLongQueue {
     private int readIndex;
     private int writeIndex;
 
-    YADLongQueue() {
+    public YADLongQueue() {
         this(INITIAL_CAPACITY, MAX_RETAINED_CAPACITY);
     }
 
@@ -21,7 +21,7 @@ public final class YADLongQueue {
         this.maxRetainedCapacity = Math.max(maxRetainedCapacity, capacity);
     }
 
-    void add(long first, long second) {
+    public void add(long first, long second) {
         if (this.writeIndex >= this.values.length >> 1) {
             this.compactConsumed();
         }
@@ -33,23 +33,23 @@ public final class YADLongQueue {
         this.values[valueIndex + 1] = second;
     }
 
-    boolean isEmpty() {
+    public boolean isEmpty() {
         return this.readIndex >= this.writeIndex;
     }
 
-    long first() {
+    public long first() {
         return this.values[this.readIndex << 1];
     }
 
-    long second() {
+    public long second() {
         return this.values[(this.readIndex << 1) + 1];
     }
 
-    void remove() {
+    public void remove() {
         ++this.readIndex;
     }
 
-    void clear() {
+    public void clear() {
         if (this.values.length > this.maxRetainedCapacity << 1) {
             this.values = new long[this.maxRetainedCapacity << 1];
         }

@@ -1,4 +1,9 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.engine;
+
+import com.moepus.byepregen.yalight.scheduler.YAFreshLightRequest;
+import com.moepus.byepregen.yalight.storage.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YALightStorage;
+import com.moepus.byepregen.yalight.storage.YANibbleArray;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -34,7 +39,7 @@ public class YAChunkRunCache {
     private int residentStorageIndex = -1;
     private boolean residentBlockResolved;
 
-    void clear() {
+    public void clear() {
         this.pinnedOwners.clear();
         Arrays.fill(this.chunks, null);
         Arrays.fill(this.lightData, null);
@@ -45,7 +50,7 @@ public class YAChunkRunCache {
         this.clearResidentSection();
     }
 
-    LightChunk chunk(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
+    protected LightChunk chunk(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
         return this.chunkAccess(chunkGetter, chunkX, chunkZ);
     }
 
@@ -54,7 +59,7 @@ public class YAChunkRunCache {
         return this.chunks[index];
     }
 
-    void centerChunks(int chunkX, int chunkZ) {
+    public void centerChunks(int chunkX, int chunkZ) {
         this.loadChunkWindow(chunkX, chunkZ);
     }
 
@@ -126,7 +131,7 @@ public class YAChunkRunCache {
         }
     }
 
-    LightChunk enabledChunk(YALightStorage storage, int chunkX, int chunkZ) {
+    protected LightChunk enabledChunk(YALightStorage storage, int chunkX, int chunkZ) {
         int index = this.chunkIndex(storage.chunkGetter(), chunkX, chunkZ);
         YAChunkLightData data = this.existingLightData(storage, index);
         return data == null || !data.lightEnabled() ? null : this.chunks[index];
@@ -141,7 +146,7 @@ public class YAChunkRunCache {
         return rawIdAt(this.chunks[index], x, y, z);
     }
 
-    void prepareResidentSection(YALightStorage storage, int x, int y, int z) {
+    public void prepareResidentSection(YALightStorage storage, int x, int y, int z) {
         int index = this.chunkIndex(storage.chunkGetter(), x >> 4, z >> 4);
         this.residentLightData = this.existingLightData(storage, index);
         this.residentBlockAccess = null;
@@ -153,7 +158,7 @@ public class YAChunkRunCache {
         this.residentBlockResolved = false;
     }
 
-    int getResidentUpdatingLight(int x, int y, int z) {
+    public int getResidentUpdatingLight(int x, int y, int z) {
         YAChunkLightData data = this.residentLightData;
         int index = this.residentStorageIndex;
         if (data == null || index < 0) {
@@ -163,7 +168,7 @@ public class YAChunkRunCache {
         return nibble == null ? 0 : nibble.getUpdating(x, y, z);
     }
 
-    int getEnabledResidentUpdatingLight(int x, int y, int z) {
+    public int getEnabledResidentUpdatingLight(int x, int y, int z) {
         YAChunkLightData data = this.residentLightData;
         if (data == null || !data.lightEnabled()) {
             return -1;
@@ -176,7 +181,7 @@ public class YAChunkRunCache {
         return nibble == null ? 0 : nibble.getUpdating(x, y, z);
     }
 
-    void setResidentUpdatingLight(YALightStorage storage, int x, int y, int z, int value) {
+    public void setResidentUpdatingLight(YALightStorage storage, int x, int y, int z, int value) {
         YAChunkLightData data = this.residentLightData;
         if (data == null) {
             data = this.writableLightData(storage, this.residentChunkIndex);

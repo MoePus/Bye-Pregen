@@ -1,4 +1,16 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.sky;
+
+import com.moepus.byepregen.yalight.engine.YAChunkRunCache;
+import com.moepus.byepregen.yalight.engine.YADLongQueue;
+import com.moepus.byepregen.yalight.engine.YALightBlockAccess;
+import com.moepus.byepregen.yalight.engine.YALightLayerEngine;
+import com.moepus.byepregen.yalight.engine.YALightMath;
+import com.moepus.byepregen.yalight.engine.YALightQueue;
+import com.moepus.byepregen.yalight.scheduler.YAFreshLightRequest;
+import com.moepus.byepregen.yalight.storage.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YALightStorage;
+import com.moepus.byepregen.yalight.storage.YANibbleArray;
+import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
 
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
@@ -84,11 +96,11 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
         return this.blocks.isFull(block) ? 0 : this.getSourceLight(pos);
     }
 
-    void setDeclaredFreshOwnerDomain(Iterable<ChunkPos> owners) {
+    public void setDeclaredFreshOwnerDomain(Iterable<ChunkPos> owners) {
         this.ownerTransfers.setDeclaredDomain(owners);
     }
 
-    void clearDeclaredFreshOwnerDomain() {
+    public void clearDeclaredFreshOwnerDomain() {
         this.ownerTransfers.clearPersistentState();
     }
 
@@ -152,7 +164,7 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
         return this.getVisibleLightValue(pos, data);
     }
 
-    int getVisibleLightValue(BlockPos pos, YAChunkLightData data) {
+    public int getVisibleLightValue(BlockPos pos, YAChunkLightData data) {
         YANibbleArray[] sections = data == null
                 ? YAVisibleLightReader.EMPTY_SECTIONS
                 : data.visibleSections();
@@ -248,7 +260,7 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
         return this.sources.sourceYCode(y) >= sourceCode ? 15 : 0;
     }
 
-    void restoreSavedSkyLight(ChunkAccess chunk) {
+    public void restoreSavedSkyLight(ChunkAccess chunk) {
         this.sources.restoreSavedSkyLight(chunk);
     }
 

@@ -1,7 +1,7 @@
 package com.moepus.byepregen.test;
 import com.moepus.byepregen.mixin.accessor.server.chunk.ChunkMapUnloadAccessor;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
-import com.moepus.byepregen.yalight.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import java.util.HashSet;
 import java.util.HashMap;

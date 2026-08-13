@@ -1,4 +1,7 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.sky;
+
+import com.moepus.byepregen.yalight.engine.YAChunkRunCache;
+import com.moepus.byepregen.yalight.storage.YALightStorage;
 
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.chunk.LightChunk;

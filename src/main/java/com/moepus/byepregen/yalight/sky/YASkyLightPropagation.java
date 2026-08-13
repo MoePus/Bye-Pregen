@@ -1,4 +1,6 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.sky;
+
+import com.moepus.byepregen.yalight.engine.YALightMath;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;

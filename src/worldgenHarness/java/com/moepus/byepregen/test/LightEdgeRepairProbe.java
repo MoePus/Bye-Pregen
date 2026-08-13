@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.yalight.YALightEngine;
+import com.moepus.byepregen.yalight.engine.YALightEngine;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;

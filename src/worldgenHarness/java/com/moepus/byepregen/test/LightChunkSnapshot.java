@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.yalight.YANibbleArray;
+import com.moepus.byepregen.yalight.storage.YANibbleArray;
 import java.util.Arrays;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;

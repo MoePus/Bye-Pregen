@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.storage;
 
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
@@ -37,11 +37,11 @@ public final class YAChunkLightData {
         this.lightEnabled = lightEnabled;
     }
 
-    boolean edgeCheckReady() {
+    public boolean edgeCheckReady() {
         return this.edgeCheckReady;
     }
 
-    void setEdgeCheckReady(boolean edgeCheckReady) {
+    public void setEdgeCheckReady(boolean edgeCheckReady) {
         this.edgeCheckReady = edgeCheckReady;
     }
 
@@ -57,16 +57,16 @@ public final class YAChunkLightData {
         return this.visible;
     }
 
-    int minLightSection() {
+    public int minLightSection() {
         return this.minLightSection;
     }
 
-    YANibbleArray getVisibleSectionByIndex(int index) {
+    public YANibbleArray getVisibleSectionByIndex(int index) {
         YANibbleArray[] visible = this.visible;
         return visible[index];
     }
 
-    YANibbleArray getUpdatingSectionByIndex(int index) {
+    public YANibbleArray getUpdatingSectionByIndex(int index) {
         return this.updating[index];
     }
 
@@ -78,7 +78,7 @@ public final class YAChunkLightData {
         return this.getOrCreateUpdatingSectionByIndex(index);
     }
 
-    YANibbleArray getOrCreateUpdatingSectionByIndex(int index) {
+    public YANibbleArray getOrCreateUpdatingSectionByIndex(int index) {
         YANibbleArray nibble = this.updating[index];
         if (nibble == null || nibble.isNullUpdating()) {
             if (nibble != null) {

@@ -1,4 +1,7 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.engine;
+
+import com.moepus.byepregen.yalight.scheduler.YAFreshLightRequest;
+import com.moepus.byepregen.yalight.scheduler.YASourceHalo;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -23,7 +26,7 @@ public final class YALightQueue {
     private ChunkTask pooledTask;
     private int pooledTaskCount;
 
-    YALightQueue(LightLayer layer) {
+    public YALightQueue(LightLayer layer) {
         this.layer = layer;
     }
 

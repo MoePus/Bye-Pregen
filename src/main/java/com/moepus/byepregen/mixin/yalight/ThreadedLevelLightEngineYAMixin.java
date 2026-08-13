@@ -4,10 +4,10 @@ import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.mixin.accessor.yalight.ChunkMapLightAccessor;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
-import com.moepus.byepregen.yalight.YALightEngine;
+import com.moepus.byepregen.yalight.engine.YALightEngine;
 import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
-import com.moepus.byepregen.yalight.YAFreshLightRequest;
-import com.moepus.byepregen.yalight.YAThreadedLightScheduler;
+import com.moepus.byepregen.yalight.scheduler.YAFreshLightRequest;
+import com.moepus.byepregen.yalight.scheduler.YAThreadedLightScheduler;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 import java.util.Comparator;

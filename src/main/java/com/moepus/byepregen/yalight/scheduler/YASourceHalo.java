@@ -1,10 +1,10 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.scheduler;
 
 import it.unimi.dsi.fastutil.HashCommon;
 
-final class YASourceHalo {
-    static final byte BLOCK_MASK = 1;
-    static final byte SKY_MASK = 2;
+public final class YASourceHalo {
+    public static final byte BLOCK_MASK = 1;
+    public static final byte SKY_MASK = 2;
 
     private static final int HALO_CHUNKS_PER_SOURCE = 3 * 3;
     private static final int INITIAL_EXPECTED_KEYS =
@@ -18,11 +18,11 @@ final class YASourceHalo {
     private int maxFill;
     private int size;
 
-    YASourceHalo() {
+    public YASourceHalo() {
         this.allocate(HashCommon.arraySize(INITIAL_EXPECTED_KEYS, LOAD_FACTOR));
     }
 
-    void add(long chunkKey, byte layerMask) {
+    public void add(long chunkKey, byte layerMask) {
         int slot = this.findSlot(chunkKey);
         if (this.layerMasks[slot] != 0) {
             this.layerMasks[slot] |= layerMask;
@@ -35,19 +35,19 @@ final class YASourceHalo {
         this.insert(slot, chunkKey, layerMask);
     }
 
-    int size() {
+    public int size() {
         return this.size;
     }
 
-    long keyAt(int index) {
+    public long keyAt(int index) {
         return this.keys[this.usedSlots[index]];
     }
 
-    byte layerMaskAt(int index) {
+    public byte layerMaskAt(int index) {
         return this.layerMasks[this.usedSlots[index]];
     }
 
-    void clear() {
+    public void clear() {
         for (int i = 0; i < this.size; ++i) {
             this.layerMasks[this.usedSlots[i]] = 0;
         }

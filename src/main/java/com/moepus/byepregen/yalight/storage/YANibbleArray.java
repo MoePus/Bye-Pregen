@@ -1,4 +1,4 @@
-package com.moepus.byepregen.yalight;
+package com.moepus.byepregen.yalight.storage;
 
 import com.moepus.byepregen.UnsafeIntArrayAccess;
 import net.minecraft.world.level.chunk.DataLayer;
@@ -150,7 +150,7 @@ public final class YANibbleArray {
         this.setUpdatingAndGetDirtyTransition(index, value);
     }
 
-    boolean setUpdatingAndGetDirtyTransition(int index, int value) {
+    public boolean setUpdatingAndGetDirtyTransition(int index, int value) {
         boolean dirtyTransition = !this.dirty;
         byte[] data = this.ensureUpdating();
         int byteIndex = index >>> 1;
@@ -256,7 +256,7 @@ public final class YANibbleArray {
         return this.updating;
     }
 
-    static int index(int x, int y, int z) {
+    public static int index(int x, int y, int z) {
         return (y & 15) << 8 | (z & 15) << 4 | (x & 15);
     }
 

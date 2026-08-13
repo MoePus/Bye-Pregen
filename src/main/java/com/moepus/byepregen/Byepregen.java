@@ -2,7 +2,7 @@ package com.moepus.byepregen;
 
 import com.moepus.byepregen.integration.c2me.GcFreeCompat;
 import com.moepus.byepregen.config.ConfigParser;
-import com.moepus.byepregen.yalight.YABlockStateLightClass;
+import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.fml.ModContainer;
