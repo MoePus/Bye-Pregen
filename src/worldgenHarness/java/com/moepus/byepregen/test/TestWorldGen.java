@@ -20,6 +20,10 @@ public final class TestWorldGen {
             ArenaPaletteDifferential.register();
             return;
         }
+        if (ChunkNbtParity.MODE.equals(mode)) {
+            ChunkNbtParity.register();
+            return;
+        }
         if (!hasClass(CHUNKY_PROVIDER)) {
             LOGGER.error("ByePregen test worldgen requested, but Chunky is not loaded");
             return;

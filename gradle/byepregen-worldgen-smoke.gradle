@@ -23,6 +23,8 @@ def worldGenConfig = [
 ]
 def arenaPaletteRoot = file('run/arena-palette-differential')
 def arenaPaletteResult = file("${arenaPaletteRoot}/arena-palette.result")
+def chunkNbtParityRoot = file('run/chunk-nbt-parity')
+def chunkNbtParityResult = file("${chunkNbtParityRoot}/chunk-nbt-parity.result")
 def defaultWorldGenLabel = "gc${worldGenConfig.gcFree}" +
         "-scalar${worldGenConfig.surfaceScalar}" +
         "-cache${worldGenConfig.surfaceBiomeCache}" +
@@ -50,6 +52,13 @@ neoForge {
                     mode: 'arena_palette',
             ])
             systemProperty 'byepregen.arenaPaletteDifferentialResult', arenaPaletteResult.absolutePath
+        }
+        chunkNbtParity {
+            byepregenConfigureWorldgenRun(delegate, [
+                    dir : chunkNbtParityRoot,
+                    mode: 'chunk_nbt_parity',
+            ])
+            systemProperty 'byepregen.chunkNbtParityResult', chunkNbtParityResult.absolutePath
         }
         testWorldGen {
             byepregenConfigureWorldgenRun(delegate, [
@@ -98,6 +107,38 @@ tasks.register('testArenaPaletteDifferential') {
     group = 'verification'
     description = 'Differentially checks Arena palette operations against vanilla.'
     dependsOn('runArenaPaletteDifferential')
+}
+
+tasks.matching { it.name == 'runChunkNbtParity' }.configureEach {
+    group = 'verification'
+    description = 'Checks full chunk NBT parity and raw-save compression round trips.'
+    notCompatibleWithConfigurationCache('Validates a result produced by a disposable test server')
+    doFirst {
+        delete(chunkNbtParityResult)
+        byepregenPrepareWorldgenRunDir([
+                dir         : chunkNbtParityRoot,
+                arenaPalette: 'false',
+                yaLight     : 'false',
+                gcFree      : 'false',
+                clearWorld  : true,
+        ])
+    }
+    doLast {
+        if (!chunkNbtParityResult.isFile()) {
+            throw new GradleException("Chunk NBT parity produced no result: ${chunkNbtParityResult}")
+        }
+        String result = chunkNbtParityResult.getText('UTF-8')
+        if (!result.startsWith('PASS\n')) {
+            throw new GradleException("Chunk NBT parity failed:\n${result}")
+        }
+        logger.lifecycle("Chunk NBT parity passed:\n${result.trim()}")
+    }
+}
+
+tasks.register('testChunkNbtParity') {
+    group = 'verification'
+    description = 'Checks full chunk NBT parity and raw-save compression round trips.'
+    dependsOn('runChunkNbtParity')
 }
 
 tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
