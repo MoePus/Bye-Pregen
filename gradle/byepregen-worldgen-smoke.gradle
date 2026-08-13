@@ -155,6 +155,7 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 dir       : worldGenConfig.dir,
                 yaLight   : worldGenConfig.yaLight,
                 gcFree    : worldGenConfig.gcFree,
+                surfaceScalar: worldGenConfig.surfaceScalar,
                 seed      : worldGenConfig.seed,
                 noFeatures: worldGenConfig.noFeatures,
                 levelType : worldGenConfig.levelType,
