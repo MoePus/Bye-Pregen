@@ -46,7 +46,7 @@ public abstract class DiskFeatureMixin extends Feature<DiskConfiguration> {
         RandomSource random = context.random();
         int radius = config.radius().sample(random);
         if (!(level instanceof WorldGenRegionSectionCache chunkCache)) {
-            return this.bpg$placeVanilla(context, radius);
+            return this.byepregen$placeVanilla(context, radius);
         }
 
         FastDiskStateCursor cursor = new FastDiskStateCursor(level, chunkCache);
@@ -58,14 +58,14 @@ public abstract class DiskFeatureMixin extends Feature<DiskConfiguration> {
             for (int x = origin.getX() - radius; x <= origin.getX() + radius; x++) {
                 int dx = x - origin.getX();
                 if (dx * dx + dz * dz <= radiusSquared) {
-                    placed |= this.bpg$placeColumn(placement, x, z);
+                    placed |= this.byepregen$placeColumn(placement, x, z);
                 }
             }
         }
         return placed;
     }
 
-    private boolean bpg$placeColumn(FastDiskPlacement placement, int x, int z) {
+    private boolean byepregen$placeColumn(FastDiskPlacement placement, int x, int z) {
         FastDiskStateCursor cursor = placement.cursor();
         if (!cursor.selectColumn(x, z)) {
             placement.pos().set(x, placement.maxY(), z);
@@ -85,16 +85,16 @@ public abstract class DiskFeatureMixin extends Feature<DiskConfiguration> {
             cursor.beginPosition(y);
             if (DiskBlockPredicateEvaluator.test(placement.config().target(), cursor, placement.pos())) {
                 BlockState state = ((FastRuleBasedBlockStateProvider) (Object) placement.config().stateProvider())
-                    .bpg$getState(placement.random(), placement.pos(), cursor);
+                    .byepregen$getState(placement.random(), placement.pos(), cursor);
                 placement.level().setBlock(placement.pos(), state, 2);
-                this.bpg$markAbove(placement.pos(), cursor, y);
+                this.byepregen$markAbove(placement.pos(), cursor, y);
                 placed = true;
             }
         }
         return placed;
     }
 
-    private void bpg$markAbove(BlockPos.MutableBlockPos pos, FastDiskStateCursor cursor, int baseY) {
+    private void byepregen$markAbove(BlockPos.MutableBlockPos pos, FastDiskStateCursor cursor, int baseY) {
         for (int offsetY = 1; offsetY <= 2; offsetY++) {
             int y = baseY + offsetY;
             pos.setY(y);
@@ -105,7 +105,7 @@ public abstract class DiskFeatureMixin extends Feature<DiskConfiguration> {
         }
     }
 
-    private boolean bpg$placeVanilla(FeaturePlaceContext<DiskConfiguration> context, int radius) {
+    private boolean byepregen$placeVanilla(FeaturePlaceContext<DiskConfiguration> context, int radius) {
         DiskConfiguration config = context.config();
         BlockPos origin = context.origin();
         boolean placed = false;
