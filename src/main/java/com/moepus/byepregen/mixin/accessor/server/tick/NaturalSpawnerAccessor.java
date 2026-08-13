@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.server.tick;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.NaturalSpawner;

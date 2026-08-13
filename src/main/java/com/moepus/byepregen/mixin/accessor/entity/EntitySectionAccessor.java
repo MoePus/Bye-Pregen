@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.entity;
 
 import net.minecraft.util.ClassInstanceMultiMap;
 import net.minecraft.world.level.entity.EntitySection;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.entity;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.world.level.entity.EntityAccess;

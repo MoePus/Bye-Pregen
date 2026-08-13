@@ -1,12 +1,12 @@
 package com.moepus.byepregen.optimization;
 
-import com.moepus.byepregen.mixin.accessor.ClassInstanceMultiMapAccessor;
-import com.moepus.byepregen.mixin.accessor.EntitySectionAccessor;
-import com.moepus.byepregen.mixin.accessor.EntitySectionStorageAccessor;
-import com.moepus.byepregen.mixin.accessor.NaturalSpawnerAccessor;
-import com.moepus.byepregen.mixin.accessor.NaturalSpawnerSpawnStateAccessor;
-import com.moepus.byepregen.mixin.accessor.PersistentEntitySectionManagerAccessor;
-import com.moepus.byepregen.mixin.accessor.ServerLevelEntityManagerAccessor;
+import com.moepus.byepregen.mixin.accessor.entity.ClassInstanceMultiMapAccessor;
+import com.moepus.byepregen.mixin.accessor.entity.EntitySectionAccessor;
+import com.moepus.byepregen.mixin.accessor.entity.EntitySectionStorageAccessor;
+import com.moepus.byepregen.mixin.accessor.entity.PersistentEntitySectionManagerAccessor;
+import com.moepus.byepregen.mixin.accessor.server.tick.NaturalSpawnerAccessor;
+import com.moepus.byepregen.mixin.accessor.server.tick.NaturalSpawnerSpawnStateAccessor;
+import com.moepus.byepregen.mixin.accessor.server.tick.ServerLevelEntityManagerAccessor;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;

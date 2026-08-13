@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.server.tick;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
