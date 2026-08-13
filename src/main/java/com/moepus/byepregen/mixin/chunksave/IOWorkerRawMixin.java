@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.chunksave;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.mojang.datafixers.util.Either;
 import com.moepus.byepregen.compat.C2MEDirectStorageCompat;
 import com.moepus.byepregen.gcfree.RawChunkData;
@@ -20,6 +22,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
+@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
 @Mixin(value = IOWorker.class, remap = false)
 public abstract class IOWorkerRawMixin implements RawIoWorker {
     @Unique

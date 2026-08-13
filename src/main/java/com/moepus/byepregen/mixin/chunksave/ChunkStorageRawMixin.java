@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.chunksave;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.gcfree.RawChunkData;
 import com.moepus.byepregen.gcfree.RawChunkStorage;
 import com.moepus.byepregen.gcfree.RawIoWorker;
@@ -11,6 +13,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
 @Mixin(value = ChunkStorage.class, remap = false)
 public abstract class ChunkStorageRawMixin implements RawChunkStorage {
     @Shadow

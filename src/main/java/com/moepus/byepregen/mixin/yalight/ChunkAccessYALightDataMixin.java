@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import net.minecraft.world.level.ChunkPos;
@@ -11,6 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(value = ChunkAccess.class, remap = false)
 public abstract class ChunkAccessYALightDataMixin implements YAChunkLightAccess {
     @Shadow

@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.dfc;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.ishland.c2me.opts.dfc.common.ast.EvalType;
 import com.ishland.c2me.opts.dfc.common.ducks.IFastCacheLike;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.util.DfcObjectCache;
@@ -9,6 +11,7 @@ import net.minecraft.core.QuartPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(feature = MixinFeature.DFC)
 @Mixin(targets = "net.minecraft.world.level.levelgen.NoiseChunk$FlatCache", priority = 900)
 public abstract class DfcFlatCacheMixin implements ColumnFlatCacheSource {
     @Unique private static final int byepregen$QUART_ALIGNMENT_MASK = 3;

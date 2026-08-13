@@ -1,11 +1,12 @@
 package com.moepus.byepregen.mixin.chunksave.compat.c2me;
 
 import com.moepus.byepregen.MixinGate;
+import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.gcfree.ChunkSaveHookGate;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
-@MixinGate(requiredMods = "c2me_base")
+@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE, requiredMods = "c2me_base")
 @Mixin(targets = "com.ishland.c2me.base.common.util.HookCompatibility", remap = false)
 public abstract class C2MEHookCompatibilityMixin {
     /**

@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.surface.biome;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.moepus.byepregen.worldgen.SurfaceBiomeManager;
 import net.minecraft.world.level.biome.BiomeManager;
@@ -11,6 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
+@MixinGate(feature = MixinFeature.SURFACE_BIOME_CACHE)
 @Mixin(SurfaceSystem.class)
 public abstract class SurfaceSystemBiomeCacheMixin {
     @ModifyVariable(method = "buildSurface", at = @At("HEAD"), argsOnly = true)

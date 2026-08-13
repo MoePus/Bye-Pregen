@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
@@ -26,6 +28,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(ChunkSerializer.class)
 public abstract class ChunkSerializerYALightMixin {
     @Redirect(

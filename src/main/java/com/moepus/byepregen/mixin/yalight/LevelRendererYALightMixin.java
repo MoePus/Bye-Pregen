@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.*;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.core.BlockPos;
@@ -14,6 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(value = LevelRenderer.class, priority = 900)
 public abstract class LevelRendererYALightMixin {
     /**

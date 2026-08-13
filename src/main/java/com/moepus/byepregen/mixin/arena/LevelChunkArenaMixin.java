@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaSectionMaterializer;
@@ -11,6 +13,7 @@ import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(value = LevelChunk.class, remap = false)
 public abstract class LevelChunkArenaMixin {
     @InjectLite(

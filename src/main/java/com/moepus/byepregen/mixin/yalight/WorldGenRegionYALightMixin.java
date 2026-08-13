@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YALightEngine;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
@@ -12,6 +14,7 @@ import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(WorldGenRegion.class)
 public abstract class WorldGenRegionYALightMixin implements WorldGenLevel {
     @Shadow

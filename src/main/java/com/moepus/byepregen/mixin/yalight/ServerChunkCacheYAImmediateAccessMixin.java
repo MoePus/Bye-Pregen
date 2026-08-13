@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YAImmediateChunkAccess;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ChunkHolder;
@@ -13,6 +15,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(value = ServerChunkCache.class, priority = 1050, remap = false)
 public abstract class ServerChunkCacheYAImmediateAccessMixin implements YAImmediateChunkAccess {
     @Shadow

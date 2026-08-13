@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.surface;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
 import com.moepus.byepregen.worldgen.surface.SurfaceBoundedStoneDepthRule;
@@ -14,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@MixinGate(feature = MixinFeature.SURFACE_RULE_COMPILER)
 @Mixin(SurfaceSystem.class)
 public abstract class SurfaceSystemRuleCompilerMixin {
     @Unique

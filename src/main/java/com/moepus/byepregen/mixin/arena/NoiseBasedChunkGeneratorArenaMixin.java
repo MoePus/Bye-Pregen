@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.moepus.byepregen.mixin.accessor.arena.AquiferFluidStatusAccessor;
 import com.moepus.byepregen.worldgen.ArenaNoiseFiller;
@@ -26,6 +28,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * The batching approach is inspired by ZenXArch's FastNoise's noise-generation optimization;
  * Have to make this because there would be conflicts which were difficult to handle.
  */
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorArenaMixin {
     @Shadow

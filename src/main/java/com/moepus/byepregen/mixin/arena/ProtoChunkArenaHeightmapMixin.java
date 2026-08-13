@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.worldgen.ArenaHeightmapUpdate;
@@ -16,6 +18,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(ProtoChunk.class)
 public abstract class ProtoChunkArenaHeightmapMixin {
     @Unique private static final EnumSet<Heightmap.Types> BYEPREGEN$NO_HEIGHTMAPS =

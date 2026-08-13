@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
@@ -10,6 +12,7 @@ import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(value = LevelChunk.class, remap = false)
 public abstract class LevelChunkYALightDataMixin {
     @InjectLite(

@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.dfc;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.ishland.c2me.opts.dfc.common.ducks.IDfcObjectCacheCapable;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.util.DfcObjectCache;
 import com.moepus.byepregen.dfc.ColumnCompiledDensityFunction;
@@ -13,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Slice;
 
+@MixinGate(feature = MixinFeature.DFC)
 @Mixin(NoiseChunk.class)
 public abstract class DfcNoiseChunkMixin implements FinalDensityColumnProvider {
     @Unique private ColumnCompiledDensityFunction byepregen$finalDensityColumnRoot;

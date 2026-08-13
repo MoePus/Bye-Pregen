@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -21,6 +23,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import java.util.BitSet;
 import java.util.Iterator;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(ClientPacketListener.class)
 public abstract class ClientPacketListenerYALightMixin {
     @Shadow

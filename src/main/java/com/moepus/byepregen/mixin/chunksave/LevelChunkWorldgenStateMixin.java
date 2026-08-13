@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.chunksave;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.gcfree.WorldgenChunkState;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
@@ -10,6 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
 @Mixin(value = LevelChunk.class, remap = false)
 public abstract class LevelChunkWorldgenStateMixin implements WorldgenChunkState {
     @Unique

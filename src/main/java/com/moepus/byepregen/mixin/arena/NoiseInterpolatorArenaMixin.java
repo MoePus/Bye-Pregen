@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.ArenaNoiseInterpolatorAccess;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.NoiseChunk;
@@ -7,6 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(NoiseChunk.NoiseInterpolator.class)
 public abstract class NoiseInterpolatorArenaMixin implements ArenaNoiseInterpolatorAccess {
     @Shadow

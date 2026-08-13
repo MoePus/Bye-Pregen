@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
 import com.moepus.byepregen.worldgen.ArenaNoiseChunkAccess;
 import com.moepus.byepregen.worldgen.ArenaNoiseInterpolatorAccess;
@@ -14,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Slice;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(NoiseChunk.class)
 public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     @Unique private static final double byepregen$PAGE_STEP_SCALE = 1.0D / Layout.PAGE_HEIGHT;

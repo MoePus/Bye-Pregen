@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YASkyLightEngine;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -10,6 +12,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(value = SkyLightEngine.class, remap = false)
 public abstract class SkyLightEngineYASuperMixin {
     @Unique

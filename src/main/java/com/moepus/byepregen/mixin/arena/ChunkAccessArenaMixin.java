@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
@@ -27,6 +29,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(value = ChunkAccess.class, remap = false)
 public abstract class ChunkAccessArenaMixin {
     @Redirect(

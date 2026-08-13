@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.yalight;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YANibbleArray;
 import net.minecraft.core.SectionPos;
@@ -15,6 +17,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
+@MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(ClientboundLightUpdatePacketData.class)
 public abstract class ClientboundLightUpdatePacketDataYALightMixin {
     /**

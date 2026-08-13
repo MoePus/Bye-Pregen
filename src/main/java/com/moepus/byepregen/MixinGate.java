@@ -8,6 +8,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface MixinGate {
+    MixinFeature feature() default MixinFeature.NONE;
+
     String[] requiredMods() default {};
 
     String[] conflictingMods() default {};

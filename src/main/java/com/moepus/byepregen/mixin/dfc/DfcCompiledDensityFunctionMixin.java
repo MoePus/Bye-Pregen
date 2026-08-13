@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.dfc;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.CompiledDensityFunction;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.CompiledEntry;
 import com.moepus.byepregen.dfc.ColumnCompiledDensityFunction;
@@ -9,6 +11,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(feature = MixinFeature.DFC)
 @Mixin(value = CompiledDensityFunction.class, remap = false)
 public abstract class DfcCompiledDensityFunctionMixin implements ColumnCompiledDensityFunction {
     @Shadow @Final private int compiledIndex;

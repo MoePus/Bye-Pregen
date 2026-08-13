@@ -1,10 +1,13 @@
 package com.moepus.byepregen.mixin.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.AquiferSurfaceShortcutAccess;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(NoiseChunk.class)
 public abstract class NoiseChunkAquiferSurfaceMixin implements AquiferSurfaceShortcutAccess {
     @Unique private static final int byepregen$AQUIFER_HIGH_AIR_MARGIN = 5;

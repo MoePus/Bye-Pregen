@@ -1,6 +1,7 @@
 package com.moepus.byepregen.mixin.arena.compat.fastnoise;
 
 import com.moepus.byepregen.MixinGate;
+import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.worldgen.ArenaOpenCLBufferImporter;
 import java.nio.ByteBuffer;
 import net.minecraft.util.StaticCache2D;
@@ -12,7 +13,7 @@ import org.codeberg.zenxarch.fastnoise.ocl.FastCopyBufferDataIntoChunks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
-@MixinGate(requiredMods = "zfastnoise")
+@MixinGate(feature = MixinFeature.ARENA, requiredMods = "zfastnoise")
 @Mixin(value = FastCopyBufferDataIntoChunks.class, remap = false)
 public abstract class FastNoiseOpenCLArenaMixin {
     /**

@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.chunksave;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
 import com.moepus.byepregen.gcfree.RawChunkData;
 import com.moepus.byepregen.gcfree.RawChunkStorage;
@@ -20,6 +22,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
 @Mixin(value = ChunkMap.class, remap = false)
 public abstract class ChunkMapGcFreeSaveMixin {
     @Shadow

@@ -1,10 +1,13 @@
 package com.moepus.byepregen.mixin.accessor.arena;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
+@MixinGate(feature = MixinFeature.ARENA)
 @Mixin(NoiseChunk.class)
 public interface NoiseChunkAccessor {
     @Invoker("cellWidth")

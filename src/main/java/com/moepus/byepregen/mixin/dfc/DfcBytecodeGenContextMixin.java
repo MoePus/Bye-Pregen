@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.dfc;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import com.ishland.c2me.opts.dfc.common.ast.AstNode;
 import com.ishland.c2me.opts.dfc.common.gen.jvm.BytecodeGen;
 import com.moepus.byepregen.dfc.ColumnCodegenContextAccess;
@@ -12,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@MixinGate(feature = MixinFeature.DFC)
 @Mixin(value = BytecodeGen.Context.class, remap = false)
 public abstract class DfcBytecodeGenContextMixin implements ColumnCodegenContextAccess {
     @Unique private final Map<Integer, String> byepregen$columnMethods = new LinkedHashMap<>();

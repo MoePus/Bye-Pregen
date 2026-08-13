@@ -17,6 +17,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,6 +34,7 @@ final class MixinRegistryTest {
     private static final String SERVER_TICK_PREFIX = MIXIN_PREFIX + "server.tick.";
     private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
     private static final String GATE_DESCRIPTOR = Type.getDescriptor(MixinGate.class);
+    private static final EnumMap<MixinFeature, Integer> FEATURE_COUNTS = featureCounts();
 
     @Test
     void registryIsCompleteAndReferencesCompiledMixins() throws Exception {
@@ -59,6 +61,20 @@ final class MixinRegistryTest {
             assertEquals(boolean.class, field.getType(), "gate field is not boolean: " + configName);
             assertTrue(Modifier.isPublic(field.getModifiers()), "gate field is not public: " + configName);
         }
+    }
+
+    @Test
+    void featureMetadataIsValidAndComplete() throws Exception {
+        EnumMap<MixinFeature, Integer> actual = new EnumMap<>(MixinFeature.class);
+        for (String className : readRegistry().classes()) {
+            AnnotationNode gate = annotation(readClass(className), GATE_DESCRIPTOR);
+            MixinFeature feature = annotationFeature(gate);
+            if (feature != MixinFeature.NONE) {
+                actual.merge(feature, 1, Integer::sum);
+            }
+        }
+
+        assertEquals(FEATURE_COUNTS, actual);
     }
 
     @Test
@@ -190,6 +206,30 @@ final class MixinRegistryTest {
             }
         }
         return List.of();
+    }
+
+    private static MixinFeature annotationFeature(AnnotationNode annotation) {
+        if (annotation == null || annotation.values == null) {
+            return MixinFeature.NONE;
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if ("feature".equals(annotation.values.get(index))) {
+                String[] value = (String[]) annotation.values.get(index + 1);
+                return MixinFeature.valueOf(value[1]);
+            }
+        }
+        return MixinFeature.NONE;
+    }
+
+    private static EnumMap<MixinFeature, Integer> featureCounts() {
+        EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
+        counts.put(MixinFeature.ARENA, 13);
+        counts.put(MixinFeature.DFC, 5);
+        counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 10);
+        counts.put(MixinFeature.SURFACE_BIOME_CACHE, 2);
+        counts.put(MixinFeature.SURFACE_RULE_COMPILER, 16);
+        counts.put(MixinFeature.YA_LIGHT, 19);
+        return counts;
     }
 
     private record Registry(List<String> classes) {
