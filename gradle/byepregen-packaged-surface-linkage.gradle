@@ -107,6 +107,14 @@ def verificationSourceSets = [
 def verificationClassDirectories = files(
         verificationSourceSets.collect { it.sourceSet.output.classesDirs }
 )
+def verificationResourceDirectories = files(
+        verificationSourceSets.collect { it.sourceSet.output.resourcesDir }.findAll { it != null }
+)
+def verificationModIds = [
+        'byepregen_surface_test',
+        'byepregen_surface_linkage_test',
+        'byepregen_worldgen_harness',
+]
 def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
     group = 'verification'
     description = 'Checks production runtime contents and excludes all verification harnesses.'
@@ -116,6 +124,7 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
     )
     inputs.file(productionSurfaceJar)
     inputs.files(verificationClassDirectories)
+    inputs.files(verificationResourceDirectories)
     doLast {
         File productionJar = productionSurfaceJar.get().asFile
         new ZipFile(productionJar).withCloseable { zip ->
@@ -135,12 +144,26 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
             if (zip.getEntry('com/moepus/byepregen/bootstrap/TestWorldGenBootstrap.class') != null) {
                 throw new GradleException("Production jar contains the worldgen test bootstrap: ${productionJar}")
             }
-            def metadataEntry = zip.getEntry('META-INF/neoforge.mods.toml')
-            String metadata = zip.getInputStream(metadataEntry).withCloseable {
-                it.getText('UTF-8')
+            def metadataEntries = zip.entries().findAll {
+                it.name == 'META-INF/neoforge.mods.toml'
             }
-            if (metadata.contains('byepregen_worldgen_harness')) {
-                throw new GradleException("Production jar contains worldgen harness metadata: ${productionJar}")
+            if (metadataEntries.size() != 1) {
+                throw new GradleException(
+                        "Production jar must contain exactly one NeoForge metadata entry, found " +
+                                "${metadataEntries.size()}: ${productionJar}"
+                )
+            }
+            metadataEntries.each { metadataEntry ->
+                String metadata = zip.getInputStream(metadataEntry).withCloseable {
+                    it.getText('UTF-8')
+                }
+                verificationModIds.each { modId ->
+                    if (metadata.contains(modId)) {
+                        throw new GradleException(
+                                "Production jar contains verification mod metadata for ${modId}: ${productionJar}"
+                        )
+                    }
+                }
             }
             verificationSourceSets.each { verification ->
                 verification.sourceSet.output.classesDirs.files.each { classesDirectory ->
@@ -156,6 +179,22 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
                         if (zip.getEntry(entry) != null) {
                             throw new GradleException(
                                     "Production jar contains ${verification.label} class " +
+                                            "${entry}: ${productionJar}"
+                            )
+                        }
+                    }
+                }
+                File resourcesDirectory = verification.sourceSet.output.resourcesDir
+                if (resourcesDirectory != null && resourcesDirectory.isDirectory()) {
+                    resourcesDirectory.eachFileRecurse { verificationResource ->
+                        if (!verificationResource.isFile()) {
+                            return
+                        }
+                        String entry = resourcesDirectory.toPath().relativize(verificationResource.toPath())
+                                .toString().replace('\\', '/')
+                        if (entry != 'META-INF/neoforge.mods.toml' && zip.getEntry(entry) != null) {
+                            throw new GradleException(
+                                    "Production jar contains ${verification.label} resource " +
                                             "${entry}: ${productionJar}"
                             )
                         }
@@ -271,6 +310,7 @@ tasks.named('runSurfaceOpaqueRuntimeTest', JavaExec) {
 }
 
 tasks.matching { it.name == 'runSurfacePackagedLinkage' }.configureEach {
+    group = 'verification'
     description = 'Loads the production jar in NeoForge and executes generated Surface scalar bytecode.'
     notCompatibleWithConfigurationCache('Validates a result produced by a disposable packaged server')
     doLast {
