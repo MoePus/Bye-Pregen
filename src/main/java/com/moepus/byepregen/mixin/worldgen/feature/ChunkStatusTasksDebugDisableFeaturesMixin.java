@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.worldgen.feature;
 
 import com.moepus.byepregen.MixinGate;
 import net.minecraft.world.level.StructureManager;

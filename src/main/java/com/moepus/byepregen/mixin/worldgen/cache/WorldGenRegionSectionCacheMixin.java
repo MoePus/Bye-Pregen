@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.worldgen.cache;
 
 import com.moepus.byepregen.Feature.WorldGenRegionSectionCache;
 
