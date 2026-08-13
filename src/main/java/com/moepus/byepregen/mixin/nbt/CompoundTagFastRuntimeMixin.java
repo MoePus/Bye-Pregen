@@ -27,7 +27,7 @@ public abstract class CompoundTagFastRuntimeMixin {
             method = "<init>()V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/nbt/CompoundTag;<init>(Ljava/util/Map;)V")
     )
-    private static Map<String, Tag> useFastEmptyMap(Map<String, Tag> oldMap) {
+    private static Map<String, Tag> byepregen$useFastEmptyMap(Map<String, Tag> oldMap) {
         return new Object2ObjectOpenHashMap<>();
     }
 
