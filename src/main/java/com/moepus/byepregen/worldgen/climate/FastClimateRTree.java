@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen.feature;
+package com.moepus.byepregen.worldgen.climate;
 
 import net.minecraft.world.level.biome.Climate;
 
