@@ -39,15 +39,15 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(ThreadedLevelLightEngine.class)
 public abstract class ThreadedLevelLightEngineYAMixin {
     @Unique
-    private static final TicketType<ChunkPos> YA_LIGHT_WORK =
+    private static final TicketType<ChunkPos> byepregen$YA_LIGHT_WORK =
             TicketType.create("ya_light_work", Comparator.comparingLong(ChunkPos::toLong));
 
     @Unique
-    private static final String BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY = "byepregen.yaLightSchedulerWakeOnAdd";
+    private static final String byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY = "byepregen.yaLightSchedulerWakeOnAdd";
 
     @Unique
-    private static final boolean BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD =
-            Boolean.parseBoolean(System.getProperty(BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY, "true"));
+    private static final boolean byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD =
+            Boolean.parseBoolean(System.getProperty(byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD_PROPERTY, "true"));
 
     @Shadow
     @Final
@@ -85,7 +85,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
         int previous = this.byepregen$ticketReferences.addTo(chunkKey, 1);
         if (previous == 0) {
             ChunkPos pos = new ChunkPos(chunkKey);
-            this.byepregen$level().getChunkSource().addRegionTicket(YA_LIGHT_WORK, pos, 0, pos);
+            this.byepregen$level().getChunkSource().addRegionTicket(byepregen$YA_LIGHT_WORK, pos, 0, pos);
         }
     }
 
@@ -97,7 +97,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             if (references <= 1) {
                 this.byepregen$ticketReferences.remove(chunkKey);
                 ChunkPos pos = new ChunkPos(chunkKey);
-                level.getChunkSource().removeRegionTicket(YA_LIGHT_WORK, pos, 0, pos);
+                level.getChunkSource().removeRegionTicket(byepregen$YA_LIGHT_WORK, pos, 0, pos);
             } else {
                 this.byepregen$ticketReferences.put(chunkKey, references - 1);
             }
@@ -112,7 +112,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             boolean ticketed
     ) {
         this.byepregen$lightScheduler.enqueue(chunkKey, type, task, ticketed);
-        if (BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD) {
+        if (byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD) {
             this.byepregen$scheduleDrainWithKnownWork();
         }
     }
@@ -238,7 +238,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     ) {
         long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
         this.byepregen$lightScheduler.enqueueLightChunk(chunkKey, prepare, complete);
-        if (BYEPREGEN_LIGHT_SCHEDULER_WAKE_ON_ADD) {
+        if (byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD) {
             this.byepregen$scheduleDrainWithKnownWork();
         }
     }
