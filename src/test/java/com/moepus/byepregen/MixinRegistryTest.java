@@ -30,6 +30,7 @@ import org.objectweb.asm.tree.FieldNode;
 
 final class MixinRegistryTest {
     private static final String MIXIN_PREFIX = "com.moepus.byepregen.mixin.";
+    private static final String SERVER_TICK_PREFIX = MIXIN_PREFIX + "server.tick.";
     private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
     private static final String GATE_DESCRIPTOR = Type.getDescriptor(MixinGate.class);
 
@@ -75,6 +76,21 @@ final class MixinRegistryTest {
             }
         }
         assertTrue(missing.isEmpty(), "plugin mixin references are not registered: " + missing);
+    }
+
+    @Test
+    void serverTickMixinsKeepDistinctConflictPolicies() throws Exception {
+        AnnotationNode chunkTick = gate("ServerChunkCacheTickChunksMixin");
+        AnnotationNode weatherTick = gate("ServerLevelWeatherTickMixin");
+
+        assertEquals("enableFastTickChunks", annotationString(chunkTick, "config"));
+        assertEquals(List.of("servercore"), annotationStrings(chunkTick, "conflictingMods"));
+        assertEquals("enableFastTickChunks", annotationString(weatherTick, "config"));
+        assertEquals(List.of(), annotationStrings(weatherTick, "conflictingMods"));
+    }
+
+    private static AnnotationNode gate(String simpleName) throws IOException {
+        return annotation(readClass(SERVER_TICK_PREFIX + simpleName), GATE_DESCRIPTOR);
     }
 
     private static Registry readRegistry() throws IOException {
@@ -161,6 +177,19 @@ final class MixinRegistryTest {
             }
         }
         return "";
+    }
+
+    private static List<String> annotationStrings(AnnotationNode annotation, String name) {
+        if (annotation == null || annotation.values == null) {
+            return List.of();
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if (name.equals(annotation.values.get(index))) {
+                List<?> values = (List<?>) annotation.values.get(index + 1);
+                return values.stream().map(String.class::cast).toList();
+            }
+        }
+        return List.of();
     }
 
     private record Registry(List<String> classes) {
