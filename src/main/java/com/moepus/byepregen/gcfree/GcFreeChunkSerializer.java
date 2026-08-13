@@ -8,6 +8,7 @@ package com.moepus.byepregen.gcfree;
  */
 
 import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
+import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.nbt.CompoundTag;

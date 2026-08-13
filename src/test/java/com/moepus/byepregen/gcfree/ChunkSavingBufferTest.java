@@ -1,5 +1,7 @@
 package com.moepus.byepregen.gcfree;
 
+import com.moepus.byepregen.chunksave.storage.ChunkSavingCompression;
+
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
 import java.io.ByteArrayInputStream;

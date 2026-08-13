@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.chunksave.compat.c2me;
 
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.gcfree.ChunkSavingCompression;
+import com.moepus.byepregen.chunksave.storage.ChunkSavingCompression;
 import java.io.IOException;
 import java.io.OutputStream;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;

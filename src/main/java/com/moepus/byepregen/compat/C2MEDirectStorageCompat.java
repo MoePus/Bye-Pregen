@@ -1,7 +1,7 @@
 package com.moepus.byepregen.compat;
 
 import com.ishland.c2me.base.common.theinterface.IDirectStorage;
-import com.moepus.byepregen.gcfree.RawChunkData;
+import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.concurrent.CompletableFuture;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.storage;
 
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.world.level.ChunkPos;

@@ -2,9 +2,9 @@ package com.moepus.byepregen.mixin.chunksave;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.gcfree.RawChunkData;
-import com.moepus.byepregen.gcfree.RawChunkStorage;
-import com.moepus.byepregen.gcfree.RawIoWorker;
+import com.moepus.byepregen.chunksave.storage.RawChunkData;
+import com.moepus.byepregen.chunksave.storage.RawChunkStorage;
+import com.moepus.byepregen.chunksave.storage.RawIoWorker;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.storage.ChunkStorage;

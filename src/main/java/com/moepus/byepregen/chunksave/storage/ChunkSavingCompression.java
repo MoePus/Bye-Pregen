@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.storage;
 
 import com.moepus.byepregen.config.ConfigParser;
 import java.io.BufferedOutputStream;
