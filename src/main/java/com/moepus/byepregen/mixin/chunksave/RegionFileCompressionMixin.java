@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.chunksave;
 
 import com.moepus.byepregen.gcfree.ChunkSavingCompression;
 import java.io.IOException;

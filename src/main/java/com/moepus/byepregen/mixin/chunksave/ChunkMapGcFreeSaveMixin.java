@@ -1,9 +1,9 @@
-package com.moepus.byepregen.mixin.gcfree;
+package com.moepus.byepregen.mixin.chunksave;
 
 import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
 import com.moepus.byepregen.gcfree.RawChunkData;
 import com.moepus.byepregen.gcfree.RawChunkStorage;
-import com.moepus.byepregen.mixin.accessor.ChunkStorageAccessor;
+import com.moepus.byepregen.mixin.accessor.chunksave.ChunkStorageAccessor;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;

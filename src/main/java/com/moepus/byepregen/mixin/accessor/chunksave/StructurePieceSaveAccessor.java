@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.chunksave;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;

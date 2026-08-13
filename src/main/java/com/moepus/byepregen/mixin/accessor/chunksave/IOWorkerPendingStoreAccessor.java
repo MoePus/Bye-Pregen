@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.chunksave;
 
 import java.util.concurrent.CompletableFuture;
 import org.spongepowered.asm.mixin.Mixin;

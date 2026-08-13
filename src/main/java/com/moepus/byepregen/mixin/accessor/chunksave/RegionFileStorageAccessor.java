@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.accessor;
+package com.moepus.byepregen.mixin.accessor.chunksave;
 
 import java.io.IOException;
 import net.minecraft.world.level.ChunkPos;

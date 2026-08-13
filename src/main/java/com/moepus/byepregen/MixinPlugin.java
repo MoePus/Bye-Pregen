@@ -18,7 +18,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Plugin");
     private static final String MIXIN_PACKAGE = "com.moepus.byepregen.mixin.";
     private static final String YA_LIGHT_MIXIN_PREFIX = MIXIN_PACKAGE + "yalight.";
-    private static final String GC_FREE_MIXIN_PREFIX = MIXIN_PACKAGE + "gcfree.";
     private static final String DFC_MIXIN_PREFIX = MIXIN_PACKAGE + "dfc.";
     private static final String SURFACE_BIOME_CACHE_PROPERTY = "byepregen.surfaceBiomeCache";
     private static final String C2ME_DFC_MODULE_ENTRYPOINT =
@@ -30,11 +29,11 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String ARCHITECTURY_EVENT_ACCESSOR =
             MIXIN_PACKAGE + "accessor.ArchitecturyEventImplAccessor";
     private static final String CHUNK_STORAGE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.ChunkStorageAccessor";
+            MIXIN_PACKAGE + "accessor.chunksave.ChunkStorageAccessor";
     private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.IOWorkerPendingStoreAccessor";
+            MIXIN_PACKAGE + "accessor.chunksave.IOWorkerPendingStoreAccessor";
     private static final String REGION_FILE_STORAGE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.RegionFileStorageAccessor";
+            MIXIN_PACKAGE + "accessor.chunksave.RegionFileStorageAccessor";
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
     private static final String AQUIFER_FLUID_STATUS_ACCESSOR =
@@ -73,10 +72,17 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             C2ME_HOOK_COMPATIBILITY_MIXIN,
             ARCHITECTURY_EVENT_ACCESSOR
     );
+    private static final Set<String> GC_FREE_MIXINS = Set.of(
+            MIXIN_PACKAGE + "chunksave.ChunkMapGcFreeSaveMixin",
+            MIXIN_PACKAGE + "chunksave.ChunkSerializerWorldgenStateMixin",
+            MIXIN_PACKAGE + "chunksave.ChunkStorageRawMixin",
+            MIXIN_PACKAGE + "chunksave.IOWorkerRawMixin",
+            MIXIN_PACKAGE + "chunksave.LevelChunkWorldgenStateMixin"
+    );
     private static final Set<String> RAW_GC_FREE_MIXINS = Set.of(
-            GC_FREE_MIXIN_PREFIX + "ChunkMapGcFreeSaveMixin",
-            GC_FREE_MIXIN_PREFIX + "ChunkStorageRawMixin",
-            GC_FREE_MIXIN_PREFIX + "IOWorkerRawMixin",
+            MIXIN_PACKAGE + "chunksave.ChunkMapGcFreeSaveMixin",
+            MIXIN_PACKAGE + "chunksave.ChunkStorageRawMixin",
+            MIXIN_PACKAGE + "chunksave.IOWorkerRawMixin",
             CHUNK_STORAGE_ACCESSOR,
             IO_WORKER_PENDING_STORE_ACCESSOR,
             REGION_FILE_STORAGE_ACCESSOR
@@ -162,7 +168,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     }
 
     private static boolean isGcFreeMixin(String mixinClassName) {
-        return mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX)
+        return GC_FREE_MIXINS.contains(mixinClassName)
                 || GC_FREE_SATELLITE_MIXINS.contains(mixinClassName)
                 || RAW_GC_FREE_MIXINS.contains(mixinClassName);
     }

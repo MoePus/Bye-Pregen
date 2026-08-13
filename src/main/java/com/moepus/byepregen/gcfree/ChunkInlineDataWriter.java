@@ -1,6 +1,6 @@
 package com.moepus.byepregen.gcfree;
 
-import com.moepus.byepregen.mixin.accessor.BlendingDataAccessor;
+import com.moepus.byepregen.mixin.accessor.chunksave.BlendingDataAccessor;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.LevelHeightAccessor;

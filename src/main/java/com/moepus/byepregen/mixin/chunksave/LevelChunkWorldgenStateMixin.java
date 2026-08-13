@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.gcfree;
+package com.moepus.byepregen.mixin.chunksave;
 
 import com.moepus.byepregen.gcfree.WorldgenChunkState;
 import javax.annotation.Nullable;

@@ -1,11 +1,11 @@
-package com.moepus.byepregen.mixin.gcfree;
+package com.moepus.byepregen.mixin.chunksave;
 
 import com.mojang.datafixers.util.Either;
 import com.moepus.byepregen.compat.C2MEDirectStorageCompat;
 import com.moepus.byepregen.gcfree.RawChunkData;
 import com.moepus.byepregen.gcfree.RawIoWorker;
-import com.moepus.byepregen.mixin.accessor.IOWorkerPendingStoreAccessor;
-import com.moepus.byepregen.mixin.accessor.RegionFileStorageAccessor;
+import com.moepus.byepregen.mixin.accessor.chunksave.IOWorkerPendingStoreAccessor;
+import com.moepus.byepregen.mixin.accessor.chunksave.RegionFileStorageAccessor;
 import java.io.DataOutputStream;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
