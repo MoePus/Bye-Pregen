@@ -1,4 +1,4 @@
-package com.moepus.byepregen.gcfree;
+package com.moepus.byepregen.chunksave.compat;
 
 import com.mojang.logging.LogUtils;
 import com.moepus.byepregen.compat.ArchitecturyChunkSaveCompat;

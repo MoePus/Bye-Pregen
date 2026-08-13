@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.chunksave.compat.c2me;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.MixinFeature;
-import com.moepus.byepregen.gcfree.ChunkSaveHookGate;
+import com.moepus.byepregen.chunksave.compat.ChunkSaveHookGate;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
