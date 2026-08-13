@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.worldgen.cache;
 
-import com.moepus.byepregen.Feature.WorldGenRegionSectionCache;
+import com.moepus.byepregen.worldgen.feature.WorldGenRegionSectionCache;
 
 import javax.annotation.Nullable;
 

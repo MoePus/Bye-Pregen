@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.feature.tree;
 
-import com.moepus.byepregen.Feature.FastObjectHashSet;
+import com.moepus.byepregen.worldgen.feature.FastObjectHashSet;
 import java.util.HashSet;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

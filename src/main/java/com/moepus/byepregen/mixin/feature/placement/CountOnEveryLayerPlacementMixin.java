@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
-import com.moepus.byepregen.Feature.FastPlacementContext;
-import com.moepus.byepregen.Feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
+import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.block.Blocks;

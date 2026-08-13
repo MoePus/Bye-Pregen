@@ -1,8 +1,8 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
-import com.moepus.byepregen.Feature.FastBlockPredicateOptimizer;
-import com.moepus.byepregen.Feature.FastDiskBlockPredicate;
-import com.moepus.byepregen.Feature.FastDiskStateCursor;
+import com.moepus.byepregen.worldgen.feature.FastBlockPredicateOptimizer;
+import com.moepus.byepregen.worldgen.feature.FastDiskBlockPredicate;
+import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;

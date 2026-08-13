@@ -1,10 +1,10 @@
 package com.moepus.byepregen.mixin.feature.disk;
 
-import com.moepus.byepregen.Feature.DiskBlockPredicateEvaluator;
-import com.moepus.byepregen.Feature.FastDiskPlacement;
-import com.moepus.byepregen.Feature.FastDiskStateCursor;
-import com.moepus.byepregen.Feature.FastRuleBasedBlockStateProvider;
-import com.moepus.byepregen.Feature.WorldGenRegionSectionCache;
+import com.moepus.byepregen.worldgen.feature.DiskBlockPredicateEvaluator;
+import com.moepus.byepregen.worldgen.feature.FastDiskPlacement;
+import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
+import com.moepus.byepregen.worldgen.feature.FastRuleBasedBlockStateProvider;
+import com.moepus.byepregen.worldgen.feature.WorldGenRegionSectionCache;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;

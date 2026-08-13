@@ -1,4 +1,4 @@
-package com.moepus.byepregen.Feature;
+package com.moepus.byepregen.worldgen.feature;
 
 import javax.annotation.Nullable;
 import net.minecraft.world.level.chunk.ChunkAccess;

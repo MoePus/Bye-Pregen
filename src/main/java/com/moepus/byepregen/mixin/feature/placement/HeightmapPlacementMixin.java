@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
-import com.moepus.byepregen.Feature.FastPlacementContext;
-import com.moepus.byepregen.Feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
+import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.placement.HeightmapPlacement;
 import org.spongepowered.asm.mixin.Final;

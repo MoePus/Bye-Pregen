@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.climate;
 
-import com.moepus.byepregen.Feature.FastClimateRTree;
+import com.moepus.byepregen.worldgen.feature.FastClimateRTree;
 import com.moepus.byepregen.optimization.ClimateRTreeSearchContext;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.biome.Climate;

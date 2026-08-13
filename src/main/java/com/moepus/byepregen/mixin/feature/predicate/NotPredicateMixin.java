@@ -1,8 +1,8 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
-import com.moepus.byepregen.Feature.DiskBlockPredicateEvaluator;
-import com.moepus.byepregen.Feature.FastDiskBlockPredicate;
-import com.moepus.byepregen.Feature.FastDiskStateCursor;
+import com.moepus.byepregen.worldgen.feature.DiskBlockPredicateEvaluator;
+import com.moepus.byepregen.worldgen.feature.FastDiskBlockPredicate;
+import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import org.spongepowered.asm.mixin.Final;

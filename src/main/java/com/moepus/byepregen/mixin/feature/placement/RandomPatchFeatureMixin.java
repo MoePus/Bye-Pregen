@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
-import com.moepus.byepregen.Feature.FastPlacedFeature;
-import com.moepus.byepregen.Feature.FastPlacementContext;
+import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
+import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
 import com.moepus.byepregen.MixinGate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;

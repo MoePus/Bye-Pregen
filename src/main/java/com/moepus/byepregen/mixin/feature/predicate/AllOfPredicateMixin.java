@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
-import com.moepus.byepregen.Feature.FastCombiningPredicate;
+import com.moepus.byepregen.worldgen.feature.FastCombiningPredicate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.WorldGenLevel;

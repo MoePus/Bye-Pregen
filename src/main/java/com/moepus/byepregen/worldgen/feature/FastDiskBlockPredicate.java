@@ -1,4 +1,4 @@
-package com.moepus.byepregen.Feature;
+package com.moepus.byepregen.worldgen.feature;
 
 import net.minecraft.core.BlockPos;
 
