@@ -1,4 +1,4 @@
-package com.moepus.byepregen.compat;
+package com.moepus.byepregen.integration.c2me;
 
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;

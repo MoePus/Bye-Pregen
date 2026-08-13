@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.chunksave;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.mojang.datafixers.util.Either;
-import com.moepus.byepregen.compat.C2MEDirectStorageCompat;
+import com.moepus.byepregen.integration.c2me.C2MEDirectStorageCompat;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.chunksave.storage.RawIoWorker;
 import com.moepus.byepregen.mixin.accessor.chunksave.IOWorkerPendingStoreAccessor;

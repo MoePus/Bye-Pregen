@@ -4,7 +4,7 @@ package com.moepus.byepregen.chunksave.serialize;
 
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.palette.arena.codec.SectionWriter;
-import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
+import com.moepus.byepregen.integration.c2me.C2MEAsyncSerializationCompat;
 import com.moepus.byepregen.serialization.nbt.BiomeNbtCache;
 import com.moepus.byepregen.serialization.nbt.BlockStateNbtCache;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;

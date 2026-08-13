@@ -1,4 +1,4 @@
-package com.moepus.byepregen.compat;
+package com.moepus.byepregen.integration.c2me;
 
 import com.ishland.c2me.base.common.scheduler.IVanillaChunkManager;
 import com.ishland.c2me.base.common.scheduler.SchedulingManager;

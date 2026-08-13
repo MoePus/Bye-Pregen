@@ -7,7 +7,7 @@ package com.moepus.byepregen.chunksave.serialize;
  * Copyright (c) 2021-2024 ishland
  */
 
-import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
+import com.moepus.byepregen.integration.c2me.C2MEAsyncSerializationCompat;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.chunksave.compat.ChunkSaveHookGate;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;

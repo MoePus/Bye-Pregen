@@ -1,4 +1,4 @@
-package com.moepus.byepregen.compat;
+package com.moepus.byepregen.integration.c2me;
 
 import com.ishland.c2me.rewrites.chunksystem.common.async_chunkio.AsyncSerializationManager;
 import net.minecraft.core.BlockPos;
