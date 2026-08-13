@@ -90,7 +90,7 @@
     "accessor.ServerLevelEntityManagerAccessor",
     "accessor.StructurePieceSaveAccessor",
     "accessor.CompoundTagAccessor",
-    "ServerChunkCacheReadyChunkMixin",
+    "server.chunk.ServerChunkCacheReadyChunkMixin",
     "compat.C2MEHookCompatibilityMixin",
     "compat.C2MEChunkSavingCompressionMixin",
     "compat.C2MEServerBlockTickingMixin",

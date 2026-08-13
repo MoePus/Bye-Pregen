@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.server.chunk;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
