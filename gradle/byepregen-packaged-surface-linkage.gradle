@@ -103,6 +103,7 @@ def verificationSourceSets = [
         [label: 'Surface test', sourceSet: sourceSets.surfaceTest],
         [label: 'Surface linkage harness', sourceSet: sourceSets.surfaceLinkageHarness],
         [label: 'worldgen harness', sourceSet: sourceSets.worldgenHarness],
+        [label: 'startup harness', sourceSet: sourceSets.startupHarness],
 ]
 def verificationClassDirectories = files(
         verificationSourceSets.collect { it.sourceSet.output.classesDirs }
@@ -114,6 +115,7 @@ def verificationModIds = [
         'byepregen_surface_test',
         'byepregen_surface_linkage_test',
         'byepregen_worldgen_harness',
+        'byepregen_startup_harness',
 ]
 def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
     group = 'verification'

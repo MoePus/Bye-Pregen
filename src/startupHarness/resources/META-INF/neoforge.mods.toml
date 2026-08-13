@@ -1,0 +1,16 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+
+[[mods]]
+modId = "byepregen_startup_harness"
+version = "1"
+displayName = "ByePregen Startup Harness"
+description = '''Test-only ordinary server and client startup probe.'''
+
+[[dependencies."byepregen_startup_harness"]]
+modId = "byepregen"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"

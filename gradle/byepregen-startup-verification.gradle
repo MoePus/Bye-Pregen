@@ -1,0 +1,149 @@
+def startupRoot = file('run/startup')
+def serverStartupRoot = file("${startupRoot}/server")
+def clientStartupRoot = file("${startupRoot}/client")
+def serverStartupResult = file("${serverStartupRoot}/startup.result")
+def clientStartupResult = file("${clientStartupRoot}/startup.result")
+def expectedOverwriteConflictParts = [
+        'c2me-opts-allocs.mixins.json:predicates.mixinoffsetpredicate',
+        'com.moepus.byepregen.mixin.feature.predicate.statetestingpredicatemixin',
+]
+
+sourceSets {
+    startupHarness {
+        java.setSrcDirs(['src/startupHarness/java'])
+        resources.setSrcDirs(['src/startupHarness/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    startupHarnessCompileOnly.extendsFrom compileOnly
+    startupHarnessAnnotationProcessor.extendsFrom annotationProcessor
+}
+
+neoForge {
+    mods {
+        byepregen_startup_harness {
+            sourceSet(sourceSets.startupHarness)
+        }
+    }
+    runs {
+        startupServer {
+            server()
+            sourceSet.set(sourceSets.startupHarness)
+            loadedMods.set([
+                    neoForge.mods.named(project.mod_id).get(),
+                    neoForge.mods.named('byepregen_startup_harness').get(),
+            ] as Set)
+            gameDirectory = serverStartupRoot
+            programArgument '--nogui'
+            systemProperty 'byepregen.startupResult', serverStartupResult.absolutePath
+            systemProperty 'neoforge.enabledGameTestNamespaces', ''
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        startupClient {
+            client()
+            sourceSet.set(sourceSets.startupHarness)
+            loadedMods.set([
+                    neoForge.mods.named(project.mod_id).get(),
+                    neoForge.mods.named('byepregen_startup_harness').get(),
+            ] as Set)
+            gameDirectory = clientStartupRoot
+            systemProperty 'byepregen.startupResult', clientStartupResult.absolutePath
+            systemProperty 'neoforge.enabledGameTestNamespaces', ''
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+}
+
+def validateStartup = { String side, File root, File result ->
+    if (!result.isFile()) {
+        throw new GradleException("${side} startup produced no result: ${result}")
+    }
+    String outcome = result.getText('UTF-8')
+    if (!outcome.startsWith('PASS\n')) {
+        throw new GradleException("${side} startup failed:\n${outcome}")
+    }
+    File log = file("${root}/logs/latest.log")
+    if (!log.isFile()) {
+        throw new GradleException("${side} startup produced no latest.log: ${log}")
+    }
+    def logLines = log.readLines('UTF-8')
+    def expectedConflicts = logLines.findAll { line ->
+        String lower = line.toLowerCase(Locale.ROOT)
+        expectedOverwriteConflictParts.every { lower.contains(it) }
+    }
+    if (expectedConflicts.size() != 1) {
+        throw new GradleException("${side} startup expected exactly one known overwrite conflict, found "
+                + "${expectedConflicts.size()}")
+    }
+    def failures = logLines.findAll { line ->
+        String lower = line.toLowerCase(Locale.ROOT)
+        boolean byepregenLine = lower.contains('byepregen') || lower.contains('bye pregen')
+        boolean failureMarker = [
+                'mixin apply', 'target', 'not found', 'failed injection', 'critical injection',
+                'invalid mixin', 'error loading class', 'unregistered mixin', 'gate drift',
+                'skipped overwrite', 'overwrite conflict', 'byepregen_startup_fail',
+        ].any { lower.contains(it) }
+        boolean expectedConflict = expectedOverwriteConflictParts.every { lower.contains(it) }
+        byepregenLine && failureMarker && !expectedConflict
+    }
+    if (!failures.isEmpty()) {
+        throw new GradleException("${side} startup log contains ByePregen mixin failures:\n"
+                + failures.join('\n'))
+    }
+    logger.lifecycle("${side} startup passed:\n${outcome.trim()}")
+}
+
+tasks.matching { it.name == 'runStartupServer' }.configureEach {
+    group = 'verification'
+    description = 'Starts an ordinary dedicated server with ByePregen and exits after ServerStartedEvent.'
+    notCompatibleWithConfigurationCache('Prepares and validates a disposable startup server')
+    doFirst {
+        delete(serverStartupRoot)
+        prepareDisposableServer([
+                directory: serverStartupRoot,
+                serverProperties: [
+                        'level-name'         : 'world',
+                        'level-seed'         : 'byepregen-startup',
+                        'online-mode'        : false,
+                        'server-port'        : 25570,
+                        'max-tick-time'      : 0,
+                        'view-distance'      : 2,
+                        'simulation-distance': 2,
+                        'spawn-protection'   : 0,
+                ],
+        ])
+    }
+    doLast { validateStartup('Server', serverStartupRoot, serverStartupResult) }
+}
+
+tasks.matching { it.name == 'runStartupClient' }.configureEach {
+    group = 'verification'
+    description = 'Starts an ordinary client with ByePregen and exits after the first stable client tick.'
+    notCompatibleWithConfigurationCache('Prepares and validates a disposable startup client')
+    doFirst {
+        delete(clientStartupRoot)
+        clientStartupRoot.mkdirs()
+    }
+    doLast { validateStartup('Client', clientStartupRoot, clientStartupResult) }
+}
+
+tasks.register('testServerStartup') {
+    group = 'verification'
+    description = 'Verifies ordinary dedicated-server startup and ByePregen mixin logs.'
+    dependsOn('runStartupServer')
+}
+
+tasks.register('testClientStartup') {
+    group = 'verification'
+    description = 'Verifies ordinary client startup and ByePregen mixin logs.'
+    dependsOn('runStartupClient')
+}
+
+tasks.register('startupCheck') {
+    group = 'verification'
+    description = 'Runs ordinary dedicated-server and client startup verification.'
+    dependsOn('testServerStartup', 'testClientStartup')
+}
