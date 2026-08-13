@@ -42,7 +42,7 @@ public abstract class CompoundTagLoadSizingMixin {
         Object2ObjectOpenHashMap<String, Tag> overflow = null;
 
         while (true) {
-            byte type = byePregen$readNamedTagType(input, accounter);
+            byte type = byepregen$readNamedTagType(input, accounter);
             if (type == 0) {
                 if (overflow != null) {
                     return CompoundTagAccessor.byepregen$new(overflow);
@@ -62,9 +62,9 @@ public abstract class CompoundTagLoadSizingMixin {
             );
 
             if (overflow != null) {
-                byePregen$put(overflow, name, tag, accounter);
+                byepregen$put(overflow, name, tag, accounter);
             } else if (size < INLINE_ENTRY_LIMIT) {
-                if (byePregen$isUniqueInlineName(size, name, k0, k1, k2)) {
+                if (byepregen$isUniqueInlineName(size, name, k0, k1, k2)) {
                     accounter.accountBytes(UNIQUE_ENTRY_BYTES);
                 }
                 switch (size) {
@@ -91,20 +91,20 @@ public abstract class CompoundTagLoadSizingMixin {
                 overflow.put(k1, v1);
                 overflow.put(k2, v2);
                 overflow.put(k3, v3);
-                byePregen$put(overflow, name, tag, accounter);
+                byepregen$put(overflow, name, tag, accounter);
             }
             size++;
         }
     }
 
     @Unique
-    private static byte byePregen$readNamedTagType(DataInput input, NbtAccounter accounter) throws IOException {
+    private static byte byepregen$readNamedTagType(DataInput input, NbtAccounter accounter) throws IOException {
         accounter.accountBytes(TAG_TYPE_BYTES);
         return input.readByte();
     }
 
     @Unique
-    private static boolean byePregen$isUniqueInlineName(int size, String name, String k0, String k1, String k2) {
+    private static boolean byepregen$isUniqueInlineName(int size, String name, String k0, String k1, String k2) {
         return size == 0
                 || !name.equals(k0)
                 && (size == 1 || !name.equals(k1))
@@ -112,7 +112,7 @@ public abstract class CompoundTagLoadSizingMixin {
     }
 
     @Unique
-    private static void byePregen$put(Map<String, Tag> tags, String name, Tag tag, NbtAccounter accounter) {
+    private static void byepregen$put(Map<String, Tag> tags, String name, Tag tag, NbtAccounter accounter) {
         if (tags.put(name, tag) == null) {
             accounter.accountBytes(UNIQUE_ENTRY_BYTES);
         }
