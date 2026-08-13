@@ -1,4 +1,4 @@
-package com.moepus.byepregen.compat;
+package com.moepus.byepregen.integration.neoforge;
 
 import net.neoforged.bus.EventBus;
 import net.neoforged.bus.ListenerList;
