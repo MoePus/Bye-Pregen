@@ -63,6 +63,12 @@ sourceSets {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
+    benchmark {
+        java.setSrcDirs(['src/benchmark/java'])
+        resources.setSrcDirs(['src/benchmark/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
     worldgenHarness {
         java.setSrcDirs(['src/worldgenHarness/java'])
         resources.setSrcDirs(['src/worldgenHarness/resources'])
@@ -72,6 +78,8 @@ sourceSets {
 }
 
 configurations {
+    benchmarkCompileOnly.extendsFrom compileOnly
+    benchmarkAnnotationProcessor.extendsFrom annotationProcessor
     surfaceTestCompileOnly.extendsFrom compileOnly
     surfaceTestAnnotationProcessor.extendsFrom annotationProcessor
     worldgenHarnessCompileOnly.extendsFrom compileOnly
@@ -195,8 +203,8 @@ tasks.register('compareSurfaceWorlds', JavaExec) {
 tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
     group = 'verification'
     description = 'Microbenchmarks flat-palette certificate hit and miss paths.'
-    dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
+    dependsOn(sourceSets.benchmark.classesTaskName)
+    classpath = sourceSets.benchmark.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheBenchmark')
     systemProperty(
             'byepregen.surfaceBiomeCacheBenchmarkMode',
