@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.surface.biome;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Local;
-import com.moepus.byepregen.worldgen.SurfaceBiomeManager;
+import com.moepus.byepregen.worldgen.biome.SurfaceBiomeManager;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.RandomState;

@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.worldgen.SurfaceBiomeManager;
+import com.moepus.byepregen.worldgen.biome.SurfaceBiomeManager;
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 import java.util.Locale;

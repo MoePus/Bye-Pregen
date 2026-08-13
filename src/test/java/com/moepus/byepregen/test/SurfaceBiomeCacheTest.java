@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.worldgen.SurfaceBiomeManager;
+import com.moepus.byepregen.worldgen.biome.SurfaceBiomeManager;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.core.BlockPos;

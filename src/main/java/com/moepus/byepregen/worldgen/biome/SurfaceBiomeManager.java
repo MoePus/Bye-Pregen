@@ -1,4 +1,4 @@
-package com.moepus.byepregen.worldgen;
+package com.moepus.byepregen.worldgen.biome;
 
 import com.moepus.byepregen.jfr.ByepregenJfrEvents;
 import com.moepus.byepregen.mixin.accessor.surface.BiomeManagerAccessor;
