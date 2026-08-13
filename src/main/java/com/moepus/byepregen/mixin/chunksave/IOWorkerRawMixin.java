@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(value = IOWorker.class, remap = false)
 public abstract class IOWorkerRawMixin implements RawIoWorker {
     @Unique
-    private static final String BYEPREGEN_C2ME_STORAGE_INTERFACE =
+    private static final String byepregen$C2ME_STORAGE_INTERFACE =
             "com.ishland.c2me.rewrites.chunkio.common.C2MEStorageVanillaInterface";
 
     @Shadow
@@ -50,7 +50,7 @@ public abstract class IOWorkerRawMixin implements RawIoWorker {
 
     @Unique
     private boolean byepregen$isC2MEStorageInterface() {
-        return BYEPREGEN_C2ME_STORAGE_INTERFACE.equals(((Object) this).getClass().getName());
+        return byepregen$C2ME_STORAGE_INTERFACE.equals(((Object) this).getClass().getName());
     }
 
     @Unique
