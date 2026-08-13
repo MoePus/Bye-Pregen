@@ -25,6 +25,55 @@ def arenaPaletteRoot = file('run/arena-palette-differential')
 def arenaPaletteResult = file("${arenaPaletteRoot}/arena-palette.result")
 def chunkNbtParityRoot = file('run/chunk-nbt-parity')
 def chunkNbtParityResult = file("${chunkNbtParityRoot}/chunk-nbt-parity.result")
+def fastTickRuntimeRoot = file('run/fast-tick-runtime')
+def fastTickRuntimeResult = file("${fastTickRuntimeRoot}/fast-tick-runtime.result")
+def fastTickExpectedConflict = [
+        'c2me-opts-allocs.mixins.json:predicates.mixinoffsetpredicate',
+        'com.moepus.byepregen.mixin.feature.predicate.statetestingpredicatemixin',
+]
+def validateFastTickRuntime = { File root, File result ->
+    if (!result.isFile()) {
+        throw new GradleException("Fast tick runtime produced no result: ${result}")
+    }
+    String outcome = result.getText('UTF-8')
+    def requiredResultParts = [
+            'PASS\n', 'c2me=true', 'lithium=true',
+            'chunkTickMixin=true', 'weatherMixin=true', 'radius=16',
+    ]
+    if (!requiredResultParts.every { outcome.contains(it) }) {
+        throw new GradleException("Fast tick runtime failed:\n${outcome}")
+    }
+
+    File log = file("${root}/logs/latest.log")
+    if (!log.isFile()) {
+        throw new GradleException("Fast tick runtime produced no latest.log: ${log}")
+    }
+    def logLines = log.readLines('UTF-8')
+    def expectedConflicts = logLines.findAll { line ->
+        String lower = line.toLowerCase(Locale.ROOT)
+        fastTickExpectedConflict.every { lower.contains(it) }
+    }
+    if (expectedConflicts.size() != 1) {
+        throw new GradleException("Fast tick runtime expected exactly one known overwrite conflict, found "
+                + expectedConflicts.size())
+    }
+    def failures = logLines.findAll { line ->
+        String lower = line.toLowerCase(Locale.ROOT)
+        boolean byepregenLine = lower.contains('byepregen') || lower.contains('bye pregen')
+        boolean failureMarker = [
+                'mixin apply', 'target', 'not found', 'failed injection', 'critical injection',
+                'invalid mixin', 'error loading class', 'unregistered mixin', 'gate drift',
+                'skipped overwrite', 'overwrite conflict', 'byepregen_fast_tick_runtime_fail',
+        ].any { lower.contains(it) }
+        boolean expectedConflict = fastTickExpectedConflict.every { lower.contains(it) }
+        byepregenLine && failureMarker && !expectedConflict
+    }
+    if (!failures.isEmpty()) {
+        throw new GradleException("Fast tick runtime log contains ByePregen mixin failures:\n"
+                + failures.join('\n'))
+    }
+    logger.lifecycle("Fast tick runtime passed:\n${outcome.trim()}")
+}
 def defaultWorldGenLabel = "gc${worldGenConfig.gcFree}" +
         "-scalar${worldGenConfig.surfaceScalar}" +
         "-cache${worldGenConfig.surfaceBiomeCache}" +
@@ -59,6 +108,13 @@ neoForge {
                     mode: 'chunk_nbt_parity',
             ])
             systemProperty 'byepregen.chunkNbtParityResult', chunkNbtParityResult.absolutePath
+        }
+        fastTickRuntime {
+            byepregenConfigureWorldgenRun(delegate, [
+                    dir   : fastTickRuntimeRoot,
+                    radius: '16',
+            ])
+            systemProperty 'byepregen.fastTickRuntimeResult', fastTickRuntimeResult.absolutePath
         }
         testWorldGen {
             byepregenConfigureWorldgenRun(delegate, [
@@ -139,6 +195,33 @@ tasks.register('testChunkNbtParity') {
     group = 'verification'
     description = 'Checks full chunk NBT parity and raw-save compression round trips.'
     dependsOn('runChunkNbtParity')
+}
+
+tasks.matching { it.name == 'runFastTickRuntime' }.configureEach {
+    group = 'verification'
+    description = 'Runs radius-16 worldgen with fast tick and weather mixins under C2ME and Lithium.'
+    notCompatibleWithConfigurationCache('Validates a result produced by a disposable test server')
+    doFirst {
+        delete(fastTickRuntimeResult)
+        byepregenPrepareWorldgenRunDir([
+                dir         : fastTickRuntimeRoot,
+                arenaPalette: 'true',
+                yaLight     : 'false',
+                gcFree      : 'false',
+                fastTick    : 'true',
+                seed        : 'byepregen-fast-tick-runtime',
+                clearWorld  : true,
+        ])
+    }
+    doLast {
+        validateFastTickRuntime(fastTickRuntimeRoot, fastTickRuntimeResult)
+    }
+}
+
+tasks.register('testFastTickRuntime') {
+    group = 'verification'
+    description = 'Verifies fast tick and weather mixins in the current C2ME/Lithium runtime.'
+    dependsOn('runFastTickRuntime')
 }
 
 tasks.matching { it.name == 'runTestWorldGen' }.configureEach {

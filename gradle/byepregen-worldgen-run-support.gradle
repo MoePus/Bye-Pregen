@@ -71,6 +71,7 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
             byepregenConfig: [
                     debugDisableFeatures          : (options.noFeatures ?: 'false').toBoolean(),
                     enablePlacedFeatureMixin      : (options.enablePlacedFeatureMixin ?: 'false').toBoolean(),
+                    enableFastTickChunks          : (options.fastTick ?: 'false').toBoolean(),
                     enableArenaPalette            : arenaPalette.toBoolean(),
                     enableServerRuntimeArenaPalette: serverRuntimeArenaPalette.toBoolean(),
                     enableYALightEngine           : (options.yaLight ?: 'false').toBoolean(),

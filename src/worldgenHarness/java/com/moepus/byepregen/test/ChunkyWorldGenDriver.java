@@ -107,6 +107,10 @@ final class ChunkyWorldGenDriver {
 
     private static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
+        if (!FastTickRuntimeProbe.verifyBeforeWorldgen()) {
+            failAndStop(server, "Fast tick runtime probe failed before worldgen");
+            return;
+        }
         if ("relight".equals(MODE)) {
             relightExistingChunks(server);
             return;
@@ -730,6 +734,10 @@ final class ChunkyWorldGenDriver {
     private static void onGenerationComplete(MinecraftServer server, GenerationCompleteEvent event) {
         if (!WORLD.equals(event.world())) {
             LOGGER.warn("Chunky generation completed for {}, expected {}; stopping test server anyway", event.world(), WORLD);
+        }
+        if (!FastTickRuntimeProbe.completeAfterWorldgen()) {
+            failAndStop(server, "Fast tick runtime probe failed after worldgen");
+            return;
         }
         if (!STOPPING.compareAndSet(false, true)) {
             return;

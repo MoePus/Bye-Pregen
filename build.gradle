@@ -133,8 +133,8 @@ apply from: 'gradle/byepregen-unit-verification.gradle'
 
 def runtimeCheck = tasks.register('runtimeCheck') {
     group = 'verification'
-    description = 'Runs packaged Surface linkage, opaque runtime, and radius-16 worldgen smoke checks.'
-    dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen')
+    description = 'Runs packaged Surface, fast tick, and radius-16 worldgen smoke checks.'
+    dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen', 'testFastTickRuntime')
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
