@@ -1,1 +1,1 @@
-com.moepus.byepregen.compat.FastTickChunksMixinAdjuster
+com.moepus.byepregen.integration.mixin.FastTickChunksMixinAdjuster

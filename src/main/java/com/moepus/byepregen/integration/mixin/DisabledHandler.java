@@ -1,4 +1,4 @@
-package com.moepus.byepregen.compat;
+package com.moepus.byepregen.integration.mixin;
 
 import com.bawnorton.mixinsquared.adjuster.tools.AdjustableAnnotationNode;
 import org.objectweb.asm.tree.MethodNode;
