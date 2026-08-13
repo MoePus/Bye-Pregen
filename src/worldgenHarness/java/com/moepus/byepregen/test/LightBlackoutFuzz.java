@@ -1,5 +1,5 @@
 package com.moepus.byepregen.test;
-import com.moepus.byepregen.mixin.ChunkMapAccessor;
+import com.moepus.byepregen.mixin.accessor.server.chunk.ChunkMapUnloadAccessor;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
@@ -151,7 +151,7 @@ final class LightBlackoutFuzz {
 
     private boolean roundTripChunksUnloaded() {
         var chunkSource = this.level.getChunkSource();
-        var pending = ((ChunkMapAccessor)chunkSource.chunkMap).byepregen$getPendingUnloads();
+        var pending = ((ChunkMapUnloadAccessor)chunkSource.chunkMap).byepregen$getPendingUnloads();
         for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
             if (chunkSource.getChunkNow(chunk.x, chunk.z) != null || pending.containsKey(chunk.toLong())) {
                 return false;

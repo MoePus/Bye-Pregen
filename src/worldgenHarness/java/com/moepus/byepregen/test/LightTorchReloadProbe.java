@@ -1,6 +1,6 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.mixin.ChunkMapAccessor;
+import com.moepus.byepregen.mixin.accessor.server.chunk.ChunkMapUnloadAccessor;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -63,7 +63,7 @@ final class LightTorchReloadProbe {
     }
 
     boolean isUnloaded() {
-        var pending = ((ChunkMapAccessor)this.level.getChunkSource().chunkMap).byepregen$getPendingUnloads();
+        var pending = ((ChunkMapUnloadAccessor)this.level.getChunkSource().chunkMap).byepregen$getPendingUnloads();
         for (ChunkPos pos : this.unloading) {
             if (this.level.getChunkSource().getChunkNow(pos.x, pos.z) != null
                     || pending.containsKey(pos.toLong())) {

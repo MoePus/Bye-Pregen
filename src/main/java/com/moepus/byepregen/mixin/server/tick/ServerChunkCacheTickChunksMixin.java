@@ -2,7 +2,7 @@ package com.moepus.byepregen.mixin.server.tick;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.compat.C2MECompat;
-import com.moepus.byepregen.mixin.ChunkMapAccessor;
+import com.moepus.byepregen.mixin.accessor.server.tick.ChunkMapTickAccessor;
 import com.moepus.byepregen.optimization.FastNaturalSpawner;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import it.unimi.dsi.fastutil.objects.ObjectCollection;
@@ -194,7 +194,7 @@ public abstract class ServerChunkCacheTickChunksMixin {
         int activeTickingChunkCount = 0;
         boolean c2meInstalled = C2MECompat.isC2MEInstalled();
         ObjectCollection<ChunkHolder> visibleChunks =
-                ((ChunkMapAccessor) this.chunkMap).byepregen$getVisibleChunkMap().values();
+                ((ChunkMapTickAccessor) this.chunkMap).byepregen$getVisibleChunkMap().values();
         for (ChunkHolder chunkHolder : visibleChunks) {
             LevelChunk levelChunk = chunkHolder.getTickingChunk();
             LevelChunk broadcastChunk = levelChunk;
@@ -232,7 +232,7 @@ public abstract class ServerChunkCacheTickChunksMixin {
     private boolean byepregen$shouldSpawnAndTick(LevelChunk chunk) {
         ChunkPos chunkPos = chunk.getPos();
         return this.level.isNaturalSpawningAllowed(chunkPos)
-                && ((ChunkMapAccessor) this.chunkMap).byepregen$anyPlayerCloseEnoughForSpawning(chunkPos)
+                && ((ChunkMapTickAccessor) this.chunkMap).byepregen$anyPlayerCloseEnoughForSpawning(chunkPos)
                 || this.distanceManager.shouldForceTicks(chunkPos.toLong());
     }
 

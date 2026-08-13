@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.yalight;
 
-import com.moepus.byepregen.mixin.ChunkMapAccessor;
+import com.moepus.byepregen.mixin.accessor.yalight.ChunkMapLightAccessor;
 import com.moepus.byepregen.yalight.YALightEngineHolder;
 import com.moepus.byepregen.yalight.YALightEngine;
 import com.moepus.byepregen.yalight.YAImmediateChunkAccess;
@@ -74,7 +74,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
 
     @Unique
     private ServerLevel byepregen$level() {
-        return ((ChunkMapAccessor)this.chunkMap).byepregen$getLevel();
+        return ((ChunkMapLightAccessor)this.chunkMap).byepregen$getLevel();
     }
 
     @Unique
@@ -89,7 +89,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Unique
     private void byepregen$releaseTaskTicket(long chunkKey) {
         ServerLevel level = this.byepregen$level();
-        ((ChunkMapAccessor)this.chunkMap).byepregen$getMainThreadExecutor().execute(() -> {
+        ((ChunkMapLightAccessor)this.chunkMap).byepregen$getMainThreadExecutor().execute(() -> {
             int references = this.byepregen$ticketReferences.get(chunkKey);
             if (references <= 1) {
                 this.byepregen$ticketReferences.remove(chunkKey);
@@ -131,7 +131,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             this.byepregen$enqueueTask(chunkKey, type, task, false);
             return;
         }
-        var mainThreadExecutor = ((ChunkMapAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
+        var mainThreadExecutor = ((ChunkMapLightAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
         if (!mainThreadExecutor.isSameThread()) {
             mainThreadExecutor.execute(() -> this.byepregen$enqueueRuntimeTask(chunkX, chunkZ, type, task));
             return;
@@ -341,7 +341,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Overwrite
     public CompletableFuture<?> waitForPendingTasks(int x, int z) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        var mainThreadExecutor = ((ChunkMapAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
+        var mainThreadExecutor = ((ChunkMapLightAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
         this.byepregen$enqueueTask(
                 ChunkPos.asLong(x, z),
                 ThreadedLevelLightEngine.TaskType.POST_UPDATE,
