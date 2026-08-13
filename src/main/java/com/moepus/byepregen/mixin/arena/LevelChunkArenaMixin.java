@@ -4,7 +4,7 @@ import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaSectionMaterializer;
+import com.moepus.byepregen.palette.arena.materialize.ArenaSectionMaterializer;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.LevelChunk;

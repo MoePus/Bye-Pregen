@@ -1,4 +1,4 @@
-package com.moepus.byepregen.PaletteContainer.ArenaPelette;
+package com.moepus.byepregen.palette.arena.materialize;
 
 import static com.moepus.byepregen.palette.arena.Layout.*;
 
