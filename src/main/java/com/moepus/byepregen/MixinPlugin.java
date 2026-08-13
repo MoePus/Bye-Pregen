@@ -191,10 +191,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         return true;
     }
 
-    public static boolean isModExist(String modId) {
-        return ModEnvironment.isModLoaded(modId);
-    }
-
     @Override
     public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
     }
