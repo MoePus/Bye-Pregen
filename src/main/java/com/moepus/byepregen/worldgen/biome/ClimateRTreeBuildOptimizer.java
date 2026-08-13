@@ -1,4 +1,4 @@
-package com.moepus.byepregen.optimization;
+package com.moepus.byepregen.worldgen.biome;
 
 import java.util.ArrayList;
 import java.util.Arrays;

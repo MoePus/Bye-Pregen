@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.climate;
 
 import com.moepus.byepregen.worldgen.biome.FastClimateRTree;
-import com.moepus.byepregen.optimization.ClimateRTreeSearchContext;
+import com.moepus.byepregen.worldgen.biome.ClimateRTreeSearchContext;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.biome.Climate;
 import org.mixinlite.injector.InjectLite;

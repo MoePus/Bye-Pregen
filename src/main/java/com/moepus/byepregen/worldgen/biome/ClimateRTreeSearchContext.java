@@ -1,4 +1,4 @@
-package com.moepus.byepregen.optimization;
+package com.moepus.byepregen.worldgen.biome;
 
 import net.minecraft.world.level.biome.Climate;
 import org.jetbrains.annotations.Nullable;
