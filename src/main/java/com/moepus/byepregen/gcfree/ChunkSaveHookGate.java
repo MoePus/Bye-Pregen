@@ -1,9 +1,9 @@
 package com.moepus.byepregen.gcfree;
 
 import com.mojang.logging.LogUtils;
-import com.moepus.byepregen.MixinPlugin;
 import com.moepus.byepregen.compat.ArchitecturyChunkSaveCompat;
 import com.moepus.byepregen.compat.NeoForgeEventBusCompat;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.List;
 import net.neoforged.bus.ListenerList;
 import net.neoforged.bus.api.EventListener;
@@ -32,7 +32,7 @@ public final class ChunkSaveHookGate {
     }
 
     private static boolean hasArchitecturySaveDataListeners() {
-        if (!MixinPlugin.hasClass(ARCHITECTURY_CHUNK_EVENT)) {
+        if (!ModEnvironment.isClassAvailable(ARCHITECTURY_CHUNK_EVENT)) {
             return false;
         }
         try {

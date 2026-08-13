@@ -1,6 +1,6 @@
 package com.moepus.byepregen.gcfree;
 
-import com.moepus.byepregen.ConfigParser;
+import com.moepus.byepregen.config.ConfigParser;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;

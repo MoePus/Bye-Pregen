@@ -1,6 +1,6 @@
 package com.moepus.byepregen.compat;
 
-import com.moepus.byepregen.MixinPlugin;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkMap;
@@ -12,7 +12,7 @@ import java.util.concurrent.CompletableFuture;
 
 public final class C2MECompat {
     private static final String C2ME_MOD_ID = "c2me";
-    private static final boolean C2ME_INSTALLED = MixinPlugin.isModExist(C2ME_MOD_ID);
+    private static final boolean C2ME_INSTALLED = ModEnvironment.isModLoaded(C2ME_MOD_ID);
 
     private C2MECompat() {
     }

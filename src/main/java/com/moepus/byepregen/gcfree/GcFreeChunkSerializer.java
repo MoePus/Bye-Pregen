@@ -7,8 +7,8 @@ package com.moepus.byepregen.gcfree;
  * Copyright (c) 2021-2024 ishland
  */
 
-import com.moepus.byepregen.MixinPlugin;
 import com.moepus.byepregen.compat.C2MEAsyncSerializationCompat;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -19,7 +19,7 @@ public final class GcFreeChunkSerializer {
     private static final String C2ME_ASYNC_SERIALIZATION_MANAGER =
             "com.ishland.c2me.rewrites.chunksystem.common.async_chunkio.AsyncSerializationManager";
     private static final boolean HAS_C2ME_ASYNC_SERIALIZATION_MANAGER =
-            MixinPlugin.hasClass(C2ME_ASYNC_SERIALIZATION_MANAGER);
+            ModEnvironment.isClassAvailable(C2ME_ASYNC_SERIALIZATION_MANAGER);
 
     private GcFreeChunkSerializer() {
     }

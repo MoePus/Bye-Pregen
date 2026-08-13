@@ -2,6 +2,7 @@ package com.moepus.byepregen;
 
 import com.moepus.byepregen.bootstrap.TestWorldGenBootstrap;
 import com.moepus.byepregen.compat.GcFreeCompat;
+import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.yalight.YABlockStateLightClass;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;

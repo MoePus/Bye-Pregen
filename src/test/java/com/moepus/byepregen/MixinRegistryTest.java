@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.moepus.byepregen.config.Config;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;

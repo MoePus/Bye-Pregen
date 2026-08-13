@@ -1,4 +1,4 @@
-package com.moepus.byepregen;
+package com.moepus.byepregen.config;
 
 public final class Config {
     // Skips applyBiomeDecoration, including placed features and structure-piece placement.

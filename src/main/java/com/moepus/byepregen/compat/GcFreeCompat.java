@@ -3,9 +3,9 @@ package com.moepus.byepregen.compat;
 import com.ibm.asyncutil.util.Either;
 import com.ishland.c2me.base.common.registry.SerializerAccess;
 import com.mojang.logging.LogUtils;
-import com.moepus.byepregen.ConfigParser;
-import com.moepus.byepregen.MixinPlugin;
+import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import org.slf4j.Logger;
 
 public final class GcFreeCompat {
@@ -20,7 +20,7 @@ public final class GcFreeCompat {
         if (!ConfigParser.getConfig().enableGcFreeWorldgenSave) {
             return;
         }
-        if (MixinPlugin.hasClass(C2ME_SERIALIZER_ACCESS)) {
+        if (ModEnvironment.isClassAvailable(C2ME_SERIALIZER_ACCESS)) {
             C2ME.register();
         }
     }

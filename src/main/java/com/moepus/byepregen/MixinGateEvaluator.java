@@ -1,5 +1,7 @@
 package com.moepus.byepregen;
 
+import com.moepus.byepregen.config.Config;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.List;
@@ -30,8 +32,8 @@ final class MixinGateEvaluator {
     static MixinGateEvaluator createDefault() {
         return new MixinGateEvaluator(
                 className -> MixinService.getService().getBytecodeProvider().getClassNode(className),
-                MixinPlugin::isModExist,
-                MixinPlugin::hasClass
+                ModEnvironment::isModLoaded,
+                ModEnvironment::isClassAvailable
         );
     }
 

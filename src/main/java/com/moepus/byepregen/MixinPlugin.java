@@ -1,18 +1,18 @@
 package com.moepus.byepregen;
 
+import com.moepus.byepregen.config.Config;
+import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import net.neoforged.fml.loading.LoadingModList;
-import net.neoforged.fml.loading.moddiscovery.ModFileInfo;
 import org.objectweb.asm.tree.ClassNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
-import org.spongepowered.asm.service.MixinService;
 
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Plugin");
@@ -110,7 +110,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         Config config = ConfigParser.getConfig();
-        boolean featureEnabled = this.passesFeatureGate(mixinClassName, config, MixinPlugin::hasClass);
+        boolean featureEnabled = this.passesFeatureGate(
+                mixinClassName, config, ModEnvironment::isClassAvailable);
         boolean annotationEnabled = MIXIN_GATE_EVALUATOR.shouldApply(targetClassName, mixinClassName, config);
         return featureEnabled && annotationEnabled;
     }
@@ -178,7 +179,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         if (!config.enableArenaPalette) {
             return false;
         }
-        if (isModExist("confluence")) {
+        if (ModEnvironment.isModLoaded("confluence")) {
             return false;
         }
         if (LEVEL_CHUNK_ARENA_MIXIN.equals(mixinClassName)) {
@@ -190,32 +191,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         return true;
     }
 
-    private static ModFileInfo getModFile(String modId) {
-        LoadingModList modList = LoadingModList.get();
-        ModFileInfo modFile = modList.getModFileById(modId);
-        if (modFile != null) {
-            return modFile;
-        }
-
-        return modList.getPlugins().stream()
-                .filter(ModFileInfo.class::isInstance)
-                .map(ModFileInfo.class::cast)
-                .filter(file -> file.getMods().stream().anyMatch(mod -> mod.getModId().equals(modId)))
-                .findFirst()
-                .orElse(null);
-    }
-
     public static boolean isModExist(String modId) {
-        return getModFile(modId) != null;
-    }
-
-    public static boolean hasClass(String className) {
-        try {
-            MixinService.getService().getBytecodeProvider().getClassNode(className);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return ModEnvironment.isModLoaded(modId);
     }
 
     @Override

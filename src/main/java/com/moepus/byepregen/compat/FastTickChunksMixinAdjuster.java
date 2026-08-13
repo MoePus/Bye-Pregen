@@ -2,7 +2,7 @@ package com.moepus.byepregen.compat;
 
 import com.bawnorton.mixinsquared.adjuster.tools.AdjustableAnnotationNode;
 import com.bawnorton.mixinsquared.api.MixinAnnotationAdjuster;
-import com.moepus.byepregen.ConfigParser;
+import com.moepus.byepregen.config.ConfigParser;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.util.List;

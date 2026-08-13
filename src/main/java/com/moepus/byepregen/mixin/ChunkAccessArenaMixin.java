@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin;
 
-import com.moepus.byepregen.Config;
-import com.moepus.byepregen.ConfigParser;
+import com.moepus.byepregen.config.Config;
+import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 
 import javax.annotation.Nullable;
