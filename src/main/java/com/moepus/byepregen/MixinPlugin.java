@@ -38,23 +38,27 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
     private static final String AQUIFER_FLUID_STATUS_ACCESSOR =
-            MIXIN_PACKAGE + "AquiferFluidStatusAccessor";
-    private static final String CHUNK_ACCESS_ARENA_MIXIN = MIXIN_PACKAGE + "ChunkAccessArenaMixin";
+            MIXIN_PACKAGE + "accessor.arena.AquiferFluidStatusAccessor";
+    private static final String CHUNK_ACCESS_ARENA_MIXIN =
+            MIXIN_PACKAGE + "arena.ChunkAccessArenaMixin";
     private static final String CHUNK_SERIALIZER_ARENA_READ_MIXIN =
-            MIXIN_PACKAGE + "ChunkSerializerArenaReadMixin";
-    private static final String LEVEL_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "LevelChunkArenaMixin";
-    private static final String NOISE_CHUNK_ACCESSOR = MIXIN_PACKAGE + "NoiseChunkAccessor";
+            MIXIN_PACKAGE + "arena.ChunkSerializerArenaReadMixin";
+    private static final String LEVEL_CHUNK_ARENA_MIXIN =
+            MIXIN_PACKAGE + "arena.LevelChunkArenaMixin";
+    private static final String NOISE_CHUNK_ACCESSOR =
+            MIXIN_PACKAGE + "accessor.arena.NoiseChunkAccessor";
     private static final String NOISE_CHUNK_AQUIFER_SURFACE_MIXIN =
-            MIXIN_PACKAGE + "NoiseChunkAquiferSurfaceMixin";
-    private static final String NOISE_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "NoiseChunkArenaMixin";
+            MIXIN_PACKAGE + "arena.NoiseChunkAquiferSurfaceMixin";
+    private static final String NOISE_CHUNK_ARENA_MIXIN =
+            MIXIN_PACKAGE + "arena.NoiseChunkArenaMixin";
     private static final String NOISE_INTERPOLATOR_ARENA_MIXIN =
-            MIXIN_PACKAGE + "NoiseInterpolatorArenaMixin";
+            MIXIN_PACKAGE + "arena.NoiseInterpolatorArenaMixin";
     private static final String NOISE_BASED_AQUIFER_SURFACE_MIXIN =
-            MIXIN_PACKAGE + "NoiseBasedAquiferSurfaceMixin";
+            MIXIN_PACKAGE + "arena.NoiseBasedAquiferSurfaceMixin";
     private static final String NOISE_GENERATOR_ARENA_MIXIN =
-            MIXIN_PACKAGE + "NoiseBasedChunkGeneratorArenaMixin";
+            MIXIN_PACKAGE + "arena.NoiseBasedChunkGeneratorArenaMixin";
     private static final String PROTO_CHUNK_ARENA_HEIGHTMAP_MIXIN =
-            MIXIN_PACKAGE + "ProtoChunkArenaHeightmapMixin";
+            MIXIN_PACKAGE + "arena.ProtoChunkArenaHeightmapMixin";
     private static final String FASTNOISE_OCL_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =

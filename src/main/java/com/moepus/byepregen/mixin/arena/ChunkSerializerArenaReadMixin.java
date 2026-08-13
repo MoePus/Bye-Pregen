@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.arena;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

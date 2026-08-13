@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.arena;
 
 import com.moepus.byepregen.worldgen.AquiferSurfaceShortcutAccess;
 import net.minecraft.world.level.levelgen.NoiseChunk;

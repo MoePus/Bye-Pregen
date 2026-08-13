@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.accessor.arena;
 
 import net.minecraft.world.level.levelgen.Aquifer;
 import org.spongepowered.asm.mixin.Mixin;

@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.arena;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
 import com.moepus.byepregen.worldgen.ArenaNoiseChunkAccess;

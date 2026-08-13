@@ -1,6 +1,7 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.arena;
 
 import com.llamalad7.mixinextras.sugar.Local;
+import com.moepus.byepregen.mixin.accessor.arena.AquiferFluidStatusAccessor;
 import com.moepus.byepregen.worldgen.ArenaNoiseFiller;
 import java.util.function.Supplier;
 import net.minecraft.SharedConstants;

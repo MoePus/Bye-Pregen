@@ -3,7 +3,7 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.SerializationScratch;
-import com.moepus.byepregen.mixin.LevelChunkSectionAccessor;
+import com.moepus.byepregen.mixin.accessor.arena.LevelChunkSectionAccessor;
 import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;

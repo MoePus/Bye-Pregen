@@ -2,7 +2,7 @@ package com.moepus.byepregen.worldgen;
 
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout;
-import com.moepus.byepregen.mixin.NoiseChunkAccessor;
+import com.moepus.byepregen.mixin.accessor.arena.NoiseChunkAccessor;
 
 import java.util.Arrays;
 import java.util.Set;
