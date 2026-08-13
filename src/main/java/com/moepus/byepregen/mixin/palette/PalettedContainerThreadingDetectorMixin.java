@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.palette;
 
 import net.minecraft.util.ThreadingDetector;
 import net.minecraft.world.level.chunk.PalettedContainer;

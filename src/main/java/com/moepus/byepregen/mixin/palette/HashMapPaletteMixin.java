@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin;
+package com.moepus.byepregen.mixin.palette;
 
 import com.moepus.byepregen.PaletteContainer.PaletteRawIdAccess;
 import net.minecraft.core.IdMap;
