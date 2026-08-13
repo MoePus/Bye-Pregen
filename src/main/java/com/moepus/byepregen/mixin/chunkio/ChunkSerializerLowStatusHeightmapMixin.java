@@ -1,4 +1,4 @@
-package com.moepus.byepregen.mixin.chunksave;
+package com.moepus.byepregen.mixin.chunkio;
 
 import java.util.Set;
 import net.minecraft.world.level.chunk.ChunkAccess;

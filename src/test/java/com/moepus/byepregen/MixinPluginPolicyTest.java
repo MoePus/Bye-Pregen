@@ -13,9 +13,9 @@ final class MixinPluginPolicyTest {
     private static final String LEVEL_CHUNK_ARENA = MIXIN_PREFIX + "arena.LevelChunkArenaMixin";
     private static final String VOXY_ARENA =
             MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin";
-    private static final String RAW_CHUNK_SAVE = MIXIN_PREFIX + "chunksave.ChunkStorageRawMixin";
+    private static final String RAW_CHUNK_SAVE = MIXIN_PREFIX + "chunkio.ChunkStorageRawMixin";
     private static final String ORDINARY_CHUNK_SAVE =
-            MIXIN_PREFIX + "chunksave.ChunkSerializerWorldgenStateMixin";
+            MIXIN_PREFIX + "chunkio.ChunkSerializerWorldgenStateMixin";
 
     @Test
     void noneFeatureIsIndependentOfPackageName() {

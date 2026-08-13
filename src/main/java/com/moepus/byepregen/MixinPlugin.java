@@ -35,9 +35,9 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "arena.compat.voxy.VoxyWorldConversionFactoryMixin";
     private static final Set<String> RAW_GC_FREE_MIXINS = Set.of(
-            MIXIN_PACKAGE + "chunksave.ChunkMapGcFreeSaveMixin",
-            MIXIN_PACKAGE + "chunksave.ChunkStorageRawMixin",
-            MIXIN_PACKAGE + "chunksave.IOWorkerRawMixin",
+            MIXIN_PACKAGE + "chunkio.ChunkMapGcFreeSaveMixin",
+            MIXIN_PACKAGE + "chunkio.ChunkStorageRawMixin",
+            MIXIN_PACKAGE + "chunkio.IOWorkerRawMixin",
             CHUNK_STORAGE_ACCESSOR,
             IO_WORKER_PENDING_STORE_ACCESSOR,
             REGION_FILE_STORAGE_ACCESSOR
