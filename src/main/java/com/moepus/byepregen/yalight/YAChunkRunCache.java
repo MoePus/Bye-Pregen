@@ -1,6 +1,6 @@
 package com.moepus.byepregen.yalight;
 
-import com.moepus.byepregen.PaletteContainer.BlockStateRawIdAccess;
+import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;

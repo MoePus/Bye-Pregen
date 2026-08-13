@@ -2,7 +2,7 @@ package com.moepus.byepregen.PaletteContainer.ArenaPelette;
 
 import static com.moepus.byepregen.PaletteContainer.ArenaPelette.Layout.*;
 
-import com.moepus.byepregen.PaletteContainer.BlockStateRawIdAccess;
+import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.StateImporter;
 import com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs.NetworkWriter;
 import com.moepus.byepregen.UnsafeIntArrayAccess;

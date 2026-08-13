@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.palette.compat.lithium;
 
 import com.moepus.byepregen.MixinGate;
-import com.moepus.byepregen.PaletteContainer.PaletteRawIdAccess;
+import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
 import net.minecraft.core.IdMap;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;

@@ -1,6 +1,6 @@
 package com.moepus.byepregen.mixin.palette;
 
-import com.moepus.byepregen.PaletteContainer.PaletteRawIdAccess;
+import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
 import net.minecraft.core.IdMap;
 import net.minecraft.util.CrudeIncrementalIntIdentityHashBiMap;
 import net.minecraft.world.level.chunk.HashMapPalette;
