@@ -2,7 +2,6 @@ package com.moepus.byepregen.yalight.storage;
 
 import com.moepus.byepregen.UnsafeIntArrayAccess;
 import net.minecraft.world.level.chunk.DataLayer;
-import org.spongepowered.asm.mixin.Unique;
 
 import java.util.Arrays;
 
@@ -12,7 +11,6 @@ public final class YANibbleArray {
     public static final int SAVE_FULL = 1;
     public static final int SAVE_DATA = 2;
 
-    @Unique
     public static final byte[] FULL_LIGHT_DATA = createFullLightData();
 
     static final int STATE_NULL = 0;
@@ -260,7 +258,6 @@ public final class YANibbleArray {
         return (y & 15) << 8 | (z & 15) << 4 | (x & 15);
     }
 
-    @Unique
     private static byte[] createFullLightData() {
         byte[] data = new byte[YANibbleArray.SIZE];
         Arrays.fill(data, (byte)-1);
