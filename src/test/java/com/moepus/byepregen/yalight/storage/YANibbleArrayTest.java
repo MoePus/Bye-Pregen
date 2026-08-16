@@ -137,19 +137,30 @@ public final class YANibbleArrayTest {
 
     @Test
     void fillsOneColumnRunWithoutChangingAdjacentNibbles() {
-        YANibbleArray light = YANibbleArray.fullArray();
+        assertColumnRun(2);
+        assertColumnRun(3);
+    }
 
-        light.fillColumnRun(X, Z, 4, 9, 2);
+    private static void assertColumnRun(int localX) {
+        YANibbleArray light = YANibbleArray.fullArray();
+        int siblingX = localX ^ 1;
+
+        light.fillColumnRun(localX, Z, 4, 9, 2);
 
         for (int y = 0; y < 16; ++y) {
             int expected = y >= 4 && y <= 9 ? 2 : 15;
-            assertEquals(expected, light.getUpdating(X, y, Z), "target y=" + y);
-            assertEquals(15, light.getUpdating(X + 1, y, Z), "adjacent y=" + y);
+            assertEquals(expected, light.getUpdating(localX, y, Z),
+                    "target x=" + localX + ", y=" + y);
+            assertEquals(15, light.getUpdating(siblingX, y, Z),
+                    "sibling x=" + siblingX + ", y=" + y);
         }
-        assertEquals(15, light.getVisible(X, 4, Z));
+        assertEquals(15, light.getVisible(localX, 4, Z));
 
         light.publish();
         byte[] saveData = light.visibleDataForSave();
+        assertEquals(2, light.getVisible(localX, 4, Z));
+        assertEquals(15, light.getVisible(siblingX, 4, Z));
+        assertEquals(YANibbleArray.SAVE_DATA, light.visibleSaveKind());
         assertEquals(YANibbleArray.SIZE, saveData.length);
         assertArrayEquals(saveData, light.toVanilla().getData());
     }
