@@ -27,6 +27,14 @@ def pureJavaTestAliases = [
                 className: 'com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistryTest',
                 description: 'Checks exact and idempotent Y-independent delegate registration.',
         ],
+        testYANibbleArray: [
+                className: 'com.moepus.byepregen.yalight.storage.YANibbleArrayTest',
+                description: 'Checks YA light publication, copy-on-write snapshots, and save forms.',
+        ],
+        testYASkyOwnerTransfers: [
+                className: 'com.moepus.byepregen.yalight.sky.YASkyOwnerTransfersTest',
+                description: 'Checks YA sky owner readiness, inbox draining, and run cleanup.',
+        ],
 ]
 
 pureJavaTestAliases.each { taskName, testSpec ->
