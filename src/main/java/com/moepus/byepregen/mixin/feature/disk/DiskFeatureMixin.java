@@ -80,27 +80,40 @@ public abstract class DiskFeatureMixin extends Feature<DiskConfiguration> {
         }
 
         boolean placed = false;
+        boolean previousFirstMarked = false;
         for (int y = placement.maxY(); y >= placement.minY(); y--) {
+            boolean currentFirstMarked = false;
             placement.pos().set(x, y, z);
             cursor.beginPosition(y);
             if (DiskBlockPredicateEvaluator.test(placement.config().target(), cursor, placement.pos())) {
                 BlockState state = ((FastRuleBasedBlockStateProvider) (Object) placement.config().stateProvider())
                     .byepregen$getState(placement.random(), placement.pos(), cursor);
                 placement.level().setBlock(placement.pos(), state, 2);
-                this.byepregen$markAbove(placement.pos(), cursor, y);
+                currentFirstMarked = this.byepregen$markFirstAbove(placement.pos(), cursor, y);
+                if (currentFirstMarked && !previousFirstMarked) {
+                    this.byepregen$markSecondAbove(placement.pos(), cursor, y);
+                }
                 placed = true;
             }
+            previousFirstMarked = currentFirstMarked;
         }
         return placed;
     }
 
-    private void byepregen$markAbove(BlockPos.MutableBlockPos pos, FastDiskStateCursor cursor, int baseY) {
-        for (int offsetY = 1; offsetY <= 2; offsetY++) {
-            int y = baseY + offsetY;
-            pos.setY(y);
-            if (cursor.getState(pos.getX(), y, pos.getZ()).isAir()) {
-                return;
-            }
+    private boolean byepregen$markFirstAbove(BlockPos.MutableBlockPos pos, FastDiskStateCursor cursor, int baseY) {
+        int firstY = baseY + 1;
+        pos.setY(firstY);
+        if (cursor.getState(pos.getX(), firstY, pos.getZ()).isAir()) {
+            return false;
+        }
+        cursor.markForPostprocessing(pos);
+        return true;
+    }
+
+    private void byepregen$markSecondAbove(BlockPos.MutableBlockPos pos, FastDiskStateCursor cursor, int baseY) {
+        int secondY = baseY + 2;
+        pos.setY(secondY);
+        if (!cursor.getState(pos.getX(), secondY, pos.getZ()).isAir()) {
             cursor.markForPostprocessing(pos);
         }
     }
