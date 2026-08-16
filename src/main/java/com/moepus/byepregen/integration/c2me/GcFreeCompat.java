@@ -20,7 +20,14 @@ public final class GcFreeCompat {
         if (!ConfigParser.getConfig().enableGcFreeWorldgenSave) {
             return;
         }
-        if (ModEnvironment.isClassAvailable(C2ME_SERIALIZER_ACCESS)) {
+        boolean serializerAvailable;
+        try {
+            serializerAvailable = ModEnvironment.isClassAvailable(C2ME_SERIALIZER_ACCESS);
+        } catch (RuntimeException | LinkageError throwable) {
+            LOGGER.warn("Skipping C2ME GC-free serializer registration: class lookup failed", throwable);
+            return;
+        }
+        if (serializerAvailable) {
             C2ME.register();
         }
     }

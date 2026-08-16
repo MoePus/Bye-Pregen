@@ -102,7 +102,6 @@ tasks.matching { it.name == 'runStartupServer' }.configureEach {
                         'level-name'         : 'world',
                         'level-seed'         : 'byepregen-startup',
                         'online-mode'        : false,
-                        'server-port'        : 25570,
                         'max-tick-time'      : 0,
                         'view-distance'      : 2,
                         'simulation-distance': 2,

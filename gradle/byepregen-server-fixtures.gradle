@@ -32,8 +32,10 @@ ext.prepareDisposableServer = { Map<String, ?> options ->
     file("${directory}/tmp").mkdirs()
 
     writeUtf8File(file("${directory}/eula.txt"), 'eula=true\n')
-    if (options.serverProperties != null) {
-        String properties = (options.serverProperties as Map<String, ?>)
+    Map<String, ?> serverProperties = ['server-port': 0] +
+            ((options.serverProperties ?: [:]) as Map<String, ?>)
+    if (!serverProperties.isEmpty()) {
+        String properties = serverProperties
                 .collect { key, value -> "${key}=${value}" }
                 .join('\n')
         writeUtf8File(file("${directory}/server.properties"), properties + '\n')

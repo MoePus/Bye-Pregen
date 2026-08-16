@@ -121,6 +121,13 @@ def verificationClassDirectories = files(
 def verificationResourceDirectories = files(
         verificationSourceSets.collect { it.sourceSet.output.resourcesDir }.findAll { it != null }
 )
+def verificationOutputs = verificationSourceSets.collect { verification ->
+    [
+            label              : verification.label,
+            classDirectories   : verification.sourceSet.output.classesDirs.files.collect { it.absolutePath },
+            resourcesDirectory : verification.sourceSet.output.resourcesDir?.absolutePath,
+    ]
+}
 def verificationModIds = [
         'byepregen_surface_test',
         'byepregen_surface_linkage_test',
@@ -177,8 +184,9 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
                     }
                 }
             }
-            verificationSourceSets.each { verification ->
-                verification.sourceSet.output.classesDirs.files.each { classesDirectory ->
+            verificationOutputs.each { verification ->
+                verification.classDirectories.each { classesPath ->
+                    File classesDirectory = new File(classesPath)
                     if (!classesDirectory.isDirectory()) {
                         return
                     }
@@ -196,7 +204,9 @@ def verifyPackagedSurfaceJar = tasks.register('verifyPackagedSurfaceJar') {
                         }
                     }
                 }
-                File resourcesDirectory = verification.sourceSet.output.resourcesDir
+                File resourcesDirectory = verification.resourcesDirectory == null
+                        ? null
+                        : new File(verification.resourcesDirectory)
                 if (resourcesDirectory != null && resourcesDirectory.isDirectory()) {
                     resourcesDirectory.eachFileRecurse { verificationResource ->
                         if (!verificationResource.isFile()) {
@@ -247,7 +257,6 @@ def preparePackagedSurfaceLinkage = tasks.register('preparePackagedSurfaceLinkag
                         'level-name'         : 'world',
                         'level-seed'         : 'byepregen-packaged-surface-linkage',
                         'online-mode'        : false,
-                        'server-port'        : 25569,
                         'max-tick-time'      : 0,
                         'view-distance'      : 2,
                         'simulation-distance': 2,

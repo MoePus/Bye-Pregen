@@ -10,7 +10,11 @@ final class ChunkSavingNbtWriterCache {
     private ChunkSavingNbtWriterCache() {}
 
     static Lease acquire() {
-        if (!ConfigParser.getConfig().retainChunkSavingBuffer) {
+        return acquire(ConfigParser.getConfig().retainChunkSavingBuffer);
+    }
+
+    static Lease acquire(boolean retainBuffer) {
+        if (!retainBuffer) {
             return new Lease(new NbtWriter(), null);
         }
 
@@ -54,8 +58,7 @@ final class ChunkSavingNbtWriterCache {
             }
 
             this.slot.inUse = false;
-            if (!ConfigParser.getConfig().retainChunkSavingBuffer
-                    || this.writer.capacity() > MAX_RETAINED_CAPACITY) {
+            if (this.writer.capacity() > MAX_RETAINED_CAPACITY) {
                 this.writer.release();
                 this.slot.writer = null;
                 return;

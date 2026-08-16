@@ -47,10 +47,6 @@ public final class ConfigParser {
         runtimeParser().save(value);
     }
 
-    public static void setConfig(Config replacement) {
-        config = Objects.requireNonNull(replacement, "replacement");
-    }
-
     public Config load() {
         if (Files.notExists(this.path)) {
             Config defaults = new Config();

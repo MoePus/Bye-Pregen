@@ -32,10 +32,10 @@ public final class ChunkSaveHookGate {
     }
 
     private static boolean hasArchitecturySaveDataListeners() {
-        if (!ModEnvironment.isClassAvailable(ARCHITECTURY_CHUNK_EVENT)) {
-            return false;
-        }
         try {
+            if (!ModEnvironment.isClassAvailable(ARCHITECTURY_CHUNK_EVENT)) {
+                return false;
+            }
             List<String> classNames = ArchitecturyChunkSaveCompat.saveDataListenerClassNames();
             for (String className : classNames) {
                 LOGGER.warn("ByePregen raw chunk save disabled by Architectury ChunkEvent.SAVE_DATA listener: {}",

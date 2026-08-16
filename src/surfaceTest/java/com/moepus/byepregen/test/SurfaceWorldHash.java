@@ -1,5 +1,6 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.ChunkBounds;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -41,7 +42,7 @@ public final class SurfaceWorldHash {
             System.err.println("Usage: SurfaceWorldHash <world-dir> [other-world-dir]");
             System.exit(2);
         }
-        ChunkBounds bounds = ChunkBounds.fromProperties();
+        ChunkBounds bounds = ChunkBounds.fromSystemProperties("byepregen.surfaceHash");
         boolean requireCompleteBounds = Boolean.getBoolean("byepregen.surfaceHash.requireCompleteBounds");
         WorldHashes first = hashWorld(
                 Path.of(args[0]).toAbsolutePath().normalize(), bounds, requireCompleteBounds
@@ -354,35 +355,4 @@ public final class SurfaceWorldHash {
         }
     }
 
-    private record ChunkBounds(int minX, int maxX, int minZ, int maxZ) {
-        ChunkBounds {
-            if (minX > maxX || minZ > maxZ) {
-                throw new IllegalArgumentException("Invalid chunk bounds: x=" + minX + ".." + maxX
-                        + ", z=" + minZ + ".." + maxZ);
-            }
-        }
-
-        private static ChunkBounds fromProperties() {
-            return new ChunkBounds(
-                    Integer.getInteger("byepregen.surfaceHash.minChunkX", Integer.MIN_VALUE),
-                    Integer.getInteger("byepregen.surfaceHash.maxChunkX", Integer.MAX_VALUE),
-                    Integer.getInteger("byepregen.surfaceHash.minChunkZ", Integer.MIN_VALUE),
-                    Integer.getInteger("byepregen.surfaceHash.maxChunkZ", Integer.MAX_VALUE)
-            );
-        }
-
-        private boolean contains(int x, int z) {
-            return x >= this.minX && x <= this.maxX && z >= this.minZ && z <= this.maxZ;
-        }
-
-        private long expectedChunks() {
-            if (this.minX == Integer.MIN_VALUE || this.maxX == Integer.MAX_VALUE
-                    || this.minZ == Integer.MIN_VALUE || this.maxZ == Integer.MAX_VALUE) {
-                throw new IllegalStateException("Complete chunk coverage requires finite bounds");
-            }
-            long width = (long)this.maxX - this.minX + 1L;
-            long depth = (long)this.maxZ - this.minZ + 1L;
-            return Math.multiplyExact(width, depth);
-        }
-    }
 }

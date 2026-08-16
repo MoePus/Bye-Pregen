@@ -19,7 +19,7 @@ sourceSets {
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
     surfaceTest {
-        java.setSrcDirs(['src/surfaceTest/java'])
+        java.setSrcDirs(['src/surfaceTest/java', 'src/harnessCommon/java'])
         resources.setSrcDirs(['src/surfaceTest/resources'])
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath

@@ -115,8 +115,15 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         if (!config.enableGcFreeWorldgenSave) {
             return false;
         }
-        return !RAW_GC_FREE_MIXINS.contains(mixinClassName)
-                || !classExists.test(C2ME_SERIALIZER_ACCESS);
+        if (!RAW_GC_FREE_MIXINS.contains(mixinClassName)) {
+            return true;
+        }
+        try {
+            return !classExists.test(C2ME_SERIALIZER_ACCESS);
+        } catch (RuntimeException | LinkageError throwable) {
+            LOGGER.warn("Disabling raw GC-free chunk-save mixins: cannot inspect C2ME serializer", throwable);
+            return false;
+        }
     }
 
     private static boolean passesArenaGate(

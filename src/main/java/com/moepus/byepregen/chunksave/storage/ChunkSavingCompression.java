@@ -14,8 +14,15 @@ public final class ChunkSavingCompression {
     private ChunkSavingCompression() {}
 
     public static OutputStream wrap(RegionFileVersion version, OutputStream output) throws IOException {
-        if (!ConfigParser.getConfig().retainChunkSavingBuffer
-                || version != RegionFileVersion.VERSION_DEFLATE) {
+        return wrap(version, output, ConfigParser.getConfig().retainChunkSavingBuffer);
+    }
+
+    public static OutputStream wrap(
+            RegionFileVersion version,
+            OutputStream output,
+            boolean retainBuffer
+    ) throws IOException {
+        if (!retainBuffer || version != RegionFileVersion.VERSION_DEFLATE) {
             return version.wrap(output);
         }
 
@@ -95,11 +102,6 @@ public final class ChunkSavingCompression {
             }
 
             this.slot.inUse = false;
-            if (!ConfigParser.getConfig().retainChunkSavingBuffer) {
-                this.deflater.end();
-                this.slot.deflater = null;
-                return;
-            }
             try {
                 this.deflater.reset();
             } catch (RuntimeException | Error failure) {

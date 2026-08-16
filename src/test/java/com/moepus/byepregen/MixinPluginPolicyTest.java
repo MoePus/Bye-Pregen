@@ -74,6 +74,21 @@ final class MixinPluginPolicyTest {
     }
 
     @Test
+    void gcFreeRawMixinsFailClosedWhenClassLookupFails() {
+        MixinPlugin plugin = new MixinPlugin(false);
+        MixinPlugin.FeatureGateContext context = new MixinPlugin.FeatureGateContext(
+                new Config(),
+                ignored -> {
+                    throw new IllegalStateException("lookup failed");
+                },
+                ignored -> false
+        );
+
+        assertFalse(plugin.passesFeatureGate(MixinFeature.GC_FREE_CHUNK_SAVE, RAW_CHUNK_SAVE, context));
+        assertTrue(plugin.passesFeatureGate(MixinFeature.GC_FREE_CHUNK_SAVE, ORDINARY_CHUNK_SAVE, context));
+    }
+
+    @Test
     void surfaceBiomeCacheUsesItsDedicatedProperty() {
         String property = "byepregen.surfaceBiomeCache";
         String previous = System.getProperty(property);

@@ -1,5 +1,6 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.ChunkBounds;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
@@ -88,7 +89,7 @@ public final class LightGoldenDiff {
             chunkKeys.addAll(expectedChunks.keySet());
             chunkKeys.addAll(actualChunks.keySet());
             for (ChunkKey chunkKey : chunkKeys) {
-                if (!chunkBounds.contains(chunkKey)) {
+                if (!chunkBounds.contains(chunkKey.x, chunkKey.z)) {
                     result.skippedOutOfBoundsChunks++;
                     continue;
                 }
@@ -509,54 +510,6 @@ public final class LightGoldenDiff {
         }
     }
 
-    private record ChunkBounds(int minX, int maxX, int minZ, int maxZ) {
-        ChunkBounds {
-            if (minX > maxX || minZ > maxZ) {
-                throw new IllegalArgumentException("Invalid chunk bounds: x=" + minX + ".." + maxX
-                        + ", z=" + minZ + ".." + maxZ);
-            }
-        }
-
-        static ChunkBounds fromProperties() {
-            int minX = Integer.getInteger("byepregen.lightGolden.minChunkX", Integer.MIN_VALUE);
-            int maxX = Integer.getInteger("byepregen.lightGolden.maxChunkX", Integer.MAX_VALUE);
-            int minZ = Integer.getInteger("byepregen.lightGolden.minChunkZ", Integer.MIN_VALUE);
-            int maxZ = Integer.getInteger("byepregen.lightGolden.maxChunkZ", Integer.MAX_VALUE);
-            return new ChunkBounds(minX, maxX, minZ, maxZ);
-        }
-
-        boolean contains(ChunkKey key) {
-            return key.x >= this.minX && key.x <= this.maxX && key.z >= this.minZ && key.z <= this.maxZ;
-        }
-
-        boolean isLimited() {
-            return this.minX != Integer.MIN_VALUE
-                    || this.maxX != Integer.MAX_VALUE
-                    || this.minZ != Integer.MIN_VALUE
-                    || this.maxZ != Integer.MAX_VALUE;
-        }
-
-        boolean isFullyBounded() {
-            return this.minX != Integer.MIN_VALUE
-                    && this.maxX != Integer.MAX_VALUE
-                    && this.minZ != Integer.MIN_VALUE
-                    && this.maxZ != Integer.MAX_VALUE;
-        }
-
-        long expectedChunks() {
-            if (!this.isFullyBounded()) {
-                throw new IllegalStateException("Complete chunk coverage requires finite bounds");
-            }
-            long width = (long)this.maxX - this.minX + 1L;
-            long depth = (long)this.maxZ - this.minZ + 1L;
-            return Math.multiplyExact(width, depth);
-        }
-
-        String display() {
-            return "x=" + this.minX + ".." + this.maxX + ", z=" + this.minZ + ".." + this.maxZ;
-        }
-    }
-
     private record DiffOptions(
             int maxIssues,
             int minComparedLayers,
@@ -572,7 +525,7 @@ public final class LightGoldenDiff {
                     Boolean.getBoolean("byepregen.lightGolden.missingAsZero"),
                     Boolean.getBoolean("byepregen.lightGolden.requireCompleteChunks"),
                     Double.parseDouble(System.getProperty("byepregen.lightGolden.minChunkCoverage", "0.8")),
-                    ChunkBounds.fromProperties()
+                    ChunkBounds.fromSystemProperties("byepregen.lightGolden")
             );
         }
     }
