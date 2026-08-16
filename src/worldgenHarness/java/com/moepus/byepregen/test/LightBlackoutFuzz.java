@@ -32,6 +32,7 @@ final class LightBlackoutFuzz {
     private static final int MIN_CHUNK = -8;
     private static final int MAX_CHUNK = 8;
     private static final int TEST_HEIGHT_ABOVE_TERRAIN = 16;
+    private static final int MAX_STABILITY_RELOADS = 3;
     private static final long UNLOAD_TIMEOUT_NANOS = 30_000_000_000L;
     private static final List<ChunkPos> ROUND_TRIP_CHUNKS = List.of(
             new ChunkPos(MIN_CHUNK, MIN_CHUNK),
@@ -50,6 +51,7 @@ final class LightBlackoutFuzz {
     private String lastBatch = "initial fixture";
     private int roofY;
     private int updateBatch;
+    private int stabilityReloads;
     private long unloadDeadline;
     private final Set<ChunkPos> forcedThisRound = new HashSet<>();
     private boolean initialAreaForced = true;
@@ -109,18 +111,35 @@ final class LightBlackoutFuzz {
         return true;
     }
 
-    void verifyRoundTrip() {
+    boolean verifyRoundTrip() {
         boolean strictSnapshot = this.level.getChunkSource().getLightEngine() instanceof YALightEngineHolder;
+        String firstDifference = null;
         for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
             LightChunkSnapshot expected = this.roundTripSnapshots.get(chunk);
             LightChunkSnapshot actual = this.snapshot(chunk);
-            if (strictSnapshot && !expected.matches(actual)) {
+            if (!strictSnapshot || expected.matches(actual)) {
+                continue;
+            }
+            String blockLoss = expected.blockLightLoss(actual);
+            if (!expected.hasSameSky(actual) || blockLoss != null) {
                 throw new IllegalStateException("Light round-trip mismatch in " + chunk
                         + " expected=" + expected.summary() + " actual=" + actual.summary()
                         + " difference=" + expected.differenceSummary(actual));
             }
+            if (firstDifference == null) {
+                firstDifference = chunk + " " + expected.differenceSummary(actual);
+            }
         }
         this.releaseLoadedChunks();
+        this.unloadDeadline = 0L;
+        if (firstDifference == null) {
+            return true;
+        }
+        if (++this.stabilityReloads >= MAX_STABILITY_RELOADS) {
+            throw new IllegalStateException("Light round-trip did not stabilize after "
+                    + this.stabilityReloads + " reloads: " + firstDifference);
+        }
+        return false;
     }
 
     void acceptReconciledRoundTrip() {

@@ -103,7 +103,7 @@ public final class LightGoldenDiff {
                 }
 
                 result.chunksCompared++;
-                if (!sameTerrainNeighborhood(chunkKey, expectedWorldChunks, actualWorldChunks)) {
+                if (!sameTerrainNeighborhood(chunkKey, expectedWorldChunks, actualWorldChunks, result)) {
                     result.skippedTerrainChunks++;
                     continue;
                 }
@@ -135,7 +135,8 @@ public final class LightGoldenDiff {
     private static boolean sameTerrainNeighborhood(
             ChunkKey center,
             Map<ChunkKey, ChunkLights> expectedWorldChunks,
-            Map<ChunkKey, ChunkLights> actualWorldChunks) {
+            Map<ChunkKey, ChunkLights> actualWorldChunks,
+            DiffResult result) {
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dx = -1; dx <= 1; ++dx) {
                 ChunkKey key = new ChunkKey(center.x + dx, center.z + dz);
@@ -147,7 +148,9 @@ public final class LightGoldenDiff {
                     }
                     continue;
                 }
-                if (!expected.sameTerrain(actual)) {
+                String difference = expected.terrainDifference(actual);
+                if (difference != null) {
+                    result.recordTerrainDifference(center, key, difference);
                     return false;
                 }
             }
@@ -570,16 +573,17 @@ public final class LightGoldenDiff {
             return this.blockSection(sectionY).stateAt(localX, localY, localZ);
         }
 
-        boolean sameTerrain(ChunkLights other) {
+        String terrainDifference(ChunkLights other) {
             TreeSet<Integer> keys = new TreeSet<>();
             keys.addAll(this.blocks.keySet());
             keys.addAll(other.blocks.keySet());
             for (int sectionY : keys) {
-                if (!this.blockSection(sectionY).sameTerrain(other.blockSection(sectionY))) {
-                    return false;
+                String difference = this.blockSection(sectionY).terrainDifference(other.blockSection(sectionY));
+                if (difference != null) {
+                    return "sectionY=" + sectionY + " " + difference;
                 }
             }
-            return true;
+            return null;
         }
 
         private SectionBlocks blockSection(int sectionY) {
@@ -696,16 +700,23 @@ public final class LightGoldenDiff {
             return this.stateAt(localX | (localZ << 4) | (localY << 8));
         }
 
-        boolean sameTerrain(SectionBlocks other) {
+        String terrainDifference(SectionBlocks other) {
             if (this.storage == null && other.storage == null) {
-                return this.palette.length == 1 && other.palette.length == 1 && this.palette[0].equals(other.palette[0]);
+                return this.palette.length == 1 && other.palette.length == 1 && this.palette[0].equals(other.palette[0])
+                        ? null : "expected=" + this.stateAt(0) + " actual=" + other.stateAt(0);
             }
             for (int i = 0; i < 4096; ++i) {
-                if (!this.stateAt(i).equals(other.stateAt(i))) {
-                    return false;
+                String expected = this.stateAt(i);
+                String actual = other.stateAt(i);
+                if (!expected.equals(actual)) {
+                    int x = i & 15;
+                    int z = i >>> 4 & 15;
+                    int y = i >>> 8 & 15;
+                    return "local=" + x + "," + y + "," + z
+                            + " expected=" + expected + " actual=" + actual;
                 }
             }
-            return true;
+            return null;
         }
 
         private String stateAt(int storageIndex) {
@@ -784,6 +795,7 @@ public final class LightGoldenDiff {
         private int storageNoiseLayers;
         private int invalidLayers;
         private int mismatchedLayers;
+        private String firstTerrainDifference;
 
         DiffResult(int maxIssues, int minComparedLayers, boolean missingAsZero, ChunkBounds chunkBounds) {
             this.maxIssues = Math.max(0, maxIssues);
@@ -806,6 +818,12 @@ public final class LightGoldenDiff {
                 this.issues.add(issue);
             } else {
                 ++this.suppressedIssues;
+            }
+        }
+
+        void recordTerrainDifference(ChunkKey compared, ChunkKey terrain, String difference) {
+            if (this.firstTerrainDifference == null) {
+                this.firstTerrainDifference = "compared=" + compared + " terrain=" + terrain + " " + difference;
             }
         }
 
@@ -833,6 +851,9 @@ public final class LightGoldenDiff {
                     + this.storageNoiseLayers + " storage-noise, "
                     + this.invalidLayers + " invalid, "
                     + this.mismatchedLayers + " mismatched");
+            if (this.firstTerrainDifference != null) {
+                System.out.println("  terrain:  " + this.firstTerrainDifference);
+            }
             if (this.hasFailures()) {
                 System.out.println("Light golden diff FAILED");
                 if (this.layersCompared < this.minComparedLayers) {

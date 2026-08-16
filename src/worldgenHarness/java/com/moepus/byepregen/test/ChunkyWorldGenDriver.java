@@ -4,6 +4,7 @@ import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.moepus.byepregen.worldgen.surface.SurfaceScalarMetrics;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -57,6 +58,7 @@ final class ChunkyWorldGenDriver {
     private static final long LIGHT_FUZZ_SEED = longProperty("lightFuzzSeed", 0x59A11E71C0DEL);
     private static final String LIGHT_FUZZ_VARIANT = property("lightFuzzVariant", "default").toLowerCase(Locale.ROOT);
     private static final boolean LIGHT_FUZZ_PROBES = booleanProperty("lightFuzzProbes", false);
+    private static final String LIGHT_FUZZ_RESULT = property("lightFuzzResult", "");
     private static final int[] EDGE_XZ = {-17, -16, -1, 0, 15, 16, 31, 32};
     private static final int[] EDGE_Y = {-64, -63, -49, -48, -33, -32, -17, -16, -1, 0, 15, 16, 31, 32, 71, 72, 255, 256, 319};
     private static final int[] STRESS_XZ = {-47, -33, -32, -31, -17, -16, -15, -1, 0, 1, 14, 15, 16, 17, 30, 31, 32, 33, 47};
@@ -101,7 +103,11 @@ final class ChunkyWorldGenDriver {
     private static void onServerAboutToStart(ServerAboutToStartEvent event) {
         // Smoke tests should measure Chunky-driven worldgen, not vanilla spawn preloading.
         // Pass null to avoid firing the rule listener before the overworld is constructed.
-        event.getServer().getWorldData().getGameRules().getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, null);
+        GameRules gameRules = event.getServer().getWorldData().getGameRules();
+        gameRules.getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, null);
+        if ("light_fuzz".equals(MODE)) {
+            gameRules.getRule(GameRules.RULE_RANDOMTICKING).set(0, null);
+        }
         LOGGER.info("Disabled spawn chunk preloading for ByePregen Chunky worldgen test");
     }
 
@@ -777,7 +783,20 @@ final class ChunkyWorldGenDriver {
     private static void failAndStop(MinecraftServer server, String message) {
         LOGGER.error("ByePregen Chunky worldgen test failed: {}", message);
         if (STOPPING.compareAndSet(false, true)) {
+            writeLightFuzzResult("FAIL\n" + message + "\n");
             server.executeIfPossible(() -> stopServer(server));
+        }
+    }
+
+    private static void writeLightFuzzResult(String value) {
+        if (!"light_fuzz".equals(MODE) || LIGHT_FUZZ_RESULT.isBlank()) {
+            return;
+        }
+        Path result = Path.of(LIGHT_FUZZ_RESULT);
+        try {
+            Files.writeString(result, value, StandardCharsets.UTF_8);
+        } catch (IOException exception) {
+            LOGGER.error("Failed to write light fuzz result {}", result, exception);
         }
     }
 
@@ -851,7 +870,9 @@ final class ChunkyWorldGenDriver {
             this.server = server;
             this.level = level;
             this.blackoutFuzz = runsBlackoutLightFuzz() ? new LightBlackoutFuzz(level, LIGHT_FUZZ_SEED) : null;
-            this.torchLifecycleProbe = runsBlackoutLightFuzz() ? new LightTorchLifecycleProbe(level) : null;
+            this.torchLifecycleProbe = runsBlackoutLightFuzz() && yaLightEngineHolder(level) != null
+                    ? new LightTorchLifecycleProbe(level)
+                    : null;
         }
 
         private void tick() {
@@ -991,7 +1012,9 @@ final class ChunkyWorldGenDriver {
                 return;
             }
             if (this.stage == 4) {
-                this.blackoutFuzz.verifyRoundTrip();
+                if (!this.blackoutFuzz.verifyRoundTrip()) {
+                    --this.stage;
+                }
                 return;
             }
             if (this.stage < 5) {
@@ -1036,6 +1059,7 @@ final class ChunkyWorldGenDriver {
             lightFuzzRun = null;
             LOGGER.info("Light fuzz completed: world={} seed={}", WORLD, LIGHT_FUZZ_SEED);
             if (STOPPING.compareAndSet(false, true)) {
+                writeLightFuzzResult("PASS\nvariant=" + LIGHT_FUZZ_VARIANT + "\nseed=" + LIGHT_FUZZ_SEED + "\n");
                 this.server.executeIfPossible(() -> stopServer(this.server));
             }
         }

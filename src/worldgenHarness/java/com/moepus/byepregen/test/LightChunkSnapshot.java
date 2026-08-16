@@ -35,6 +35,10 @@ record LightChunkSnapshot(byte[][] block, byte[][] sky) {
         return Arrays.deepEquals(this.block, other.block) && Arrays.deepEquals(this.sky, other.sky);
     }
 
+    boolean hasSameSky(LightChunkSnapshot other) {
+        return Arrays.deepEquals(this.sky, other.sky);
+    }
+
     String blockLightLoss(LightChunkSnapshot other) {
         for (int section = 0; section < this.block.length; ++section) {
             for (int y = 0; y < 16; ++y) {

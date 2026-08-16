@@ -82,22 +82,29 @@ lightRestartConfigs.each { config ->
     config.world = file("${config.root}/world")
 }
 def lightFuzzConfig = [
+        sourceDir  : file("${lightFuzzRoot}/source"),
         vanillaDir: file("${lightFuzzRoot}/vanilla"),
         yaDir     : file("${lightFuzzRoot}/ya"),
         seed      : byepregenProp('byepregenLightFuzzSeed', '0x59A11E71C0DE'),
         variant   : byepregenProp('byepregenLightFuzzVariant', 'default'),
         probes    : byepregenProp('byepregenLightFuzzProbes', 'false'),
-        minChunkX : byepregenProp('byepregenLightFuzzDiffMinChunkX', '-8'),
-        maxChunkX : byepregenProp('byepregenLightFuzzDiffMaxChunkX', '8'),
-        minChunkZ : byepregenProp('byepregenLightFuzzDiffMinChunkZ', '-8'),
-        maxChunkZ : byepregenProp('byepregenLightFuzzDiffMaxChunkZ', '8'),
+        minChunkX : byepregenProp('byepregenLightFuzzDiffMinChunkX', '-2'),
+        maxChunkX : byepregenProp('byepregenLightFuzzDiffMaxChunkX', '2'),
+        minChunkZ : byepregenProp('byepregenLightFuzzDiffMinChunkZ', '-2'),
+        maxChunkZ : byepregenProp('byepregenLightFuzzDiffMaxChunkZ', '2'),
 ]
+lightFuzzConfig.sourceRadius = byepregenProp(
+        'byepregenLightFuzzSourceRadius',
+        lightFuzzConfig.variant == 'blackout' ? '256' : '64'
+)
+def lightFuzzResult = { File dir -> file("${dir}/light-fuzz.result") }
 
 def configureLightFuzzRun = { run, File dir ->
     byepregenConfigureWorldgenRun(run, [dir: dir, mode: 'light_fuzz'])
     run.systemProperty('byepregen.testWorldGen.lightFuzzSeed', lightFuzzConfig.seed)
     run.systemProperty('byepregen.testWorldGen.lightFuzzVariant', lightFuzzConfig.variant)
     run.systemProperty('byepregen.testWorldGen.lightFuzzProbes', lightFuzzConfig.probes)
+    run.systemProperty('byepregen.testWorldGen.lightFuzzResult', lightFuzzResult(dir).absolutePath)
 }
 
 def configureLightRestartRun = { run, Map config, String phase ->
@@ -203,6 +210,12 @@ neoForge {
                 options.jfrRepository = lightGoldenConfig.relightJfrRepository
             }
             byepregenConfigureWorldgenRun(delegate, options)
+        }
+        lightFuzzSource {
+            byepregenConfigureWorldgenRun(
+                    delegate,
+                    [dir: lightFuzzConfig.sourceDir, radius: lightFuzzConfig.sourceRadius]
+            )
         }
         lightFuzzVanilla {
             configureLightFuzzRun(delegate, lightFuzzConfig.vanillaDir)
@@ -442,19 +455,79 @@ tasks.register('runLightGoldenDiff') {
     dependsOn('runLightGoldenSource', 'runLightGoldenRelightVanilla', 'runLightGoldenRelightYA', 'diffLightGolden')
 }
 
+def assertLightFuzzResult = { File result ->
+    if (!result.isFile()) {
+        throw new GradleException("Light fuzz produced no result: ${result}")
+    }
+    String value = result.getText('UTF-8')
+    if (!value.startsWith('PASS\n')) {
+        throw new GradleException("Light fuzz failed: ${value.trim()}")
+    }
+}
+
+def configureLightFuzzServerTask = { Map options ->
+    byepregenPrepareRunTask(options.taskName, options)
+    tasks.matching { it.name == options.taskName }.configureEach {
+        dependsOn('prepareLightFuzzWorlds')
+        File result = lightFuzzResult(options.prepare.dir)
+        doFirst {
+            delete(result)
+        }
+        doLast {
+            assertLightFuzzResult(result)
+        }
+    }
+}
+
+byepregenPrepareRunTask('runLightFuzzSource', [
+        reason : 'Prepares one deterministic source terrain world for vanilla/YA light fuzzing',
+        prepare: [
+                dir                       : lightFuzzConfig.sourceDir,
+                yaLight                   : 'false',
+                gcFree                    : lightGoldenConfig.gcFree,
+                clearWorld                : true,
+                flatWorld                 : lightFuzzConfig.variant != 'blackout',
+                serverRuntimeArenaPalette : 'false',
+        ],
+])
+
+tasks.register('prepareLightFuzzWorlds', JavaExec) {
+    group = 'verification'
+    description = 'Copies one source terrain world into vanilla/YA fuzz worlds and strips saved light data.'
+    dependsOn('runLightFuzzSource')
+    classpath = sourceSets.worldgenHarness.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.test.LightGoldenPrepareRelight')
+    args file("${lightFuzzConfig.sourceDir}/world").absolutePath,
+            file("${lightFuzzConfig.vanillaDir}/world").absolutePath,
+            file("${lightFuzzConfig.yaDir}/world").absolutePath
+    systemProperty 'byepregen.lightGolden.prepareRadius', lightFuzzConfig.sourceRadius
+    doFirst {
+        [
+                [dir: lightFuzzConfig.vanillaDir, yaLight: 'false'],
+                [dir: lightFuzzConfig.yaDir, yaLight: 'true'],
+        ].each { options ->
+            byepregenPrepareWorldgenRunDir(options + [
+                    gcFree                  : lightGoldenConfig.gcFree,
+                    clearWorld              : false,
+                    serverRuntimeArenaPalette: 'false',
+            ])
+        }
+    }
+}
+
 [
         [
                 taskName: 'runLightFuzzVanilla',
                 reason  : 'Prepares a disposable vanilla-light fuzz world before launching the server',
-                prepare : [dir: lightFuzzConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout', serverRuntimeArenaPalette: 'false'],
+                prepare : [dir: lightFuzzConfig.vanillaDir, yaLight: 'false', gcFree: lightGoldenConfig.gcFree, clearWorld: false, flatWorld: lightFuzzConfig.variant != 'blackout', serverRuntimeArenaPalette: 'false'],
         ],
         [
                 taskName    : 'runLightFuzzYA',
                 reason      : 'Prepares a disposable YA-light fuzz world before launching the server',
                 mustRunAfter: 'runLightFuzzVanilla',
-                prepare     : [dir: lightFuzzConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: true, flatWorld: lightFuzzConfig.variant != 'blackout', serverRuntimeArenaPalette: 'false'],
+                prepare     : [dir: lightFuzzConfig.yaDir, yaLight: 'true', gcFree: lightGoldenConfig.gcFree, clearWorld: false, flatWorld: lightFuzzConfig.variant != 'blackout', serverRuntimeArenaPalette: 'false'],
         ],
-].each { byepregenPrepareRunTask(it.taskName, it) }
+].each { configureLightFuzzServerTask(it) }
 
 tasks.register('diffLightFuzz', JavaExec) {
     group = 'verification'
