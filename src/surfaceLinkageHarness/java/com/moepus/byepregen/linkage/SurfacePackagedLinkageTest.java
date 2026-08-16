@@ -1,11 +1,9 @@
 package com.moepus.byepregen.linkage;
 
+import com.moepus.byepregen.harness.HarnessResultFile;
 import com.mojang.logging.LogUtils;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Locale;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -89,25 +87,11 @@ public final class SurfacePackagedLinkageTest {
     }
 
     private static void writeResult(String result) throws Exception {
-        Path path = resultPath();
-        Files.createDirectories(path.getParent());
-        Files.writeString(path, result, StandardCharsets.UTF_8);
+        HarnessResultFile.write(RESULT_PROPERTY, result);
     }
 
     private static void writeFailure(Throwable throwable) {
-        try {
-            writeResult("FAIL\n" + throwable + "\n");
-        } catch (Exception writeFailure) {
-            throwable.addSuppressed(writeFailure);
-        }
-    }
-
-    private static Path resultPath() {
-        String value = System.getProperty(RESULT_PROPERTY);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing -D" + RESULT_PROPERTY);
-        }
-        return Path.of(value);
+        HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
     }
 
     private record Evidence(

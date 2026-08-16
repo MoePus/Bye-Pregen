@@ -1,10 +1,10 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.moepus.byepregen.worldgen.surface.SurfaceScalarMetrics;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -58,7 +58,7 @@ final class ChunkyWorldGenDriver {
     private static final long LIGHT_FUZZ_SEED = longProperty("lightFuzzSeed", 0x59A11E71C0DEL);
     private static final String LIGHT_FUZZ_VARIANT = property("lightFuzzVariant", "default").toLowerCase(Locale.ROOT);
     private static final boolean LIGHT_FUZZ_PROBES = booleanProperty("lightFuzzProbes", false);
-    private static final String LIGHT_FUZZ_RESULT = property("lightFuzzResult", "");
+    private static final String RUN_RESULT_PROPERTY = "byepregen.testWorldGen.runResult";
     private static final int[] EDGE_XZ = {-17, -16, -1, 0, 15, 16, 31, 32};
     private static final int[] EDGE_Y = {-64, -63, -49, -48, -33, -32, -17, -16, -1, 0, 15, 16, 31, 32, 71, 72, 255, 256, 319};
     private static final int[] STRESS_XZ = {-47, -33, -32, -31, -17, -16, -15, -1, 0, 1, 14, 15, 16, 17, 30, 31, 32, 33, 47};
@@ -227,9 +227,7 @@ final class ChunkyWorldGenDriver {
                 cleanupSeconds,
                 lifecycleSeconds
         );
-        if (STOPPING.compareAndSet(false, true)) {
-            server.executeIfPossible(() -> stopServer(server));
-        }
+        succeedAndStop(server, "chunks=" + chunks.size());
     }
 
     private static YALightEngineHolder yaLightEngineHolder(ServerLevel level) {
@@ -739,13 +737,11 @@ final class ChunkyWorldGenDriver {
 
     private static void onGenerationComplete(MinecraftServer server, GenerationCompleteEvent event) {
         if (!WORLD.equals(event.world())) {
-            LOGGER.warn("Chunky generation completed for {}, expected {}; stopping test server anyway", event.world(), WORLD);
+            LOGGER.warn("Ignoring Chunky generation completion for {}, expected {}", event.world(), WORLD);
+            return;
         }
         if (!FastTickRuntimeProbe.completeAfterWorldgen()) {
             failAndStop(server, "Fast tick runtime probe failed after worldgen");
-            return;
-        }
-        if (!STOPPING.compareAndSet(false, true)) {
             return;
         }
         double wallSeconds = (System.nanoTime() - worldgenStartedNanos) / 1_000_000_000.0D;
@@ -757,7 +753,7 @@ final class ChunkyWorldGenDriver {
                 processCpuSeconds
         );
         logSurfaceScalarMetrics();
-        server.executeIfPossible(() -> stopServer(server));
+        succeedAndStop(server, "world=" + event.world());
     }
 
     private static void logSurfaceScalarMetrics() {
@@ -782,29 +778,31 @@ final class ChunkyWorldGenDriver {
 
     private static void failAndStop(MinecraftServer server, String message) {
         LOGGER.error("ByePregen Chunky worldgen test failed: {}", message);
+        finishAndStop(server, RunCompletion.failure(message));
+    }
+
+    private static void succeedAndStop(MinecraftServer server, String detail) {
+        finishAndStop(server, RunCompletion.success(detail));
+    }
+
+    private static void finishAndStop(MinecraftServer server, RunCompletion completion) {
         if (STOPPING.compareAndSet(false, true)) {
-            writeLightFuzzResult("FAIL\n" + message + "\n");
-            server.executeIfPossible(() -> stopServer(server));
+            server.executeIfPossible(() -> stopServer(server, completion));
         }
     }
 
-    private static void writeLightFuzzResult(String value) {
-        if (!"light_fuzz".equals(MODE) || LIGHT_FUZZ_RESULT.isBlank()) {
-            return;
-        }
-        Path result = Path.of(LIGHT_FUZZ_RESULT);
-        try {
-            Files.writeString(result, value, StandardCharsets.UTF_8);
-        } catch (IOException exception) {
-            LOGGER.error("Failed to write light fuzz result {}", result, exception);
-        }
-    }
-
-    private static void stopServer(MinecraftServer server) {
+    private static void stopServer(MinecraftServer server, RunCompletion requestedCompletion) {
+        RunCompletion completion = requestedCompletion;
         try {
             server.saveAllChunks(false, true, true);
         } catch (Throwable throwable) {
             LOGGER.error("Failed to save ByePregen test world before shutdown", throwable);
+            completion = completion.withSaveFailure(throwable);
+        }
+        try {
+            HarnessResultFile.write(RUN_RESULT_PROPERTY, completion.format());
+        } catch (Throwable throwable) {
+            LOGGER.error("Failed to write ByePregen worldgen result", throwable);
         }
         server.halt(false);
         forceExitIfShutdownStalls();
@@ -819,7 +817,7 @@ final class ChunkyWorldGenDriver {
                 return;
             }
             LOGGER.warn("ByePregen Chunky worldgen test did not exit after shutdown request; forcing JVM exit");
-            System.exit(0);
+            System.exit(1);
         }, "ByePregen test shutdown watchdog");
         watchdog.setDaemon(true);
         watchdog.start();
@@ -1058,10 +1056,26 @@ final class ChunkyWorldGenDriver {
         private void complete() {
             lightFuzzRun = null;
             LOGGER.info("Light fuzz completed: world={} seed={}", WORLD, LIGHT_FUZZ_SEED);
-            if (STOPPING.compareAndSet(false, true)) {
-                writeLightFuzzResult("PASS\nvariant=" + LIGHT_FUZZ_VARIANT + "\nseed=" + LIGHT_FUZZ_SEED + "\n");
-                this.server.executeIfPossible(() -> stopServer(this.server));
-            }
+            succeedAndStop(this.server, "variant=" + LIGHT_FUZZ_VARIANT + "\nseed=" + LIGHT_FUZZ_SEED);
+        }
+    }
+
+    private record RunCompletion(boolean success, String detail) {
+        static RunCompletion success(String detail) {
+            return new RunCompletion(true, detail);
+        }
+
+        static RunCompletion failure(String message) {
+            return new RunCompletion(false, "message=" + message);
+        }
+
+        RunCompletion withSaveFailure(Throwable throwable) {
+            String saveFailure = "saveFailure=" + throwable;
+            return new RunCompletion(false, this.detail + "\n" + saveFailure);
+        }
+
+        String format() {
+            return (this.success ? "PASS" : "FAIL") + "\nmode=" + MODE + "\n" + this.detail + "\n";
         }
     }
 }

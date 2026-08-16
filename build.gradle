@@ -31,7 +31,7 @@ sourceSets {
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
     worldgenHarness {
-        java.setSrcDirs(['src/worldgenHarness/java'])
+        java.setSrcDirs(['src/worldgenHarness/java', 'src/harnessCommon/java'])
         resources.setSrcDirs(['src/worldgenHarness/resources'])
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath

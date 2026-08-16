@@ -1,5 +1,6 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import com.moepus.byepregen.chunksave.storage.ChunkSavingCompression;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
@@ -8,9 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.zip.InflaterInputStream;
 import net.minecraft.core.BlockPos;
@@ -66,11 +64,11 @@ final class ChunkNbtParity {
             ProtoChunk proto = createPostprocessProto(level);
             int protoBytes = assertParity(level, proto, "proto-postprocess", Coverage.POSTPROCESS);
 
-            writeResult("PASS\nscenarios=generated,enriched,proto-postprocess\nrawBytes="
+            HarnessResultFile.write(RESULT_PROPERTY, "PASS\nscenarios=generated,enriched,proto-postprocess\nrawBytes="
                     + generatedBytes + "," + enrichedBytes + "," + protoBytes + "\n");
             LOGGER.info("BYEPREGEN_CHUNK_NBT_PARITY_PASS");
         } catch (Throwable throwable) {
-            writeFailure(throwable);
+            HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
             LOGGER.error("BYEPREGEN_CHUNK_NBT_PARITY_FAIL", throwable);
         } finally {
             server.halt(false);
@@ -189,28 +187,6 @@ final class ChunkNbtParity {
         try (InflaterInputStream input = new InflaterInputStream(new ByteArrayInputStream(compressed))) {
             return input.readAllBytes();
         }
-    }
-
-    private static void writeResult(String result) throws Exception {
-        Path path = resultPath();
-        Files.createDirectories(path.getParent());
-        Files.writeString(path, result, StandardCharsets.UTF_8);
-    }
-
-    private static void writeFailure(Throwable throwable) {
-        try {
-            writeResult("FAIL\n" + throwable + "\n");
-        } catch (Exception writeFailure) {
-            throwable.addSuppressed(writeFailure);
-        }
-    }
-
-    private static Path resultPath() {
-        String value = System.getProperty(RESULT_PROPERTY);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing -D" + RESULT_PROPERTY);
-        }
-        return Path.of(value);
     }
 
     private enum Coverage {

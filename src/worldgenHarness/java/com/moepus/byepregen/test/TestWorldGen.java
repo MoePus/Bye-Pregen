@@ -1,11 +1,7 @@
 package com.moepus.byepregen.test;
 
-import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
-
 public final class TestWorldGen {
     public static final String ENABLED_PROPERTY = "byepregen.testWorldGen";
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final String CHUNKY_PROVIDER = "org.popcraft.chunky.ChunkyProvider";
 
     private TestWorldGen() {
@@ -29,8 +25,7 @@ public final class TestWorldGen {
             return;
         }
         if (!hasClass(CHUNKY_PROVIDER)) {
-            LOGGER.error("ByePregen test worldgen requested, but Chunky is not loaded");
-            return;
+            throw new IllegalStateException("ByePregen test worldgen requested, but Chunky is not loaded");
         }
         ChunkyWorldGenDriver.register();
     }

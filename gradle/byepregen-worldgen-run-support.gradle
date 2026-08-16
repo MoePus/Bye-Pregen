@@ -12,6 +12,28 @@ ext.byepregenSanitizeRunName = { String value ->
 
 def jfrSettings = byepregenProp('byepregenJfrSettings', 'profile')
 
+ext.byepregenWorldgenResult = { File dir ->
+    file("${dir}/worldgen.result")
+}
+
+ext.byepregenValidateWorldgenResult = { File dir ->
+    File result = byepregenWorldgenResult(dir)
+    String value = byepregenAssertPassResult(result, 'Worldgen harness')
+    logger.lifecycle("Worldgen harness passed:\n${value.trim()}")
+}
+
+ext.byepregenConfigureWorldgenResultTask = { String taskName, File dir ->
+    tasks.matching { it.name == taskName }.configureEach {
+        File result = byepregenWorldgenResult(dir)
+        doFirst {
+            delete(result)
+        }
+        doLast {
+            byepregenValidateWorldgenResult(dir)
+        }
+    }
+}
+
 ext.byepregenConfigureWorldgenRun = { run, Map options ->
     run.server()
     run.sourceSet.set(sourceSets.worldgenHarness)
@@ -22,6 +44,10 @@ ext.byepregenConfigureWorldgenRun = { run, Map options ->
     run.gameDirectory = options.dir
     run.programArgument('--nogui')
     run.systemProperty('byepregen.testWorldGen', 'true')
+    run.systemProperty(
+            'byepregen.testWorldGen.runResult',
+            byepregenWorldgenResult(options.dir).absolutePath
+    )
     run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
     run.systemProperty(
             'byepregen.surfaceOutputDifferential',
@@ -103,12 +129,17 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
 
 ext.byepregenPrepareRunTask = { String taskName, Map options ->
     tasks.matching { it.name == taskName }.configureEach {
+        File result = byepregenWorldgenResult(options.prepare.dir)
         notCompatibleWithConfigurationCache(options.reason)
         if (options.mustRunAfter != null) {
             mustRunAfter(options.mustRunAfter)
         }
         doFirst {
+            delete(result)
             byepregenPrepareWorldgenRunDir(options.prepare)
+        }
+        doLast {
+            byepregenValidateWorldgenResult(options.prepare.dir)
         }
     }
 }

@@ -32,10 +32,7 @@ def fastTickExpectedConflict = [
         'com.moepus.byepregen.mixin.feature.predicate.statetestingpredicatemixin',
 ]
 def validateFastTickRuntime = { File root, File result ->
-    if (!result.isFile()) {
-        throw new GradleException("Fast tick runtime produced no result: ${result}")
-    }
-    String outcome = result.getText('UTF-8')
+    String outcome = byepregenReadRequiredResult(result, 'Fast tick runtime')
     def requiredResultParts = [
             'PASS\n', 'c2me=true', 'lithium=true',
             'chunkTickMixin=true', 'weatherMixin=true', 'radius=16',
@@ -148,13 +145,7 @@ tasks.matching { it.name == 'runArenaPaletteDifferential' }.configureEach {
         ])
     }
     doLast {
-        if (!arenaPaletteResult.isFile()) {
-            throw new GradleException("Arena palette differential produced no result: ${arenaPaletteResult}")
-        }
-        String result = arenaPaletteResult.getText('UTF-8')
-        if (!result.startsWith('PASS\n')) {
-            throw new GradleException("Arena palette differential failed:\n${result}")
-        }
+        String result = byepregenAssertPassResult(arenaPaletteResult, 'Arena palette differential')
         logger.lifecycle("Arena palette differential passed:\n${result.trim()}")
     }
 }
@@ -180,13 +171,7 @@ tasks.matching { it.name == 'runChunkNbtParity' }.configureEach {
         ])
     }
     doLast {
-        if (!chunkNbtParityResult.isFile()) {
-            throw new GradleException("Chunk NBT parity produced no result: ${chunkNbtParityResult}")
-        }
-        String result = chunkNbtParityResult.getText('UTF-8')
-        if (!result.startsWith('PASS\n')) {
-            throw new GradleException("Chunk NBT parity failed:\n${result}")
-        }
+        String result = byepregenAssertPassResult(chunkNbtParityResult, 'Chunk NBT parity')
         logger.lifecycle("Chunk NBT parity passed:\n${result.trim()}")
     }
 }
@@ -224,6 +209,8 @@ tasks.register('testFastTickRuntime') {
     dependsOn('runFastTickRuntime')
 }
 
+byepregenConfigureWorldgenResultTask('runFastTickRuntime', fastTickRuntimeRoot)
+
 tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
     notCompatibleWithConfigurationCache('Prepares a disposable test world before launching the server')
     doFirst {
@@ -253,3 +240,5 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
         }
     }
 }
+
+byepregenConfigureWorldgenResultTask('runTestWorldGen', worldGenConfig.dir)

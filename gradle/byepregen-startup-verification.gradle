@@ -10,7 +10,7 @@ def expectedOverwriteConflictParts = [
 
 sourceSets {
     startupHarness {
-        java.setSrcDirs(['src/startupHarness/java'])
+        java.setSrcDirs(['src/startupHarness/java', 'src/harnessCommon/java'])
         resources.setSrcDirs(['src/startupHarness/resources'])
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
@@ -58,13 +58,7 @@ neoForge {
 }
 
 def validateStartup = { String side, File root, File result ->
-    if (!result.isFile()) {
-        throw new GradleException("${side} startup produced no result: ${result}")
-    }
-    String outcome = result.getText('UTF-8')
-    if (!outcome.startsWith('PASS\n')) {
-        throw new GradleException("${side} startup failed:\n${outcome}")
-    }
+    String outcome = byepregenAssertPassResult(result, "${side} startup")
     File log = file("${root}/logs/latest.log")
     if (!log.isFile()) {
         throw new GradleException("${side} startup produced no latest.log: ${log}")

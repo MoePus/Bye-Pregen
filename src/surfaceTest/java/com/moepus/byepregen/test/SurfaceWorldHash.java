@@ -42,17 +42,26 @@ public final class SurfaceWorldHash {
             System.exit(2);
         }
         ChunkBounds bounds = ChunkBounds.fromProperties();
-        WorldHashes first = hashWorld(Path.of(args[0]).toAbsolutePath().normalize(), bounds);
+        boolean requireCompleteBounds = Boolean.getBoolean("byepregen.surfaceHash.requireCompleteBounds");
+        WorldHashes first = hashWorld(
+                Path.of(args[0]).toAbsolutePath().normalize(), bounds, requireCompleteBounds
+        );
         first.print("first");
         if (args.length == 1) {
             return;
         }
-        WorldHashes second = hashWorld(Path.of(args[1]).toAbsolutePath().normalize(), bounds);
+        WorldHashes second = hashWorld(
+                Path.of(args[1]).toAbsolutePath().normalize(), bounds, requireCompleteBounds
+        );
         second.print("second");
         compare(first, second);
     }
 
-    private static WorldHashes hashWorld(Path world, ChunkBounds bounds) throws IOException {
+    private static WorldHashes hashWorld(
+            Path world,
+            ChunkBounds bounds,
+            boolean requireCompleteBounds
+    ) throws IOException {
         Path regionDirectory = world.resolve("region");
         if (!Files.isDirectory(regionDirectory)) {
             throw new IOException("Overworld region directory does not exist: " + regionDirectory);
@@ -65,6 +74,10 @@ public final class SurfaceWorldHash {
         }
         if (chunks.isEmpty()) {
             throw new IOException("No chunks found under " + regionDirectory);
+        }
+        if (requireCompleteBounds && chunks.size() != bounds.expectedChunks()) {
+            throw new IOException("Incomplete bounded chunk coverage under " + regionDirectory
+                    + ": expected=" + bounds.expectedChunks() + " actual=" + chunks.size());
         }
         return new WorldHashes(world, chunks, aggregate(chunks));
     }
@@ -342,6 +355,13 @@ public final class SurfaceWorldHash {
     }
 
     private record ChunkBounds(int minX, int maxX, int minZ, int maxZ) {
+        ChunkBounds {
+            if (minX > maxX || minZ > maxZ) {
+                throw new IllegalArgumentException("Invalid chunk bounds: x=" + minX + ".." + maxX
+                        + ", z=" + minZ + ".." + maxZ);
+            }
+        }
+
         private static ChunkBounds fromProperties() {
             return new ChunkBounds(
                     Integer.getInteger("byepregen.surfaceHash.minChunkX", Integer.MIN_VALUE),
@@ -353,6 +373,16 @@ public final class SurfaceWorldHash {
 
         private boolean contains(int x, int z) {
             return x >= this.minX && x <= this.maxX && z >= this.minZ && z <= this.maxZ;
+        }
+
+        private long expectedChunks() {
+            if (this.minX == Integer.MIN_VALUE || this.maxX == Integer.MAX_VALUE
+                    || this.minZ == Integer.MIN_VALUE || this.maxZ == Integer.MAX_VALUE) {
+                throw new IllegalStateException("Complete chunk coverage requires finite bounds");
+            }
+            long width = (long)this.maxX - this.minX + 1L;
+            long depth = (long)this.maxZ - this.minZ + 1L;
+            return Math.multiplyExact(width, depth);
         }
     }
 }

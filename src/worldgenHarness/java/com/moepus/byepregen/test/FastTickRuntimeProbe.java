@@ -1,13 +1,11 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import com.mojang.logging.LogUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
@@ -51,7 +49,7 @@ final class FastTickRuntimeProbe {
         }
         try {
             require(verificationSummary != null, "fast tick mixins were not verified before worldgen");
-            writeResult("PASS\n" + verificationSummary + "\nradius=16\n");
+            HarnessResultFile.write(RESULT_PROPERTY, "PASS\n" + verificationSummary + "\nradius=16\n");
             LOGGER.info("BYEPREGEN_FAST_TICK_RUNTIME_PASS");
             return true;
         } catch (Throwable throwable) {
@@ -73,16 +71,6 @@ final class FastTickRuntimeProbe {
     }
 
     private static void writeFailure(Throwable throwable) {
-        try {
-            writeResult("FAIL\n" + throwable + "\n");
-        } catch (Throwable writeFailure) {
-            throwable.addSuppressed(writeFailure);
-        }
-    }
-
-    private static void writeResult(String value) throws Exception {
-        Path path = Path.of(System.getProperty(RESULT_PROPERTY)).toAbsolutePath().normalize();
-        Files.createDirectories(path.getParent());
-        Files.writeString(path, value, StandardCharsets.UTF_8);
+        HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
     }
 }

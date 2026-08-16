@@ -105,6 +105,12 @@ public final class LightGoldenPrepareRelight {
                 chunks += counts.stripped;
                 relightChunks += counts.relightListed;
             }
+            if (chunks == 0) {
+                throw new IOException("No source chunks found in " + worldDir);
+            }
+            if (relightChunks == 0) {
+                throw new IOException("No chunks fall within the configured relight radius in " + worldDir);
+            }
             System.out.println("Stripped saved light from " + chunks + " chunk(s) in " + worldDir);
             System.out.println("Wrote " + relightChunks + " relight target chunk(s) to " + chunkList);
         }

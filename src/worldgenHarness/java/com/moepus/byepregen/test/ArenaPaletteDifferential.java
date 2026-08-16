@@ -1,11 +1,9 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.Unpooled;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,10 +54,10 @@ final class ArenaPaletteDifferential {
             assertScenario(1);
             assertScenario(8);
             assertScenario(STATES.size());
-            writeResult("PASS\nscenarios=uniform,page-palette,dense\n");
+            HarnessResultFile.write(RESULT_PROPERTY, "PASS\nscenarios=uniform,page-palette,dense\n");
             LOGGER.info("BYEPREGEN_ARENA_PALETTE_DIFFERENTIAL_PASS");
         } catch (Throwable throwable) {
-            writeFailure(throwable);
+            HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
             LOGGER.error("BYEPREGEN_ARENA_PALETTE_DIFFERENTIAL_FAIL", throwable);
         } finally {
             server.halt(false);
@@ -191,28 +189,6 @@ final class ArenaPaletteDifferential {
             BlockState state
     ) {
         return container.getAndSet(index & 15, index >>> 8, index >>> 4 & 15, state);
-    }
-
-    private static void writeResult(String result) throws Exception {
-        Path path = resultPath();
-        Files.createDirectories(path.getParent());
-        Files.writeString(path, result, StandardCharsets.UTF_8);
-    }
-
-    private static void writeFailure(Throwable throwable) {
-        try {
-            writeResult("FAIL\n" + throwable + "\n");
-        } catch (Exception writeFailure) {
-            throwable.addSuppressed(writeFailure);
-        }
-    }
-
-    private static Path resultPath() {
-        String value = System.getProperty(RESULT_PROPERTY);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing -D" + RESULT_PROPERTY);
-        }
-        return Path.of(value);
     }
 
     private static void assertSame(Object expected, Object actual, String message) {

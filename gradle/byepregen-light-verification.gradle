@@ -1,4 +1,5 @@
 def lightGoldenRoot = file('run/light-golden')
+def lightChunkWidth = 16.toBigDecimal()
 def lightGoldenConfig = [
         rootDir          : lightGoldenRoot,
         sourceDir        : file("${lightGoldenRoot}/source"),
@@ -11,6 +12,8 @@ def lightGoldenConfig = [
         maxMismatches    : byepregenProp('byepregenLightGoldenMaxMismatches', '50'),
         minComparedLayers: byepregenProp('byepregenLightGoldenMinComparedLayers', '1'),
         missingAsZero    : byepregenProp('byepregenLightGoldenMissingAsZero', 'false'),
+        requireCompleteChunks: byepregenProp('byepregenLightGoldenRequireCompleteChunks', 'true'),
+        minChunkCoverage : byepregenProp('byepregenLightGoldenMinChunkCoverage', '0.8'),
         sourceArena      : byepregenProp('byepregenLightGoldenSourceArenaPalette', 'true'),
         vanillaArena     : byepregenProp('byepregenLightGoldenVanillaArenaPalette', 'true'),
         yaArena          : byepregenProp('byepregenLightGoldenYAArenaPalette', 'true'),
@@ -27,8 +30,11 @@ lightGoldenConfig.actualWorld = byepregenProp(
 lightGoldenConfig.sourceRadius = (
         lightGoldenConfig.radius.toBigDecimal() + lightGoldenConfig.sourceBuffer.toBigDecimal()
 ).toPlainString()
+lightGoldenConfig.relightRadius = (
+        lightGoldenConfig.radius.toBigDecimal() + lightChunkWidth
+).toPlainString()
 lightGoldenConfig.diffChunkLimit = Math.ceil(
-        lightGoldenConfig.radius.toBigDecimal().doubleValue() / 16.0D
+        lightGoldenConfig.radius.toBigDecimal().doubleValue() / lightChunkWidth.doubleValue()
 ).intValue()
 lightGoldenConfig.relightJfrRepository = file("${lightGoldenConfig.rootDir}/jfr-repository")
 lightGoldenConfig.relightVanillaJfrEnabled = byepregenProp(
@@ -93,18 +99,19 @@ def lightFuzzConfig = [
         minChunkZ : byepregenProp('byepregenLightFuzzDiffMinChunkZ', '-2'),
         maxChunkZ : byepregenProp('byepregenLightFuzzDiffMaxChunkZ', '2'),
 ]
+lightFuzzConfig.minChunkCoverage = byepregenProp(
+        'byepregenLightFuzzMinChunkCoverage',
+        lightFuzzConfig.variant == 'blackout' ? '0.5' : lightGoldenConfig.minChunkCoverage
+)
 lightFuzzConfig.sourceRadius = byepregenProp(
         'byepregenLightFuzzSourceRadius',
         lightFuzzConfig.variant == 'blackout' ? '256' : '64'
 )
-def lightFuzzResult = { File dir -> file("${dir}/light-fuzz.result") }
-
 def configureLightFuzzRun = { run, File dir ->
     byepregenConfigureWorldgenRun(run, [dir: dir, mode: 'light_fuzz'])
     run.systemProperty('byepregen.testWorldGen.lightFuzzSeed', lightFuzzConfig.seed)
     run.systemProperty('byepregen.testWorldGen.lightFuzzVariant', lightFuzzConfig.variant)
     run.systemProperty('byepregen.testWorldGen.lightFuzzProbes', lightFuzzConfig.probes)
-    run.systemProperty('byepregen.testWorldGen.lightFuzzResult', lightFuzzResult(dir).absolutePath)
 }
 
 def configureLightRestartRun = { run, Map config, String phase ->
@@ -142,6 +149,7 @@ def prepareRelightRunTask = { String taskName, Map options ->
             }
         }
     }
+    byepregenConfigureWorldgenResultTask(taskName, options.dir)
 }
 
 neoForge {
@@ -227,10 +235,7 @@ neoForge {
 }
 
 def assertLightRestartResult = { Map config, String expected ->
-    if (!config.result.isFile()) {
-        throw new GradleException("Light restart probe produced no result: ${config.result}")
-    }
-    String result = config.result.getText('UTF-8').trim()
+    String result = byepregenReadRequiredResult(config.result, 'Light restart probe').trim()
     if (result != expected) {
         throw new GradleException("Light restart probe failed: ${result}")
     }
@@ -387,13 +392,14 @@ tasks.register('testYALightC2MERestart') {
 tasks.register('prepareLightGoldenRelight', JavaExec) {
     group = 'verification'
     description = 'Copies one source terrain world into vanilla/YA worlds and strips saved light data.'
+    dependsOn('runLightGoldenSource')
     classpath = sourceSets.worldgenHarness.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.LightGoldenPrepareRelight')
     args file("${lightGoldenConfig.sourceDir}/world").absolutePath,
             file("${lightGoldenConfig.vanillaDir}/world").absolutePath,
             file("${lightGoldenConfig.yaDir}/world").absolutePath,
             file("${lightGoldenConfig.luxDir}/world").absolutePath
-    systemProperty 'byepregen.lightGolden.prepareRadius', lightGoldenConfig.radius
+    systemProperty 'byepregen.lightGolden.prepareRadius', lightGoldenConfig.relightRadius
     doFirst {
         [
                 [dir: lightGoldenConfig.vanillaDir, yaLight: 'false', arenaPalette: lightGoldenConfig.vanillaArena],
@@ -443,6 +449,8 @@ tasks.register('diffLightGolden', JavaExec) {
     systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
     systemProperty 'byepregen.lightGolden.minComparedLayers', lightGoldenConfig.minComparedLayers
     systemProperty 'byepregen.lightGolden.missingAsZero', lightGoldenConfig.missingAsZero
+    systemProperty 'byepregen.lightGolden.requireCompleteChunks', lightGoldenConfig.requireCompleteChunks
+    systemProperty 'byepregen.lightGolden.minChunkCoverage', lightGoldenConfig.minChunkCoverage
     systemProperty 'byepregen.lightGolden.minChunkX', -lightGoldenConfig.diffChunkLimit
     systemProperty 'byepregen.lightGolden.maxChunkX', lightGoldenConfig.diffChunkLimit
     systemProperty 'byepregen.lightGolden.minChunkZ', -lightGoldenConfig.diffChunkLimit
@@ -455,27 +463,10 @@ tasks.register('runLightGoldenDiff') {
     dependsOn('runLightGoldenSource', 'runLightGoldenRelightVanilla', 'runLightGoldenRelightYA', 'diffLightGolden')
 }
 
-def assertLightFuzzResult = { File result ->
-    if (!result.isFile()) {
-        throw new GradleException("Light fuzz produced no result: ${result}")
-    }
-    String value = result.getText('UTF-8')
-    if (!value.startsWith('PASS\n')) {
-        throw new GradleException("Light fuzz failed: ${value.trim()}")
-    }
-}
-
 def configureLightFuzzServerTask = { Map options ->
     byepregenPrepareRunTask(options.taskName, options)
     tasks.matching { it.name == options.taskName }.configureEach {
         dependsOn('prepareLightFuzzWorlds')
-        File result = lightFuzzResult(options.prepare.dir)
-        doFirst {
-            delete(result)
-        }
-        doLast {
-            assertLightFuzzResult(result)
-        }
     }
 }
 
@@ -540,6 +531,8 @@ tasks.register('diffLightFuzz', JavaExec) {
     systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
     systemProperty 'byepregen.lightGolden.minComparedLayers', lightGoldenConfig.minComparedLayers
     systemProperty 'byepregen.lightGolden.missingAsZero', lightGoldenConfig.missingAsZero
+    systemProperty 'byepregen.lightGolden.requireCompleteChunks', lightGoldenConfig.requireCompleteChunks
+    systemProperty 'byepregen.lightGolden.minChunkCoverage', lightFuzzConfig.minChunkCoverage
     systemProperty 'byepregen.lightGolden.minChunkX', lightFuzzConfig.minChunkX
     systemProperty 'byepregen.lightGolden.maxChunkX', lightFuzzConfig.maxChunkX
     systemProperty 'byepregen.lightGolden.minChunkZ', lightFuzzConfig.minChunkZ

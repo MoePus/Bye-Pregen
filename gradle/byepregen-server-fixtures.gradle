@@ -10,6 +10,21 @@ ext.writeJsonFile = { File target, Map<String, ?> value ->
     writeUtf8File(target, JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n')
 }
 
+ext.byepregenReadRequiredResult = { File result, String label ->
+    if (!result.isFile()) {
+        throw new GradleException("${label} produced no result: ${result}")
+    }
+    result.getText(StandardCharsets.UTF_8.name())
+}
+
+ext.byepregenAssertPassResult = { File result, String label ->
+    String value = byepregenReadRequiredResult(result, label)
+    if (!value.startsWith('PASS\n')) {
+        throw new GradleException("${label} failed:\n${value}")
+    }
+    value
+}
+
 ext.prepareDisposableServer = { Map<String, ?> options ->
     File directory = options.directory as File
     directory.mkdirs()

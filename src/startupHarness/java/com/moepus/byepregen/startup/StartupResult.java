@@ -1,8 +1,6 @@
 package com.moepus.byepregen.startup;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import com.moepus.byepregen.harness.HarnessResultFile;
 
 final class StartupResult {
     private static final String RESULT_PROPERTY = "byepregen.startupResult";
@@ -15,24 +13,14 @@ final class StartupResult {
     }
 
     static void fail(Throwable throwable) {
-        try {
-            write("FAIL\n" + throwable + "\n");
-        } catch (RuntimeException writeFailure) {
-            throwable.addSuppressed(writeFailure);
-        }
+        HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
     }
 
     private static void write(String result) {
-        String value = System.getProperty(RESULT_PROPERTY);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing -D" + RESULT_PROPERTY);
-        }
-        Path path = Path.of(value);
         try {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, result, StandardCharsets.UTF_8);
+            HarnessResultFile.write(RESULT_PROPERTY, result);
         } catch (Exception exception) {
-            throw new IllegalStateException("Failed to write startup result " + path, exception);
+            throw new IllegalStateException("Failed to write startup result", exception);
         }
     }
 }

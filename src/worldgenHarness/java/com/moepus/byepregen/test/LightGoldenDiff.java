@@ -43,12 +43,7 @@ public final class LightGoldenDiff {
 
         Path expectedWorld = Paths.get(args[0]).toAbsolutePath().normalize();
         Path actualWorld = Paths.get(args[1]).toAbsolutePath().normalize();
-        int maxMismatches = Integer.getInteger("byepregen.lightGolden.maxMismatches", 50);
-        int minComparedLayers = Integer.getInteger("byepregen.lightGolden.minComparedLayers", 1);
-        boolean missingAsZero = Boolean.getBoolean("byepregen.lightGolden.missingAsZero");
-
-        ChunkBounds chunkBounds = ChunkBounds.fromProperties();
-        DiffResult result = compareWorlds(expectedWorld, actualWorld, maxMismatches, minComparedLayers, missingAsZero, chunkBounds);
+        DiffResult result = compareWorlds(expectedWorld, actualWorld, DiffOptions.fromProperties());
         result.print(expectedWorld, actualWorld);
         if (result.hasFailures()) {
             System.exit(1);
@@ -56,8 +51,10 @@ public final class LightGoldenDiff {
     }
 
     private static DiffResult compareWorlds(
-            Path expectedWorld, Path actualWorld, int maxIssues, int minComparedLayers,
-            boolean missingAsZero, ChunkBounds chunkBounds) throws IOException {
+            Path expectedWorld,
+            Path actualWorld,
+            DiffOptions options
+    ) throws IOException {
         if (!Files.isDirectory(expectedWorld)) {
             throw new IOException("Expected world directory does not exist: " + expectedWorld);
         }
@@ -76,7 +73,8 @@ public final class LightGoldenDiff {
 
         Map<ChunkKey, ChunkLights> expectedWorldChunks = readWorld(expectedRegions);
         Map<ChunkKey, ChunkLights> actualWorldChunks = readWorld(actualRegions);
-        DiffResult result = new DiffResult(maxIssues, minComparedLayers, missingAsZero, chunkBounds);
+        DiffResult result = new DiffResult(options);
+        ChunkBounds chunkBounds = options.chunkBounds();
         TreeSet<String> regionKeys = new TreeSet<>();
         regionKeys.addAll(expectedRegions.keySet());
         regionKeys.addAll(actualRegions.keySet());
@@ -94,6 +92,7 @@ public final class LightGoldenDiff {
                     result.skippedOutOfBoundsChunks++;
                     continue;
                 }
+                result.chunksInBounds++;
                 ChunkLights expected = expectedChunks.get(chunkKey);
                 ChunkLights actual = actualChunks.get(chunkKey);
                 if (expected == null || actual == null) {
@@ -125,7 +124,12 @@ public final class LightGoldenDiff {
                     result.skippedUnlitNeighborhoodChunks++;
                     continue;
                 }
+                result.eligibleChunks++;
+                int layersBefore = result.layersCompared;
                 compareChunk(regionKey, chunkKey, expected, actual, expectedWorldChunks, actualWorldChunks, result);
+                if (result.layersCompared != layersBefore) {
+                    result.chunksWithComparedLayers++;
+                }
             }
         }
 
@@ -506,6 +510,13 @@ public final class LightGoldenDiff {
     }
 
     private record ChunkBounds(int minX, int maxX, int minZ, int maxZ) {
+        ChunkBounds {
+            if (minX > maxX || minZ > maxZ) {
+                throw new IllegalArgumentException("Invalid chunk bounds: x=" + minX + ".." + maxX
+                        + ", z=" + minZ + ".." + maxZ);
+            }
+        }
+
         static ChunkBounds fromProperties() {
             int minX = Integer.getInteger("byepregen.lightGolden.minChunkX", Integer.MIN_VALUE);
             int maxX = Integer.getInteger("byepregen.lightGolden.maxChunkX", Integer.MAX_VALUE);
@@ -525,8 +536,44 @@ public final class LightGoldenDiff {
                     || this.maxZ != Integer.MAX_VALUE;
         }
 
+        boolean isFullyBounded() {
+            return this.minX != Integer.MIN_VALUE
+                    && this.maxX != Integer.MAX_VALUE
+                    && this.minZ != Integer.MIN_VALUE
+                    && this.maxZ != Integer.MAX_VALUE;
+        }
+
+        long expectedChunks() {
+            if (!this.isFullyBounded()) {
+                throw new IllegalStateException("Complete chunk coverage requires finite bounds");
+            }
+            long width = (long)this.maxX - this.minX + 1L;
+            long depth = (long)this.maxZ - this.minZ + 1L;
+            return Math.multiplyExact(width, depth);
+        }
+
         String display() {
             return "x=" + this.minX + ".." + this.maxX + ", z=" + this.minZ + ".." + this.maxZ;
+        }
+    }
+
+    private record DiffOptions(
+            int maxIssues,
+            int minComparedLayers,
+            boolean missingAsZero,
+            boolean requireCompleteChunks,
+            double minChunkCoverage,
+            ChunkBounds chunkBounds
+    ) {
+        static DiffOptions fromProperties() {
+            return new DiffOptions(
+                    Integer.getInteger("byepregen.lightGolden.maxMismatches", 50),
+                    Integer.getInteger("byepregen.lightGolden.minComparedLayers", 1),
+                    Boolean.getBoolean("byepregen.lightGolden.missingAsZero"),
+                    Boolean.getBoolean("byepregen.lightGolden.requireCompleteChunks"),
+                    Double.parseDouble(System.getProperty("byepregen.lightGolden.minChunkCoverage", "0.8")),
+                    ChunkBounds.fromProperties()
+            );
         }
     }
 
@@ -779,11 +826,16 @@ public final class LightGoldenDiff {
         private final int maxIssues;
         private final int minComparedLayers;
         private final boolean missingAsZero;
+        private final boolean requireCompleteChunks;
+        private final double minChunkCoverage;
         private final ChunkBounds chunkBounds;
         private final java.util.ArrayList<String> issues;
         private int suppressedIssues;
         private int regionsCompared;
         private int chunksCompared;
+        private long chunksInBounds;
+        private long eligibleChunks;
+        private long chunksWithComparedLayers;
         private int skippedOutOfBoundsChunks;
         private int skippedUnlitChunks;
         private int skippedUnlitNeighborhoodChunks;
@@ -797,20 +849,44 @@ public final class LightGoldenDiff {
         private int mismatchedLayers;
         private String firstTerrainDifference;
 
-        DiffResult(int maxIssues, int minComparedLayers, boolean missingAsZero, ChunkBounds chunkBounds) {
-            this.maxIssues = Math.max(0, maxIssues);
-            this.minComparedLayers = Math.max(0, minComparedLayers);
-            this.missingAsZero = missingAsZero;
-            this.chunkBounds = chunkBounds;
+        DiffResult(DiffOptions options) {
+            this.maxIssues = Math.max(0, options.maxIssues());
+            this.minComparedLayers = Math.max(0, options.minComparedLayers());
+            this.missingAsZero = options.missingAsZero();
+            this.requireCompleteChunks = options.requireCompleteChunks();
+            this.minChunkCoverage = options.minChunkCoverage();
+            this.chunkBounds = options.chunkBounds();
             this.issues = new java.util.ArrayList<>(Math.min(this.maxIssues, 64));
+            if (this.requireCompleteChunks && !this.chunkBounds.isFullyBounded()) {
+                throw new IllegalArgumentException("Complete chunk coverage requires finite chunk bounds");
+            }
+            if (!(this.minChunkCoverage > 0.0D && this.minChunkCoverage <= 1.0D)) {
+                throw new IllegalArgumentException("minChunkCoverage must be in (0, 1], got "
+                        + this.minChunkCoverage);
+            }
         }
 
         boolean hasFailures() {
             return this.layersCompared < this.minComparedLayers
+                    || this.missingChunks != 0
+                    || this.hasIncompleteCoverage()
                     || this.lightCorrectMismatches != 0
                     || this.missingLayers != 0
                     || this.invalidLayers != 0
                     || this.mismatchedLayers != 0;
+        }
+
+        private boolean hasIncompleteCoverage() {
+            if (!this.requireCompleteChunks) {
+                return false;
+            }
+            long expectedChunks = this.chunkBounds.expectedChunks();
+            return this.chunksInBounds != expectedChunks
+                    || this.chunksWithComparedLayers < this.requiredComparedChunks();
+        }
+
+        private long requiredComparedChunks() {
+            return (long)Math.ceil(this.chunkBounds.expectedChunks() * this.minChunkCoverage);
         }
 
         void addIssue(String issue) {
@@ -839,6 +915,13 @@ public final class LightGoldenDiff {
                         + ", " + this.skippedOutOfBoundsChunks + " skipped-out-of-bounds chunk(s)");
             }
             System.out.println("  require:  at least " + this.minComparedLayers + " compared light layer(s)");
+            if (this.requireCompleteChunks) {
+                System.out.println("  coverage: require all " + this.chunkBounds.expectedChunks()
+                        + " bounded chunk(s) present and at least " + this.requiredComparedChunks()
+                        + " with compared layers; " + this.chunksInBounds + " present in union, "
+                        + this.eligibleChunks + " eligible, " + this.chunksWithComparedLayers
+                        + " with compared layers");
+            }
             System.out.println("  regions:  " + this.regionsCompared);
             System.out.println("  chunks:   " + this.chunksCompared
                     + " compared, " + this.missingChunks + " missing, "
@@ -859,6 +942,12 @@ public final class LightGoldenDiff {
                 if (this.layersCompared < this.minComparedLayers) {
                     System.out.println("  - only compared " + this.layersCompared
                             + " light layer(s), below required " + this.minComparedLayers);
+                }
+                if (this.missingChunks != 0) {
+                    System.out.println("  - " + this.missingChunks + " chunk(s) are missing from one world");
+                }
+                if (this.hasIncompleteCoverage()) {
+                    System.out.println("  - bounded chunk coverage is incomplete or contains skipped chunks");
                 }
                 for (String issue : this.issues) {
                     System.out.println("  - " + issue);

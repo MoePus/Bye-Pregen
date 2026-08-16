@@ -1,11 +1,10 @@
 package com.moepus.byepregen.test;
 
 import com.ishland.c2me.notickvd.common.NoTickSystem;
+import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +31,7 @@ import org.slf4j.Logger;
 
 final class LightRestartProbe {
     static final String MODE = "light_restart";
+    private static final String RESULT_PROPERTY = "byepregen.testWorldGen.result";
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
     static final ChunkPos CENTER = new ChunkPos(0, 0);
@@ -91,25 +91,26 @@ final class LightRestartProbe {
     }
 
     private static void fail(MinecraftServer server, String message) {
-        writeResult("FAIL " + message);
-        server.executeIfPossible(() -> stop(server));
+        server.executeIfPossible(() -> stop(server, "FAIL " + message));
     }
 
     private static void writeResult(String value) {
         Path result = Path.of(property("result", "light-restart.result"));
         try {
-            Files.writeString(result, value + "\n", StandardCharsets.UTF_8);
-        } catch (IOException exception) {
+            HarnessResultFile.write(RESULT_PROPERTY, value + "\n");
+        } catch (Throwable exception) {
             LOGGER.error("Failed to write light restart result {}", result, exception);
         }
     }
 
-    private static void stop(MinecraftServer server) {
+    private static void stop(MinecraftServer server, String result) {
         try {
             server.saveAllChunks(false, true, true);
         } catch (Throwable throwable) {
             LOGGER.error("Failed to save light restart fixture", throwable);
+            result = "FAIL Failed to save fixture: " + throwable;
         }
+        writeResult(result);
         server.halt(false);
     }
 
@@ -282,8 +283,7 @@ final class LightRestartProbe {
             this.stage = Stage.COMPLETE;
             active = null;
             this.noTick.close();
-            writeResult(result);
-            this.server.executeIfPossible(() -> stop(this.server));
+            this.server.executeIfPossible(() -> stop(this.server, result));
         }
     }
 }
