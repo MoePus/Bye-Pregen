@@ -21,17 +21,17 @@ final class LightRelightRun {
     private LightRelightRun() {
     }
 
-    static void run(MinecraftServer server) {
-        if (!"minecraft:overworld".equals(ChunkyWorldGenDriver.WORLD)) {
-            ChunkyWorldGenDriver.failAndStop(server,
+    static void run(MinecraftServer server, WorldgenHarnessController controller) {
+        if (!"minecraft:overworld".equals(controller.world())) {
+            controller.failAndStop(server,
                     "Relight mode currently supports only minecraft:overworld, got "
-                            + ChunkyWorldGenDriver.WORLD);
+                            + controller.world());
             return;
         }
 
         ServerLevel level = server.getLevel(Level.OVERWORLD);
         if (level == null) {
-            ChunkyWorldGenDriver.failAndStop(server, "Overworld is not loaded");
+            controller.failAndStop(server, "Overworld is not loaded");
             return;
         }
 
@@ -42,30 +42,25 @@ final class LightRelightRun {
             chunks = readChunkList(chunkList);
         } catch (IOException exception) {
             LOGGER.error("Failed to read light golden relight chunk list {}", chunkList, exception);
-            ChunkyWorldGenDriver.failAndStop(server, "Failed to read relight chunk list: " + chunkList);
+            controller.failAndStop(server, "Failed to read relight chunk list: " + chunkList);
             return;
         }
 
         if (chunks.isEmpty()) {
-            ChunkyWorldGenDriver.failAndStop(server, "Relight chunk list is empty: " + chunkList);
+            controller.failAndStop(server, "Relight chunk list is empty: " + chunkList);
             return;
         }
 
         LOGGER.info("Started light golden relight: world={} chunks={} list={}",
-                ChunkyWorldGenDriver.WORLD, chunks.size(), chunkList);
-        YALightEngineHolder yaLight = ChunkyWorldGenDriver.yaLightEngineHolder(level);
-        if (yaLight != null) {
-            yaLight.byepregen$getYALightEngine().setDeclaredFreshOwnerDomain(chunks);
+                controller.world(), chunks.size(), chunkList);
+        RunContext context = new RunContext(server, level, controller);
+        if (context.yaLight() != null) {
+            context.yaLight().byepregen$getYALightEngine().setDeclaredFreshOwnerDomain(chunks);
         }
-        loadChunks(server, level, chunks, yaLight);
+        loadChunks(context, chunks);
     }
 
-    private static void loadChunks(
-            MinecraftServer server,
-            ServerLevel level,
-            List<ChunkPos> chunks,
-            YALightEngineHolder yaLight
-    ) {
+    private static void loadChunks(RunContext context, List<ChunkPos> chunks) {
         int completed = 0;
         long startedNanos = System.nanoTime();
         long getChunkCompletedNanos = startedNanos;
@@ -73,29 +68,33 @@ final class LightRelightRun {
         long cleanupCompletedNanos;
         try {
             for (ChunkPos pos : chunks) {
-                level.getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FULL, true);
+                context.level().getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FULL, true);
                 if (completed + 1 == chunks.size()) {
                     getChunkCompletedNanos = System.nanoTime();
                 }
                 ++completed;
-                logProgress(completed, chunks.size(), pos);
+                context.logProgress(completed, chunks.size(), pos);
             }
         } catch (Throwable throwable) {
             LOGGER.error("Light golden relight failed after {}/{} chunks", completed, chunks.size(), throwable);
-            ChunkyWorldGenDriver.failAndStop(server,
+            context.controller().failAndStop(context.server(),
                     "Relight failed after " + completed + "/" + chunks.size() + " chunks");
             return;
         } finally {
             cleanupStartedNanos = System.nanoTime();
-            if (yaLight != null) {
-                yaLight.byepregen$getYALightEngine().clearDeclaredFreshOwnerDomain();
+            if (context.yaLight() != null) {
+                context.yaLight().byepregen$getYALightEngine().clearDeclaredFreshOwnerDomain();
             }
             cleanupCompletedNanos = System.nanoTime();
         }
 
-        logCompletion(chunks.size(), startedNanos, getChunkCompletedNanos,
-                cleanupStartedNanos, cleanupCompletedNanos);
-        ChunkyWorldGenDriver.succeedAndStop(server, "chunks=" + chunks.size());
+        RelightTimings timings = new RelightTimings(
+                startedNanos,
+                getChunkCompletedNanos,
+                new CleanupTiming(cleanupStartedNanos, cleanupCompletedNanos)
+        );
+        logCompletion(context.controller().world(), chunks.size(), timings);
+        context.controller().succeedAndStop(context.server(), "chunks=" + chunks.size());
     }
 
     private static List<ChunkPos> readChunkList(Path chunkList) throws IOException {
@@ -114,36 +113,74 @@ final class LightRelightRun {
         return chunks;
     }
 
-    private static void logProgress(int completed, int total, ChunkPos pos) {
-        long now = System.nanoTime();
-        long next = ChunkyWorldGenDriver.NEXT_PROGRESS_LOG.get();
-        if (completed < total && (now < next || !ChunkyWorldGenDriver.NEXT_PROGRESS_LOG.compareAndSet(
-                next, now + ChunkyWorldGenDriver.PROGRESS_LOG_NANOS))) {
-            return;
-        }
-        LOGGER.info("Light golden relight progress: world={} progress={} chunks={}/{} chunk=({}, {})",
-                ChunkyWorldGenDriver.WORLD, completed * 100.0D / total, completed, total, pos.x, pos.z);
-    }
-
-    private static void logCompletion(
-            int chunks,
-            long startedNanos,
-            long getChunkCompletedNanos,
-            long cleanupStartedNanos,
-            long cleanupCompletedNanos
-    ) {
+    private static void logCompletion(String world, int chunks, RelightTimings timings) {
         long lifecycleCompletedNanos = System.nanoTime();
-        double getChunkSeconds = (getChunkCompletedNanos - startedNanos) / 1_000_000_000.0D;
-        double cleanupSeconds = (cleanupCompletedNanos - cleanupStartedNanos) / 1_000_000_000.0D;
-        double lifecycleSeconds = (lifecycleCompletedNanos - startedNanos) / 1_000_000_000.0D;
+        double getChunkSeconds = (timings.getChunkCompletedNanos() - timings.startedNanos())
+                / 1_000_000_000.0D;
+        double cleanupSeconds = (timings.cleanup().completedNanos() - timings.cleanup().startedNanos())
+                / 1_000_000_000.0D;
+        double lifecycleSeconds = (lifecycleCompletedNanos - timings.startedNanos()) / 1_000_000_000.0D;
         LOGGER.info(
                 "Light golden relight completed: world={} chunks={} getChunkSeconds={} "
                         + "cleanupSeconds={} lifecycleSeconds={}",
-                ChunkyWorldGenDriver.WORLD,
+                world,
                 chunks,
                 getChunkSeconds,
                 cleanupSeconds,
                 lifecycleSeconds
         );
+    }
+
+    private record RelightTimings(
+            long startedNanos,
+            long getChunkCompletedNanos,
+            CleanupTiming cleanup
+    ) {
+    }
+
+    private record CleanupTiming(long startedNanos, long completedNanos) {
+    }
+
+    private static final class RunContext {
+        private final MinecraftServer server;
+        private final ServerLevel level;
+        private final WorldgenHarnessController controller;
+        private final YALightEngineHolder yaLight;
+
+        private RunContext(
+                MinecraftServer server,
+                ServerLevel level,
+                WorldgenHarnessController controller
+        ) {
+            this.server = server;
+            this.level = level;
+            this.controller = controller;
+            Object lightEngine = level.getChunkSource().getLightEngine();
+            this.yaLight = lightEngine instanceof YALightEngineHolder holder ? holder : null;
+        }
+
+        private MinecraftServer server() {
+            return this.server;
+        }
+
+        private ServerLevel level() {
+            return this.level;
+        }
+
+        private WorldgenHarnessController controller() {
+            return this.controller;
+        }
+
+        private YALightEngineHolder yaLight() {
+            return this.yaLight;
+        }
+
+        private void logProgress(int completed, int total, ChunkPos pos) {
+            if (completed < total && !this.controller.acquireProgressLog()) {
+                return;
+            }
+            LOGGER.info("Light golden relight progress: world={} progress={} chunks={}/{} chunk=({}, {})",
+                    this.controller.world(), completed * 100.0D / total, completed, total, pos.x, pos.z);
+        }
     }
 }

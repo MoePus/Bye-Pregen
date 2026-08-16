@@ -24,10 +24,10 @@ public final class TestWorldGen {
             LightRestartProbe.register();
             return;
         }
-        if (!hasClass(CHUNKY_PROVIDER)) {
+        if ("chunky".equals(mode) && !hasClass(CHUNKY_PROVIDER)) {
             throw new IllegalStateException("ByePregen test worldgen requested, but Chunky is not loaded");
         }
-        ChunkyWorldGenDriver.register();
+        WorldgenHarnessDriver.register();
     }
 
     private static boolean hasClass(String className) {
