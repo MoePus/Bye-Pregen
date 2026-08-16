@@ -13,9 +13,11 @@ final class PostProcessingSorter {
     private static final int BUCKET_EAST_EDGE = 4;
     private static final int BUCKET_CORNERS = 5;
     private static final int POSITION_COUNT = 4096;
+    private static final int POSITION_MASK = POSITION_COUNT - 1;
     private static final int BITSET_WORDS = POSITION_COUNT >>> 6;
     private static final int BITSET_SORT_THRESHOLD = 64;
     private static final short[] SORT_ORDER = createSortOrder();
+    private static final short[] SORT_RANKS = createSortRanks();
     private static final ThreadLocal<long[]> SORT_BITS = ThreadLocal.withInitial(
             () -> new long[BITSET_WORDS]
     );
@@ -24,22 +26,26 @@ final class PostProcessingSorter {
     }
 
     static void sortAndDeduplicate(ShortList[] postProcessing) {
-        long[] sortBits = SORT_BITS.get();
+        long[] sortBits = null;
         for (ShortList list : postProcessing) {
             if (list != null && list.size() > 1) {
-                sortAndDeduplicate(list, sortBits);
+                sortBits = sortAndDeduplicate(list, sortBits);
             }
         }
     }
 
-    private static void sortAndDeduplicate(ShortList list, long[] sortBits) {
+    private static long[] sortAndDeduplicate(ShortList list, long[] sortBits) {
         if (list.size() < BITSET_SORT_THRESHOLD) {
             insertionSort(list);
             compactSorted(list);
-            return;
+            return sortBits;
         }
 
+        if (sortBits == null) {
+            sortBits = SORT_BITS.get();
+        }
         bitSetSort(list, sortBits);
+        return sortBits;
     }
 
     private static void insertionSort(ShortList list) {
@@ -89,15 +95,17 @@ final class PostProcessingSorter {
 
         int size = list.size();
         for (int index = 0; index < size; index++) {
-            int palettedIndex = palettedIndex(list.getShort(index));
-            sortBits[palettedIndex >>> 6] |= 1L << (palettedIndex & 63);
+            int rank = sortRank(list.getShort(index));
+            sortBits[rank >>> 6] |= 1L << (rank & 63);
         }
 
         int writeIndex = 0;
-        for (short packedPos : SORT_ORDER) {
-            int palettedIndex = palettedIndex(packedPos);
-            if ((sortBits[palettedIndex >>> 6] & (1L << (palettedIndex & 63))) != 0L) {
-                list.set(writeIndex++, packedPos);
+        for (int wordIndex = 0; wordIndex < BITSET_WORDS; wordIndex++) {
+            long word = sortBits[wordIndex];
+            while (word != 0L) {
+                int rank = (wordIndex << 6) + Long.numberOfTrailingZeros(word);
+                list.set(writeIndex++, SORT_ORDER[rank]);
+                word &= word - 1L;
             }
         }
 
@@ -107,7 +115,7 @@ final class PostProcessingSorter {
     }
 
     private static int sortKey(short packedPos) {
-        return (bucket(packedPos) << 12) | palettedIndex(packedPos);
+        return sortRank(packedPos);
     }
 
     private static short[] createSortOrder() {
@@ -123,6 +131,18 @@ final class PostProcessingSorter {
         }
 
         return order;
+    }
+
+    private static short[] createSortRanks() {
+        short[] ranks = new short[POSITION_COUNT];
+        for (short rank = 0; rank < POSITION_COUNT; rank++) {
+            ranks[SORT_ORDER[rank] & POSITION_MASK] = rank;
+        }
+        return ranks;
+    }
+
+    private static int sortRank(short packedPos) {
+        return SORT_RANKS[packedPos & POSITION_MASK];
     }
 
     private static int bucket(short packedPos) {
