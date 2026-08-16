@@ -5,6 +5,7 @@ import com.mojang.logging.LogUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 
 final class LightFuzzRun {
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final long PENDING_LIGHT_TIMEOUT_NANOS = TimeUnit.MINUTES.toNanos(5L);
 
     private final MinecraftServer server;
     private final ServerLevel level;
@@ -27,6 +29,7 @@ final class LightFuzzRun {
     private List<ChunkPos> chunks = List.of();
     private CompletableFuture<Void> pendingLight;
     private String pendingStageName;
+    private long pendingLightDeadline;
     private Stage stage = Stage.LOAD_CHUNKS;
     private int nextUpdateRound;
     private boolean waitingForTorchLight;
@@ -100,6 +103,10 @@ final class LightFuzzRun {
             return true;
         }
         if (!this.pendingLight.isDone()) {
+            if (System.nanoTime() > this.pendingLightDeadline) {
+                throw new IllegalStateException("Timed out waiting for light fuzz stage: "
+                        + this.pendingStageName);
+            }
             this.logPending();
             return false;
         }
@@ -123,9 +130,10 @@ final class LightFuzzRun {
         }
         if (this.torchLifecycleProbe.advance()) {
             this.waitingForTorchLight = true;
-            this.pendingStageName = "torch lifecycle " + this.torchLifecycleProbe.pendingStage();
-            LOGGER.info("Waiting for light fuzz stage: {}", this.pendingStageName);
-            this.pendingLight = this.torchLifecycleProbe.waitForLight();
+            this.beginPendingLight(
+                    "torch lifecycle " + this.torchLifecycleProbe.pendingStage(),
+                    this.torchLifecycleProbe.waitForLight()
+            );
         }
         return true;
     }
@@ -223,19 +231,25 @@ final class LightFuzzRun {
     }
 
     private void waitForLight(String stageName) {
-        LOGGER.info("Waiting for light fuzz stage: {}", stageName);
         CompletableFuture<?>[] futures = new CompletableFuture<?>[this.chunks.size()];
         for (int i = 0; i < this.chunks.size(); ++i) {
             ChunkPos chunk = this.chunks.get(i);
             futures[i] = this.level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x, chunk.z);
         }
+        this.beginPendingLight(stageName, CompletableFuture.allOf(futures));
+    }
+
+    private void beginPendingLight(String stageName, CompletableFuture<Void> pendingLight) {
+        LOGGER.info("Waiting for light fuzz stage: {}", stageName);
         this.pendingStageName = stageName;
-        this.pendingLight = CompletableFuture.allOf(futures);
+        this.pendingLight = pendingLight;
+        this.pendingLightDeadline = System.nanoTime() + PENDING_LIGHT_TIMEOUT_NANOS;
     }
 
     private void clearPendingLight() {
         this.pendingLight = null;
         this.pendingStageName = null;
+        this.pendingLightDeadline = 0L;
     }
 
     private void logPending() {

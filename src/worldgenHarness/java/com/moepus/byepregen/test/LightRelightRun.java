@@ -108,7 +108,11 @@ final class LightRelightRun {
             if (parts.length != 2) {
                 throw new IOException("Invalid chunk entry in " + chunkList + ": " + line);
             }
-            chunks.add(new ChunkPos(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+            try {
+                chunks.add(new ChunkPos(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+            } catch (NumberFormatException exception) {
+                throw new IOException("Invalid chunk coordinates in " + chunkList + ": " + line, exception);
+            }
         }
         return chunks;
     }
