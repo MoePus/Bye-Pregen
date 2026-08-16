@@ -24,6 +24,10 @@ public final class TestWorldGen {
             ChunkNbtParity.register();
             return;
         }
+        if (LightRestartProbe.MODE.equals(mode)) {
+            LightRestartProbe.register();
+            return;
+        }
         if (!hasClass(CHUNKY_PROVIDER)) {
             LOGGER.error("ByePregen test worldgen requested, but Chunky is not loaded");
             return;

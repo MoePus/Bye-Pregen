@@ -24,7 +24,7 @@ final class YASkyFreshSourceInitializer {
     }
 
     void initializePartialSection(YAChunkLightData data, int sectionY) {
-        YANibbleArray nibble = this.engine.storage.getOrCreateSection(data, sectionY);
+        YANibbleArray nibble = this.engine.storage.getOrCreateUpdatingSection(data, sectionY);
         if (nibble == null) {
             return;
         }

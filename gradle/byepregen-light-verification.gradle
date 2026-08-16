@@ -59,6 +59,28 @@ def scalableLuxRuntime = configurations.detachedConfiguration(
 scalableLuxRuntime.transitive = false
 
 def lightFuzzRoot = file('run/light-fuzz')
+def lightRestartStandard = [
+        id        : 'Standard',
+        root      : file('run/light-restart'),
+        gcFree    : 'false',
+        prepareRun: 'runLightRestartPrepare',
+        verifyRun : 'runLightRestartVerify',
+        secondRun : 'runLightRestartVerifyAgain',
+]
+def lightRestartRaw = [
+        id        : 'Raw',
+        root      : file('run/light-restart-raw'),
+        gcFree    : 'true',
+        prepareRun: 'runLightRestartRawPrepare',
+        verifyRun : 'runLightRestartRawVerify',
+        secondRun : 'runLightRestartRawVerifyAgain',
+]
+def lightRestartConfigs = [lightRestartStandard, lightRestartRaw]
+lightRestartConfigs.each { config ->
+    config.result = file("${config.root}/light-restart.result")
+    config.baseline = file("${config.root}/light-restart.baseline")
+    config.world = file("${config.root}/world")
+}
 def lightFuzzConfig = [
         vanillaDir: file("${lightFuzzRoot}/vanilla"),
         yaDir     : file("${lightFuzzRoot}/ya"),
@@ -76,6 +98,13 @@ def configureLightFuzzRun = { run, File dir ->
     run.systemProperty('byepregen.testWorldGen.lightFuzzSeed', lightFuzzConfig.seed)
     run.systemProperty('byepregen.testWorldGen.lightFuzzVariant', lightFuzzConfig.variant)
     run.systemProperty('byepregen.testWorldGen.lightFuzzProbes', lightFuzzConfig.probes)
+}
+
+def configureLightRestartRun = { run, Map config, String phase ->
+    byepregenConfigureWorldgenRun(run, [dir: config.root, mode: 'light_restart'])
+    run.systemProperty('byepregen.testWorldGen.phase', phase)
+    run.systemProperty('byepregen.testWorldGen.result', config.result.absolutePath)
+    run.systemProperty('byepregen.testWorldGen.baseline', config.baseline.absolutePath)
 }
 
 def prepareRelightRunTask = { String taskName, Map options ->
@@ -110,6 +139,24 @@ def prepareRelightRunTask = { String taskName, Map options ->
 
 neoForge {
     runs {
+        lightRestartPrepare {
+            configureLightRestartRun(delegate, lightRestartStandard, 'prepare')
+        }
+        lightRestartVerify {
+            configureLightRestartRun(delegate, lightRestartStandard, 'verify')
+        }
+        lightRestartVerifyAgain {
+            configureLightRestartRun(delegate, lightRestartStandard, 'verify')
+        }
+        lightRestartRawPrepare {
+            configureLightRestartRun(delegate, lightRestartRaw, 'prepare')
+        }
+        lightRestartRawVerify {
+            configureLightRestartRun(delegate, lightRestartRaw, 'verify')
+        }
+        lightRestartRawVerifyAgain {
+            configureLightRestartRun(delegate, lightRestartRaw, 'verify')
+        }
         lightGoldenSource {
             byepregenConfigureWorldgenRun(
                     delegate,
@@ -164,6 +211,127 @@ neoForge {
             configureLightFuzzRun(delegate, lightFuzzConfig.yaDir)
         }
     }
+}
+
+def assertLightRestartResult = { Map config, String expected ->
+    if (!config.result.isFile()) {
+        throw new GradleException("Light restart probe produced no result: ${config.result}")
+    }
+    String result = config.result.getText('UTF-8').trim()
+    if (result != expected) {
+        throw new GradleException("Light restart probe failed: ${result}")
+    }
+    if (config.gcFree.toBoolean()) {
+        File log = file("${config.root}/logs/latest.log")
+        String text = log.isFile() ? log.getText('UTF-8') : ''
+        if (!text.contains('Registered ByePregen GC-free worldgen chunk serializer with C2ME')
+                || !text.contains('CAN_USE_RAW_SAVE=true')) {
+            throw new GradleException("C2ME raw serializer was not exercised: ${log}")
+        }
+    }
+}
+
+def configureLightRestartServerTask = { Map options ->
+    Map config = options.config
+    tasks.matching { it.name == options.taskName }.configureEach {
+        notCompatibleWithConfigurationCache('Creates or reuses a restart fixture')
+        if (options.prerequisite != null) {
+            dependsOn(options.prerequisite)
+        }
+        doFirst {
+            if (options.prepare) {
+                delete(config.root)
+            } else {
+                delete(config.result)
+            }
+            byepregenPrepareWorldgenRunDir([
+                    dir         : config.root,
+                    yaLight     : 'true',
+                    gcFree      : config.gcFree,
+                    clearWorld  : options.prepare,
+                    flatWorld   : true,
+                    arenaPalette: 'false',
+            ])
+        }
+        doLast {
+            assertLightRestartResult(config, options.prepare ? 'PREPARED' : 'PASS')
+        }
+    }
+}
+
+def registerLightRestartDiskTask = { Map options ->
+    tasks.register(options.taskName, JavaExec) {
+        group = 'verification'
+        dependsOn(options.prerequisite)
+        classpath = sourceSets.worldgenHarness.runtimeClasspath
+        mainClass.set('com.moepus.byepregen.test.LightRestartDiskVerifier')
+        args options.config.world.absolutePath, options.relightLightOn.toString()
+    }
+}
+
+lightRestartConfigs.each { config ->
+    String preparedDisk = "verifyLightRestart${config.id}PreparedDisk"
+    String firstDisk = "verifyLightRestart${config.id}FirstDisk"
+    String secondDisk = "verifyLightRestart${config.id}SecondDisk"
+    configureLightRestartServerTask([
+            taskName    : config.prepareRun,
+            config      : config,
+            prepare     : true,
+            prerequisite: null,
+    ])
+    registerLightRestartDiskTask([
+            taskName      : preparedDisk,
+            prerequisite  : config.prepareRun,
+            config        : config,
+            relightLightOn: false,
+    ])
+    configureLightRestartServerTask([
+            taskName    : config.verifyRun,
+            config      : config,
+            prepare     : false,
+            prerequisite: preparedDisk,
+    ])
+    registerLightRestartDiskTask([
+            taskName      : firstDisk,
+            prerequisite  : config.verifyRun,
+            config        : config,
+            relightLightOn: true,
+    ])
+    configureLightRestartServerTask([
+            taskName    : config.secondRun,
+            config      : config,
+            prepare     : false,
+            prerequisite: firstDisk,
+    ])
+    registerLightRestartDiskTask([
+            taskName      : secondDisk,
+            prerequisite  : config.secondRun,
+            config        : config,
+            relightLightOn: true,
+    ])
+    config.finalDiskTask = secondDisk
+}
+
+tasks.matching { it.name == lightRestartRaw.prepareRun }.configureEach {
+    mustRunAfter(lightRestartStandard.finalDiskTask)
+}
+
+tasks.register('testYALightC2MERestartStandard') {
+    group = 'verification'
+    description = 'Runs two C2ME no-tick restarts through standard chunk serialization.'
+    dependsOn(lightRestartStandard.finalDiskTask)
+}
+
+tasks.register('testYALightC2MERestartRaw') {
+    group = 'verification'
+    description = 'Runs two C2ME no-tick restarts through ByePregen raw chunk serialization.'
+    dependsOn(lightRestartRaw.finalDiskTask)
+}
+
+tasks.register('testYALightC2MERestart') {
+    group = 'verification'
+    description = 'Runs the YA+C2ME standard/raw skylight restart matrix.'
+    dependsOn('testYALightC2MERestartStandard', 'testYALightC2MERestartRaw')
 }
 
 [

@@ -230,16 +230,24 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     }
 
     @Unique
-    private void byepregen$addLightChunkTask(
-            int chunkX,
-            int chunkZ,
+    private void byepregen$addChunkLightPass(
+            ChunkPos chunkPos,
             Runnable prepare,
             Runnable complete
     ) {
-        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
-        this.byepregen$lightScheduler.enqueueLightChunk(chunkKey, prepare, complete);
+        this.byepregen$lightScheduler.enqueueLightChunk(chunkPos.toLong(), prepare, complete);
         if (byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD) {
             this.byepregen$scheduleDrainWithKnownWork();
+        }
+    }
+
+    @Unique
+    private static void byepregen$materializeNonEmptySections(YALightEngine engine, ChunkAccess chunk) {
+        LevelChunkSection[] sections = chunk.getSections();
+        for (int i = 0; i < chunk.getSectionsCount(); ++i) {
+            if (!sections[i].hasOnlyAir()) {
+                engine.updateSectionStatus(chunk, chunk.getSectionYFromSectionIndex(i), false);
+            }
         }
     }
 
@@ -287,11 +295,28 @@ public abstract class ThreadedLevelLightEngineYAMixin {
 
     /**
      * @author MoePus
-     * @reason YA initializes chunk-owned light state in lightChunk; no separate initialization future is needed.
+     * @reason Initialize and publish chunk-owned YA sections before advancing the chunk pipeline.
      */
     @Overwrite
     public CompletableFuture<ChunkAccess> initializeLight(ChunkAccess chunk, boolean lightEnabled) {
-        return CompletableFuture.completedFuture(chunk);
+        ChunkPos chunkPos = chunk.getPos();
+        YALightEngine engine = this.byepregen$yaEngine();
+        CompletableFuture<ChunkAccess> future = new CompletableFuture<>();
+        Runnable prepare = Util.name(() -> {
+            try {
+                byepregen$materializeNonEmptySections(engine, chunk);
+                engine.setLightEnabled(chunk, lightEnabled);
+            } catch (RuntimeException | Error exception) {
+                future.completeExceptionally(exception);
+                throw exception;
+            }
+        }, () -> "YA initializeLight " + chunkPos + " " + lightEnabled);
+        this.byepregen$addChunkLightPass(
+                chunkPos,
+                prepare,
+                () -> future.complete(chunk)
+        );
+        return future;
     }
 
     /**
@@ -307,13 +332,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
         chunk.setLightCorrect(false);
         Runnable prepare = Util.name(() -> {
             engine.setEdgeCheckReady(chunk, false);
-            LevelChunkSection[] sections = chunk.getSections();
-            for (int i = 0; i < chunk.getSectionsCount(); ++i) {
-                LevelChunkSection section = sections[i];
-                if (!section.hasOnlyAir()) {
-                    engine.updateSectionStatus(chunk, chunk.getSectionYFromSectionIndex(i), false);
-                }
-            }
+            byepregen$materializeNonEmptySections(engine, chunk);
             engine.setLightEnabled(chunk, true);
             if (freshRequest != null) {
                 engine.propagateFreshLightSources(freshRequest);
@@ -333,7 +352,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             }
             future.complete(chunk);
         };
-        this.byepregen$addLightChunkTask(chunkPos.x, chunkPos.z, prepare, complete);
+        this.byepregen$addChunkLightPass(chunkPos, prepare, complete);
         return future;
     }
 

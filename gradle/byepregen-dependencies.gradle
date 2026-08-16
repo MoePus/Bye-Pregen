@@ -81,6 +81,7 @@ dependencies {
     compileOnly files('libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.116-all.jar')
     compileOnly files('libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar')
+    compileOnly files('libs/c2me-neoforge-notickvd-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar')
 //    additionalRuntimeClasspath 'curse.maven:c2me-ocl-1563823:8436419'

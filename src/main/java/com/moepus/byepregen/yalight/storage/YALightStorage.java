@@ -70,10 +70,23 @@ public final class YALightStorage {
     }
 
     public YANibbleArray getOrCreateSection(ChunkAccess chunk, int sectionY) {
-        return this.getOrCreateSection(this.data(chunk), sectionY);
+        YAChunkLightData data = this.data(chunk);
+        if (data == null) {
+            return null;
+        }
+        int index = this.sectionIndex(sectionY);
+        if (index < 0 || index >= this.lightSectionCount) {
+            return null;
+        }
+        YANibbleArray previous = data.getUpdatingSectionByIndex(index);
+        YANibbleArray section = data.getOrCreateUpdatingSectionByIndex(index);
+        if (previous == null || previous.isNullUpdating()) {
+            this.markDirty(data, index);
+        }
+        return section;
     }
 
-    public YANibbleArray getOrCreateSection(YAChunkLightData data, int sectionY) {
+    public YANibbleArray getOrCreateUpdatingSection(YAChunkLightData data, int sectionY) {
         return data == null ? null : data.getOrCreateUpdatingSection(sectionY);
     }
 
