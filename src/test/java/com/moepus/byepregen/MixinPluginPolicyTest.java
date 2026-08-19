@@ -40,12 +40,15 @@ final class MixinPluginPolicyTest {
     }
 
     @Test
-    void dfcRequiresArenaConfigAndC2meModule() {
+    void dfcRequiresArenaAndCompilerConfigButNotC2me() {
         Config config = new Config();
-        String mixin = MIXIN_PREFIX + "dfc.DfcNoiseChunkMixin";
+        String mixin = MIXIN_PREFIX + "dfc.DensityNoiseChunkMixin";
 
-        assertFalse(passes(MixinFeature.DFC, mixin, config, false));
+        assertTrue(passes(MixinFeature.DFC, mixin, config, false));
         assertTrue(passes(MixinFeature.DFC, mixin, config, true));
+        config.enableDensityColumnCompiler = false;
+        assertFalse(passes(MixinFeature.DFC, mixin, config, true));
+        config.enableDensityColumnCompiler = true;
         config.enableArenaPalette = false;
         assertFalse(passes(MixinFeature.DFC, mixin, config, true));
     }

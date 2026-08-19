@@ -6,88 +6,65 @@
 
 package com.moepus.byepregen.dfc.runtime;
 
-import com.ishland.c2me.opts.dfc.common.ducks.IFastCacheLike;
-import com.ishland.c2me.opts.dfc.common.gen.jvm.util.DfcObjectCache;
-
 import java.util.Arrays;
 import java.util.Objects;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import org.objectweb.asm.Type;
 
-/**
- * Mutable execution state reused by one noise chunk's final-density column path.
- */
+/** Mutable execution state owned and reused by one NoiseChunk. */
 public final class ColumnEvaluationContext {
-
+    /** Canonical cache-miss payload shared by the column runtime and generated helpers. */
+    public static final long MEMO_MISS_BITS = 0x7ffd_db97_2d48_6a4fL;
+    public static final double MEMO_MISS = Double.longBitsToDouble(MEMO_MISS_BITS);
     public static final String METHOD_DESC = Type.getMethodDescriptor(
             Type.VOID_TYPE, Type.getType(ColumnEvaluationContext.class));
 
-    private final DfcObjectCache objectCache;
+    private final MutablePointContext point = new MutablePointContext();
     private double[] memoizedValues = new double[0];
+    private boolean[] memoizedReady = new boolean[0];
     private double[][] interpolationColumns = new double[0][];
+    private double[][] scratchArrays = new double[4][];
+    private float[][] splineCoordinateArrays = new float[0][];
     private InterpolationProvider interpolationProvider;
     private double[] output;
     private int memoizedCount;
     private int interpolationCount;
+    private int scratchDepth;
     private int blockX;
     private int blockZ;
     private int minY;
     private int cellHeight;
     private boolean active;
 
-    public ColumnEvaluationContext(DfcObjectCache objectCache) {
-        this.objectCache = Objects.requireNonNull(objectCache, "objectCache");
-    }
-
     public void prepare(double[] output, int blockX, int blockZ, int minY, int cellHeight,
                         InterpolationProvider interpolationProvider) {
-        if (this.active) {
-            throw new IllegalStateException("DFC column context is already active");
-        }
-        Objects.requireNonNull(output, "output");
-        Objects.requireNonNull(interpolationProvider, "interpolationProvider");
-        if (output.length == 0) {
-            throw new IllegalArgumentException("Column output must not be empty");
-        }
-        if (cellHeight <= 0) {
-            throw new IllegalArgumentException("Column cell height must be positive");
-        }
-        this.output = output;
+        if (this.active) throw new IllegalStateException("Density column context is already active");
+        this.output = Objects.requireNonNull(output, "output");
+        this.interpolationProvider = Objects.requireNonNull(interpolationProvider, "interpolationProvider");
+        if (output.length == 0) throw new IllegalArgumentException("Column output must not be empty");
+        if (cellHeight <= 0) throw new IllegalArgumentException("Column cell height must be positive");
         this.blockX = blockX;
         this.blockZ = blockZ;
         this.minY = minY;
         this.cellHeight = cellHeight;
-        this.interpolationProvider = interpolationProvider;
         this.active = true;
     }
 
     public void prepareMemoizedCount(int count) {
         this.requireActive();
-        if (count < 0) {
-            throw new IllegalArgumentException("Column memoized count must not be negative");
-        }
-        if (this.memoizedValues.length < count) {
-            this.memoizedValues = new double[count];
-        }
-        Arrays.fill(this.memoizedValues, 0, count,
-                Double.longBitsToDouble(IFastCacheLike.CACHE_MISS_NAN_BITS));
+        if (count < 0) throw new IllegalArgumentException("Negative memoized count");
+        if (this.memoizedValues.length < count) this.memoizedValues = new double[count];
+        if (this.memoizedReady.length < count) this.memoizedReady = new boolean[count];
+        Arrays.fill(this.memoizedValues, 0, count, MEMO_MISS);
+        Arrays.fill(this.memoizedReady, 0, count, false);
         this.memoizedCount = count;
     }
 
     public void prepareInterpolationCount(int count) {
         this.requireActive();
-        if (count < 0) {
-            throw new IllegalArgumentException("Column interpolation count must not be negative");
-        }
-        if (this.interpolationColumns.length < count) {
-            this.interpolationColumns = new double[count][];
-        }
+        if (count < 0) throw new IllegalArgumentException("Negative interpolation count");
+        if (this.interpolationColumns.length < count) this.interpolationColumns = new double[count][];
         this.interpolationCount = count;
-    }
-
-    public void setMemoizedValue(int index, double value) {
-        this.checkMemoizedIndex(index);
-        this.memoizedValues[index] = value;
     }
 
     public double memoizedValue(int index) {
@@ -95,90 +72,117 @@ public final class ColumnEvaluationContext {
         return this.memoizedValues[index];
     }
 
-    public void copyInterpolatedColumn(int index, IFastCacheLike source, double[] destination) {
-        double[] values = this.interpolatedColumn(index, source);
-        if (destination.length != values.length) {
-            throw new IllegalArgumentException("Interpolation destination length mismatch");
-        }
-        System.arraycopy(values, 0, destination, 0, values.length);
+    public boolean memoizedValueReady(int index) {
+        this.checkMemoizedIndex(index);
+        return this.memoizedReady[index];
     }
 
-    public double interpolatedValue(int index, IFastCacheLike source, int blockY) {
-        this.requireActive();
+    /**
+     * Tests the raw-bit sentinel without treating an already computed sentinel-valued result
+     * as a miss. Generated code uses this method so the miss protocol remains explicit in the
+     * reachable bytecode graph.
+     */
+    public boolean memoizedValueMiss(int index) {
+        this.checkMemoizedIndex(index);
+        return !this.memoizedReady[index]
+                && Double.doubleToRawLongBits(this.memoizedValues[index]) == MEMO_MISS_BITS;
+    }
+
+    public double setMemoizedValue(int index, double value) {
+        this.checkMemoizedIndex(index);
+        this.memoizedValues[index] = value;
+        this.memoizedReady[index] = true;
+        return value;
+    }
+
+    public double interpolatedValue(int index, DensityFunction source, int blockY) {
         int delta = blockY - this.minY;
-        if (delta % this.cellHeight != 0) {
-            throw new IllegalArgumentException("Y is outside the active DFC column: " + blockY);
-        }
+        if (delta % this.cellHeight != 0) throw outsideColumn(blockY);
         int valueIndex = delta / this.cellHeight;
         double[] values = this.interpolatedColumn(index, source);
-        if (valueIndex < 0 || valueIndex >= values.length) {
-            throw new IllegalArgumentException("Y is outside the active DFC column: " + blockY);
-        }
+        if (valueIndex < 0 || valueIndex >= values.length) throw outsideColumn(blockY);
         return values[valueIndex];
     }
 
-    public double[] output() {
-        this.requireActive();
-        return this.output;
+    public void copyInterpolatedColumn(int index, DensityFunction source, double[] target) {
+        double[] values = this.interpolatedColumn(index, source);
+        if (target.length != values.length) {
+            throw new IllegalArgumentException("Interpolation target length mismatch");
+        }
+        System.arraycopy(values, 0, target, 0, values.length);
     }
 
-    public int x() {
-        this.requireActive();
-        return this.blockX;
+    public double delegateValue(DensityFunction function, int x, int y, int z) {
+        return function.compute(this.point.at(x, y, z));
     }
 
-    public int z() {
-        this.requireActive();
-        return this.blockZ;
+    public double flatValue(DensityFunction function, int x, int y, int z) {
+        DensityFunction.FunctionContext context = this.point.at(x, y, z);
+        return function instanceof FlatCacheAccess access
+                ? access.byepregen$sampleFlatCache(x, z, context)
+                : function.compute(context);
     }
 
-    public int minY() {
+    public double[] borrowDoubleArray(int length) {
         this.requireActive();
-        return this.minY;
+        if (length < 0) throw new IllegalArgumentException("Negative scratch length");
+        if (this.scratchDepth == this.scratchArrays.length) {
+            this.scratchArrays = Arrays.copyOf(this.scratchArrays, this.scratchDepth * 2);
+        }
+        double[] result = this.scratchArrays[this.scratchDepth];
+        if (result == null || result.length != length) result = new double[length];
+        this.scratchArrays[this.scratchDepth++] = null;
+        return result;
     }
 
-    public int cellHeight() {
+    public void recycleDoubleArray(double[] array) {
         this.requireActive();
-        return this.cellHeight;
+        Objects.requireNonNull(array, "array");
+        if (this.scratchDepth == 0) throw new IllegalStateException("Scratch pool underflow");
+        this.scratchArrays[--this.scratchDepth] = array;
     }
 
-    public DfcObjectCache objectCache() {
+    public float[] splineCoordinates(int slot, int count) {
         this.requireActive();
-        return this.objectCache;
+        if (slot < 0 || count < 0) throw new IllegalArgumentException("Invalid spline buffer request");
+        if (this.splineCoordinateArrays.length <= slot) {
+            this.splineCoordinateArrays = Arrays.copyOf(this.splineCoordinateArrays, slot * 2 + 1);
+        }
+        float[] coordinates = this.splineCoordinateArrays[slot];
+        if (coordinates == null || coordinates.length < count) {
+            coordinates = new float[count];
+            this.splineCoordinateArrays[slot] = coordinates;
+        }
+        return coordinates;
     }
 
+    public double[] output() { this.requireActive(); return this.output; }
+    public int x() { this.requireActive(); return this.blockX; }
+    public int z() { this.requireActive(); return this.blockZ; }
+    public int minY() { this.requireActive(); return this.minY; }
+    public int cellHeight() { this.requireActive(); return this.cellHeight; }
 
     public void clear() {
-        if (!this.active) {
-            return;
-        }
+        if (!this.active) return;
+        if (this.scratchDepth != 0) throw new IllegalStateException("Leaked density column scratch arrays");
         Arrays.fill(this.interpolationColumns, 0, this.interpolationCount, null);
         this.memoizedCount = 0;
         this.interpolationCount = 0;
         this.interpolationProvider = null;
         this.output = null;
-        this.blockX = 0;
-        this.blockZ = 0;
-        this.minY = 0;
-        this.cellHeight = 0;
         this.active = false;
     }
 
-    private double[] interpolatedColumn(int index, IFastCacheLike source) {
+    private double[] interpolatedColumn(int index, DensityFunction source) {
         this.requireActive();
         if (index < 0 || index >= this.interpolationCount) {
             throw new IndexOutOfBoundsException("Column interpolation index: " + index);
         }
         double[] existing = this.interpolationColumns[index];
-        if (existing != null) {
-            return existing;
-        }
-        // Generated source slots avoid an identity-map lookup in every scalar branch lane.
+        if (existing != null) return existing;
         double[] resolved = Objects.requireNonNull(
-                Objects.requireNonNull(this.interpolationProvider, "interpolationProvider")
-                        .byepregen$getColumn(source),
-                "interpolationProvider returned null"
-        );
+                this.interpolationProvider.byepregen$getColumn(source),
+                "interpolationProvider returned null");
         if (resolved.length != this.output.length) {
             throw new IllegalArgumentException("Interpolation source length mismatch");
         }
@@ -194,12 +198,31 @@ public final class ColumnEvaluationContext {
     }
 
     private void requireActive() {
-        if (!this.active) {
-            throw new IllegalStateException("DFC column context is not active");
-        }
+        if (!this.active) throw new IllegalStateException("Density column context is not active");
+    }
+
+    private static IllegalArgumentException outsideColumn(int y) {
+        return new IllegalArgumentException("Y is outside the active density column: " + y);
     }
 
     public interface InterpolationProvider {
         double[] byepregen$getColumn(DensityFunction source);
+    }
+
+    private static final class MutablePointContext implements DensityFunction.FunctionContext {
+        private int x;
+        private int y;
+        private int z;
+
+        private MutablePointContext at(int x, int y, int z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            return this;
+        }
+
+        @Override public int blockX() { return this.x; }
+        @Override public int blockY() { return this.y; }
+        @Override public int blockZ() { return this.z; }
     }
 }

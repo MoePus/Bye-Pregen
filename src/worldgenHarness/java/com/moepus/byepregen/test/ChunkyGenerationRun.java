@@ -75,6 +75,14 @@ final class ChunkyGenerationRun {
             this.controller.failAndStop(this.server, "Fast tick runtime probe failed after worldgen");
             return;
         }
+        String densityColumnMetrics;
+        try {
+            densityColumnMetrics = DensityColumnRuntimeProbe.verify();
+        } catch (RuntimeException throwable) {
+            this.controller.failAndStop(this.server,
+                    "Density column runtime probe failed: " + throwable.getMessage());
+            return;
+        }
         double wallSeconds = (System.nanoTime() - this.startedNanos) / 1_000_000_000.0D;
         double cpuSeconds = (processCpuNanos() - this.startedCpuNanos) / 1_000_000_000.0D;
         LOGGER.info(
@@ -84,7 +92,8 @@ final class ChunkyGenerationRun {
                 cpuSeconds
         );
         logSurfaceScalarMetrics();
-        this.controller.succeedAndStop(this.server, "world=" + event.world());
+        this.controller.succeedAndStop(this.server,
+                "world=" + event.world() + "\ndensityColumn=" + densityColumnMetrics);
     }
 
     private static void logSurfaceScalarMetrics() {

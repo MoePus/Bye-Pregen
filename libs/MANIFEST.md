@@ -22,7 +22,7 @@ Status definitions:
 | `c2me-neoforge-notickvd-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME no-tick view-distance compatibility artifact. |
 | `c2me-neoforge-opts-allocs-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME allocation-optimization artifact. |
 | `c2me-neoforge-opts-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME chunk-I/O optimization artifact. |
-| `c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar` | build-input | Compiles DFC compatibility mixins against C2ME targets. |
+| `c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained as a compatibility and MIT-derived implementation reference; ByePregen's compiler does not link against it. |
 | `c2me-neoforge-opts-math-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME math-optimization artifact. |
 | `c2me-neoforge-opts-natives-math-mc1.21.1-0.4.0-alpha.0.116.jar` | manual-input | Prebuilt native-math input referenced by the experiment documented in `plan.md`. |
 | `c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar` | build-input | Compiles C2ME scheduling compatibility code. |

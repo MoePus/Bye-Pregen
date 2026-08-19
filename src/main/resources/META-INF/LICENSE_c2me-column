@@ -1,4 +1,6 @@
-The DFC column AST and code generator are derived from C2ME.
+The final-density column frontend, AST, optimization passes, and parts of the
+column code generator are derived from C2ME. They have been moved into the
+ByePregen namespace and no longer link to the C2ME DFC runtime.
 
 The MIT License (MIT)
 

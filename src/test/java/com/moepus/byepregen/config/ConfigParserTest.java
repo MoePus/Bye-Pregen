@@ -21,6 +21,7 @@ final class ConfigParserTest {
         Config config = new ConfigParser(path).load();
 
         assertTrue(config.enableArenaPalette);
+        assertTrue(config.enableDensityColumnCompiler);
         assertTrue(Files.exists(path));
         assertTrue(Files.readString(path, StandardCharsets.UTF_8).contains("enableArenaPalette"));
     }

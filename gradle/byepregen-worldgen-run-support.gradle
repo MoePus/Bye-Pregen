@@ -54,6 +54,7 @@ ext.byepregenConfigureWorldgenRun = { run, Map options ->
             options.surfaceOutputDifferential ?: 'false'
     )
     run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
+    run.systemProperty('byepregen.verifyDfcColumn', options.verifyDfcColumn ?: 'false')
     run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
     run.logLevel = org.slf4j.event.Level.INFO
     run.jvmArgument("-Djava.io.tmpdir=${byepregenSlashPath(file("${options.dir}/tmp"))}")
@@ -99,6 +100,7 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
                     enablePlacedFeatureMixin      : (options.enablePlacedFeatureMixin ?: 'false').toBoolean(),
                     enableFastTickChunks          : (options.fastTick ?: 'false').toBoolean(),
                     enableArenaPalette            : arenaPalette.toBoolean(),
+                    enableDensityColumnCompiler   : (options.densityColumnCompiler ?: 'true').toBoolean(),
                     enableServerRuntimeArenaPalette: serverRuntimeArenaPalette.toBoolean(),
                     enableYALightEngine           : (options.yaLight ?: 'false').toBoolean(),
                     enableGcFreeWorldgenSave      : (options.gcFree ?: 'false').toBoolean(),
@@ -125,6 +127,15 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
                             ?: (options.flatWorld ? 'minecraft:flat' : 'minecraft:normal'),
             ],
     ])
+    if (options.c2meDfc != null) {
+        File c2meConfig = file("${dir}/config/c2me.toml")
+        c2meConfig.parentFile.mkdirs()
+        c2meConfig.setText(
+                "version = 3\n\n[vanillaWorldGenOptimizations]\n"
+                        + "\tuseDensityFunctionCompiler = ${options.c2meDfc}\n",
+                'UTF-8'
+        )
+    }
 }
 
 ext.byepregenPrepareRunTask = { String taskName, Map options ->

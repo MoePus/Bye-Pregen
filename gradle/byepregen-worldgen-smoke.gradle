@@ -15,6 +15,9 @@ def worldGenConfig = [
                 .orElse('false')
                 .get(),
         noFeatures: byepregenProp('byepregenTestWorldGenNoFeatures', 'false'),
+        densityColumnCompiler: byepregenProp('byepregenTestDensityColumnCompiler', 'true'),
+        verifyDfcColumn: byepregenProp('byepregenTestVerifyDfcColumn', 'false'),
+        c2meDfc: providers.gradleProperty('byepregenTestC2meDfc').orNull,
         levelType: byepregenProp('byepregenTestWorldGenLevelType', 'minecraft:normal'),
         enablePlacedFeatureMixin: byepregenProp('byepregenTestEnablePlacedFeatureMixin', 'false'),
         logCompilation: byepregenProp('byepregenTestLogCompilation', 'false').toBoolean(),
@@ -123,6 +126,7 @@ neoForge {
                     surfaceScalar: worldGenConfig.surfaceScalar,
                     surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
+                    verifyDfcColumn: worldGenConfig.verifyDfcColumn,
                     enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
                     compilationLog: worldGenConfig.logCompilation ? worldGenConfig.compilationLog : null,
             ])
@@ -228,6 +232,8 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 surfaceScalar: worldGenConfig.surfaceScalar,
                 seed      : worldGenConfig.seed,
                 noFeatures: worldGenConfig.noFeatures,
+                densityColumnCompiler: worldGenConfig.densityColumnCompiler,
+                c2meDfc   : worldGenConfig.c2meDfc,
                 levelType : worldGenConfig.levelType,
                 enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
                 clearWorld: true,

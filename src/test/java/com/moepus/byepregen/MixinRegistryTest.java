@@ -39,9 +39,11 @@ final class MixinRegistryTest {
     private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
     private static final String GATE_DESCRIPTOR = Type.getDescriptor(MixinGate.class);
     private static final String UNIQUE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Unique;";
+    private static final String METHOD_SCOPE_DESCRIPTOR = "Lorg/mixinlite/injector/MethodScope;";
     private static final Set<String> INJECTION_DESCRIPTORS = Set.of(
             "Lcom/llamalad7/mixinextras/injector/ModifyExpressionValue;",
             "Lorg/mixinlite/injector/InjectLite;",
+            METHOD_SCOPE_DESCRIPTOR,
             "Lorg/spongepowered/asm/mixin/injection/Inject;",
             "Lorg/spongepowered/asm/mixin/injection/ModifyArg;",
             "Lorg/spongepowered/asm/mixin/injection/ModifyConstant;",
@@ -156,6 +158,23 @@ final class MixinRegistryTest {
         assertEquals(List.of("servercore"), annotationStrings(chunkTick, "conflictingMods"));
         assertEquals("enableFastTickChunks", annotationString(weatherTick, "config"));
         assertEquals(List.of(), annotationStrings(weatherTick, "conflictingMods"));
+    }
+
+    @Test
+    void densityMarkerUsesOptionalMethodScopeForC2meDelegate() throws Exception {
+        ClassNode type = readClass(MIXIN_PREFIX + "dfc.DensityMarkerTokenMixin");
+        MethodNode enter = type.methods.stream()
+                .filter(method -> method.name.equals("byepregen$enterWithDelegate"))
+                .findFirst()
+                .orElseThrow();
+        AnnotationNode scope = findAnnotation(enter.invisibleAnnotations, METHOD_SCOPE_DESCRIPTOR);
+        if (scope == null) scope = findAnnotation(enter.visibleAnnotations, METHOD_SCOPE_DESCRIPTOR);
+
+        assertNotNull(scope, "C2ME delegate token propagation must use MethodScope");
+        assertEquals(List.of("c2me$withDelegate"), annotationStrings(scope, "method"));
+        assertEquals("byepregen$exitWithDelegate", annotationString(scope, "exit"));
+        assertEquals(0, annotationValue(scope, "require"));
+        assertEquals(false, annotationValue(scope, "remap"));
     }
 
     @Test
@@ -329,6 +348,14 @@ final class MixinRegistryTest {
         return List.of();
     }
 
+    private static Object annotationValue(AnnotationNode annotation, String name) {
+        if (annotation == null || annotation.values == null) return null;
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if (name.equals(annotation.values.get(index))) return annotation.values.get(index + 1);
+        }
+        return null;
+    }
+
     private static MixinFeature annotationFeature(AnnotationNode annotation) {
         if (annotation == null || annotation.values == null) {
             return MixinFeature.NONE;
@@ -345,7 +372,7 @@ final class MixinRegistryTest {
     private static EnumMap<MixinFeature, Integer> featureCounts() {
         EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
         counts.put(MixinFeature.ARENA, 13);
-        counts.put(MixinFeature.DFC, 5);
+        counts.put(MixinFeature.DFC, 4);
         counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 10);
         counts.put(MixinFeature.SURFACE_BIOME_CACHE, 2);
         counts.put(MixinFeature.SURFACE_RULE_COMPILER, 16);

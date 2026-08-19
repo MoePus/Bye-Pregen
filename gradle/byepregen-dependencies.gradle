@@ -64,6 +64,10 @@ def mixinSquaredVersion = '0.3.7-beta.1'
 def mixinSquaredCommon = "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinSquaredVersion}"
 def mixinSquaredNeoForge = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinSquaredVersion}"
 def c2meExperimentJar = providers.gradleProperty('byepregen.c2meExperimentJar').orNull
+def includeC2meRuntime = providers.gradleProperty('byepregenIncludeC2meRuntime')
+        .map(String::toBoolean)
+        .orElse(true)
+        .get()
 
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.11.3')
@@ -83,14 +87,15 @@ dependencies {
     compileOnly files('libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-notickvd-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar')
-    compileOnly files('libs/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar')
 //    additionalRuntimeClasspath 'curse.maven:c2me-ocl-1563823:8436419'
     compileOnly 'com.ibm.async:asyncutil:0.1.0'
     compileOnly files('libs/voxy-0.2.15-beta-3.jar')
-    if (c2meExperimentJar != null) {
-        runtimeOnly files(c2meExperimentJar)
-    } else {
-        runtimeOnly 'curse.maven:c2me-533097:8480771'
+    if (includeC2meRuntime) {
+        if (c2meExperimentJar != null) {
+            runtimeOnly files(c2meExperimentJar)
+        } else {
+            runtimeOnly 'curse.maven:c2me-533097:8480771'
+        }
     }
     runtimeOnly 'curse.maven:lithium-360438:7740400'
     runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"

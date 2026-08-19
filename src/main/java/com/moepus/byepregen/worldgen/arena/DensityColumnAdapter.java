@@ -1,7 +1,7 @@
 package com.moepus.byepregen.worldgen.arena;
 
-import com.moepus.byepregen.dfc.runtime.FinalDensityColumnProvider;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
+import com.moepus.byepregen.dfc.runtime.FinalDensityColumnProvider;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -9,13 +9,13 @@ import java.util.Objects;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 
-public final class C2meDfcColumnAdapter {
+public final class DensityColumnAdapter {
     private final FinalDensityColumnProvider provider;
     private final ColumnBounds bounds;
     private final SourceColumns sourceColumns;
     private final double[] output;
 
-    private C2meDfcColumnAdapter(
+    private DensityColumnAdapter(
             FinalDensityColumnProvider provider,
             ColumnBounds bounds,
             SourceColumns sourceColumns
@@ -26,19 +26,17 @@ public final class C2meDfcColumnAdapter {
         this.output = new double[bounds.length()];
     }
 
-    public static C2meDfcColumnAdapter tryCreate(
+    public static DensityColumnAdapter tryCreate(
             Object owner,
             ColumnBounds bounds,
             InterpolationSources sources
     ) {
-        if (!(owner instanceof FinalDensityColumnProvider provider)) {
+        if (!(owner instanceof FinalDensityColumnProvider provider)
+                || !provider.byepregen$hasFinalDensityColumn()) {
             return null;
         }
-        if (!provider.byepregen$hasFinalDensityColumn()) {
-            return null;
-        }
-        SourceColumns sourceColumns = new SourceColumns(sources, bounds.length());
-        return new C2meDfcColumnAdapter(provider, bounds, sourceColumns);
+        return new DensityColumnAdapter(provider, bounds,
+                new SourceColumns(sources, bounds.length()));
     }
 
     public double[] output() {
@@ -47,19 +45,15 @@ public final class C2meDfcColumnAdapter {
 
     public void evaluate(int blockX, int blockZ, int inCellZ) {
         this.sourceColumns.prepare(inCellZ);
-        this.provider.byepregen$evalFinalDensityColumn(
-                this.output,
-                blockX,
-                blockZ,
-                this.bounds.minY(),
-                this.bounds.cellHeight(),
-                this.sourceColumns
-        );
+        this.provider.byepregen$evalFinalDensityColumn(this.output, blockX, blockZ,
+                this.bounds.minY(), this.bounds.cellHeight(), this.sourceColumns);
     }
 
-    private static void materializeBoundaries(double[] zBaseSteps, double[] output, int inCellZ) {
-        // Arena stores (zBase, zStep) for each Y cell boundary. A fixed X/Z column
-        // only needs one value from every pair as an Interpolated column source.
+    private static void materializeBoundaries(
+            double[] zBaseSteps,
+            double[] output,
+            int inCellZ
+    ) {
         for (int pointY = 0; pointY < output.length; ++pointY) {
             int edgeIndex = pointY * 2;
             output[pointY] = zBaseSteps[edgeIndex] + inCellZ * zBaseSteps[edgeIndex + 1];
@@ -97,7 +91,7 @@ public final class C2meDfcColumnAdapter {
         public double[] byepregen$getColumn(DensityFunction source) {
             Integer index = this.indices.get(source);
             if (index == null) {
-                throw new IllegalArgumentException("Unknown interpolated DFC column source: "
+                throw new IllegalArgumentException("Unknown interpolated density column source: "
                         + source.getClass().getName());
             }
             double[] result = this.values[index];

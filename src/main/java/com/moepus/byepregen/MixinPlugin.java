@@ -3,7 +3,6 @@ package com.moepus.byepregen;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigParser;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -18,10 +17,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Plugin");
     private static final String MIXIN_PACKAGE = "com.moepus.byepregen.mixin.";
     private static final String SURFACE_BIOME_CACHE_PROPERTY = "byepregen.surfaceBiomeCache";
-    private static final String C2ME_DFC_MODULE_ENTRYPOINT =
-            "com.ishland.c2me.opts.dfc.ModuleEntryPoint";
-    private static final String C2ME_DFC_ENABLED_FIELD = "enabled";
-
     private static final String CHUNK_STORAGE_ACCESSOR =
             MIXIN_PACKAGE + "accessor.chunksave.ChunkStorageAccessor";
     private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
@@ -43,19 +38,17 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             REGION_FILE_STORAGE_ACCESSOR
     );
     private static final MixinGateEvaluator MIXIN_GATE_EVALUATOR = MixinGateEvaluator.createDefault();
-    private boolean c2meDfcEnabled;
-
     public MixinPlugin() {
     }
 
-    MixinPlugin(boolean c2meDfcEnabled) {
-        this.c2meDfcEnabled = c2meDfcEnabled;
+    MixinPlugin(boolean ignoredExternalDfcState) {
     }
 
     @Override
     public void onLoad(String mixinPackage) {
-        this.c2meDfcEnabled = readC2meDfcEnabled();
-        LOGGER.info("C2ME DFC module is {}", this.c2meDfcEnabled ? "enabled" : "disabled");
+        Config config = ConfigParser.getConfig();
+        LOGGER.info("ByePregen density column compiler is {}",
+                config.enableArenaPalette && config.enableDensityColumnCompiler ? "enabled" : "disabled");
     }
 
     @Override
@@ -83,7 +76,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         return switch (feature) {
             case NONE -> true;
             case ARENA -> passesArenaGate(mixinClassName, config, context.modExists());
-            case DFC -> config.enableArenaPalette && this.c2meDfcEnabled;
+            case DFC -> config.enableArenaPalette && config.enableDensityColumnCompiler;
             case GC_FREE_CHUNK_SAVE -> passesGcFreeGate(
                     mixinClassName, config, context.classExists());
             case SURFACE_BIOME_CACHE -> Boolean.parseBoolean(
@@ -91,20 +84,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             case SURFACE_RULE_COMPILER -> config.enableSurfaceRuleCompiler;
             case YA_LIGHT -> config.enableYALightEngine;
         };
-    }
-
-    private static boolean readC2meDfcEnabled() {
-        try {
-            Class<?> entryPoint = Class.forName(C2ME_DFC_MODULE_ENTRYPOINT);
-            Field enabled = entryPoint.getDeclaredField(C2ME_DFC_ENABLED_FIELD);
-            enabled.setAccessible(true);
-            return enabled.getBoolean(null);
-        } catch (ClassNotFoundException ignored) {
-            return false;
-        } catch (ReflectiveOperationException | LinkageError | RuntimeException throwable) {
-            LOGGER.warn("Disabling C2ME DFC integration: cannot read its module state", throwable);
-            return false;
-        }
     }
 
     private static boolean passesGcFreeGate(

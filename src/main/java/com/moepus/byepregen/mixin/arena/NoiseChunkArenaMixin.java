@@ -5,7 +5,7 @@ import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.palette.arena.Layout;
 import com.moepus.byepregen.worldgen.arena.ArenaNoiseChunkAccess;
 import com.moepus.byepregen.worldgen.arena.ArenaNoiseInterpolatorAccess;
-import com.moepus.byepregen.worldgen.arena.C2meDfcColumnAdapter;
+import com.moepus.byepregen.worldgen.arena.DensityColumnAdapter;
 import java.util.List;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 import org.spongepowered.asm.mixin.Final;
@@ -52,7 +52,7 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     @Unique private double[][] byepregen$arenaXZBaseSteps;
     @Unique private NoiseChunk.BlockStateFiller byepregen$aquiferMaterialRule;
     @Unique private double[] byepregen$arenaDensityColumn;
-    @Unique private C2meDfcColumnAdapter byepregen$dfcColumnAdapter;
+    @Unique private DensityColumnAdapter byepregen$dfcColumnAdapter;
     @Unique private double byepregen$densityCellLower;
     @Unique private double byepregen$densityCellDifference;
     @Unique private double byepregen$densityValue;
@@ -144,10 +144,10 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     private void byepregen$allocateColumnState() {
         int minY = this.cellNoiseMinY * this.cellHeight;
         int maxY = (this.cellNoiseMinY + this.cellCountY) * this.cellHeight;
-        this.byepregen$dfcColumnAdapter = C2meDfcColumnAdapter.tryCreate(
+        this.byepregen$dfcColumnAdapter = DensityColumnAdapter.tryCreate(
                 this,
-                new C2meDfcColumnAdapter.ColumnBounds(minY, maxY, this.cellHeight),
-                new C2meDfcColumnAdapter.InterpolationSources(
+                new DensityColumnAdapter.ColumnBounds(minY, maxY, this.cellHeight),
+                new DensityColumnAdapter.InterpolationSources(
                         this.byepregen$arenaInterpolators,
                         this.byepregen$arenaXZBaseSteps
                 )
