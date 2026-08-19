@@ -9,16 +9,11 @@ package com.moepus.byepregen.dfc.runtime;
 import java.util.Arrays;
 import java.util.Objects;
 import net.minecraft.world.level.levelgen.DensityFunction;
-import org.objectweb.asm.Type;
 
 /** Mutable execution state owned and reused by one NoiseChunk. */
 public final class ColumnEvaluationContext {
-    /** Canonical cache-miss payload shared by the column runtime and generated helpers. */
-    public static final long MEMO_MISS_BITS = 0x7ffd_db97_2d48_6a4fL;
-    public static final double MEMO_MISS = Double.longBitsToDouble(MEMO_MISS_BITS);
-    public static final String METHOD_DESC = Type.getMethodDescriptor(
-            Type.VOID_TYPE, Type.getType(ColumnEvaluationContext.class));
-
+    private static final long MEMO_MISS_BITS = 0x7ffd_db97_2d48_6a4fL;
+    private static final double MEMO_MISS = Double.longBitsToDouble(MEMO_MISS_BITS);
     private final MutablePointContext point = new MutablePointContext();
     private double[] memoizedValues = new double[0];
     private boolean[] memoizedReady = new boolean[0];
@@ -69,11 +64,6 @@ public final class ColumnEvaluationContext {
         return this.memoizedValues[index];
     }
 
-    public boolean memoizedValueReady(int index) {
-        this.checkMemoizedIndex(index);
-        return this.memoizedReady[index];
-    }
-
     /**
      * Tests the raw-bit sentinel without treating an already computed sentinel-valued result
      * as a miss. Generated code uses this method so the miss protocol remains explicit in the
@@ -99,14 +89,6 @@ public final class ColumnEvaluationContext {
         double[] values = this.interpolatedColumn(index, source);
         if (valueIndex < 0 || valueIndex >= values.length) throw outsideColumn(blockY);
         return values[valueIndex];
-    }
-
-    public void copyInterpolatedColumn(int index, DensityFunction source, double[] target) {
-        double[] values = this.interpolatedColumn(index, source);
-        if (target.length != values.length) {
-            throw new IllegalArgumentException("Interpolation target length mismatch");
-        }
-        System.arraycopy(values, 0, target, 0, values.length);
     }
 
     public void copyInterpolatedColumnRange(int index, DensityFunction source, double[] target,

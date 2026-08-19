@@ -56,11 +56,12 @@ public final class DensityColumnCompiler {
                     specialized.memoizedSlots()).build(specialized.root());
             long asmNanos = System.nanoTime() - asmStart;
             long defineStart = System.nanoTime();
-            MethodHandle constructor = ColumnClassDefiner.defineConstructor(generated.classBytes());
+            byte[] classBytes = generated.classBytes();
+            MethodHandle constructor = ColumnClassDefiner.defineConstructor(classBytes);
             long defineNanos = System.nanoTime() - defineStart;
-            ColumnTemplate template = new ColumnTemplate(constructor, generated.bindings(), generated.classBytes());
+            ColumnTemplate template = new ColumnTemplate(constructor, generated.bindings());
             DensityColumnMetrics.recordCompiled();
-            dumpIfRequested(initial, specialized.root(), generated.classBytes());
+            dumpIfRequested(initial, specialized.root(), classBytes);
             logTimings(frontendNanos, optimized, specializationNanos, asmNanos,
                     defineNanos, System.nanoTime() - totalStart);
             return template;

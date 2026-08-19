@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moepus.byepregen.dfc.ast.AstNode;
+import com.moepus.byepregen.dfc.ast.AstNodes.AddNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.ConstantNode;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -49,9 +50,10 @@ final class DensityColumnDumpTest {
     void configuredPathWritesBothAstsGraphAndClass() throws IOException {
         Path dumpDirectory = this.temporaryDirectory.resolve("configured");
         byte[] classBytes = {1, 2, 3};
+        ConstantNode shared = new ConstantNode(2.0D);
         System.setProperty(DensityColumnCompiler.DUMP_DIRECTORY_PROPERTY, dumpDirectory.toString());
 
-        DensityColumnCompiler.dumpIfRequested(ast(1.0D), ast(2.0D), classBytes);
+        DensityColumnCompiler.dumpIfRequested(ast(1.0D), new AddNode(shared, shared), classBytes);
 
         List<Path> files;
         try (var entries = Files.list(dumpDirectory)) {
@@ -66,6 +68,14 @@ final class DensityColumnDumpTest {
                 .findFirst()
                 .orElseThrow();
         assertArrayEquals(classBytes, Files.readAllBytes(classFile));
+        Path dotFile = files.stream()
+                .filter(path -> path.getFileName().toString().endsWith(".dot"))
+                .findFirst()
+                .orElseThrow();
+        String dot = Files.readString(dotFile);
+        assertTrue(dot.contains("n0 [label=\"AddNode\"]"));
+        assertEquals(2, countOccurrences(dot, "n0 -> n1;"));
+        assertEquals(1, countOccurrences(dot, "n1 [label=\"ConstantNode\"]"));
     }
 
     private static AstNode ast(double value) {
@@ -78,5 +88,9 @@ final class DensityColumnDumpTest {
         } catch (IOException exception) {
             throw new AssertionError(exception);
         }
+    }
+
+    private static int countOccurrences(String value, String needle) {
+        return (value.length() - value.replace(needle, "").length()) / needle.length();
     }
 }

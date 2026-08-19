@@ -10,20 +10,17 @@ import net.minecraft.world.level.levelgen.DensityFunction;
 public final class ColumnTemplate {
     private final MethodHandle constructor;
     private final List<Binding> bindings;
-    private final byte[] classBytes;
     private final String disabledReason;
 
-    public ColumnTemplate(MethodHandle constructor, List<Binding> bindings, byte[] classBytes) {
+    public ColumnTemplate(MethodHandle constructor, List<Binding> bindings) {
         this.constructor = Objects.requireNonNull(constructor, "constructor");
         this.bindings = List.copyOf(bindings);
-        this.classBytes = classBytes.clone();
         this.disabledReason = null;
     }
 
     private ColumnTemplate(String reason) {
         this.constructor = null;
         this.bindings = List.of();
-        this.classBytes = new byte[0];
         this.disabledReason = Objects.requireNonNull(reason, "reason");
     }
 
@@ -77,10 +74,6 @@ public final class ColumnTemplate {
         } catch (Throwable throwable) {
             throw new IllegalStateException("Cannot instantiate generated density column evaluator", throwable);
         }
-    }
-
-    public byte[] classBytes() {
-        return this.classBytes.clone();
     }
 
     public enum BindingKind {

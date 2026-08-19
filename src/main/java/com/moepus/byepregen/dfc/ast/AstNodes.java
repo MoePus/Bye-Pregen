@@ -6,10 +6,12 @@
 
 package com.moepus.byepregen.dfc.ast;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import net.minecraft.util.CubicSpline;
 import net.minecraft.util.ToFloatFunction;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -336,17 +338,23 @@ public final class AstNodes {
         @Override public UnaryNode withOperand(AstNode value) { return new Memoized2DNode(value, this.slot); }
     }
 
-    public static <P, C extends ToFloatFunction<P>> void collectSplineCoordinates(
-            CubicSpline<P, C> spline,
-            Map<C, Boolean> coordinates
+    public static <P, C extends ToFloatFunction<P>> List<C> collectSplineCoordinates(
+            CubicSpline<P, C> spline
     ) {
-        if (!(spline instanceof CubicSpline.Multipoint<P, C> multipoint)) return;
-        coordinates.put(multipoint.coordinate(), Boolean.TRUE);
-        for (CubicSpline<P, C> child : multipoint.values()) collectSplineCoordinates(child, coordinates);
+        List<C> coordinates = new ArrayList<>();
+        Set<C> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        collectSplineCoordinates(spline, coordinates, seen);
+        return List.copyOf(coordinates);
     }
 
-    public static <K> Map<K, Boolean> identityMap() {
-        return new IdentityHashMap<>();
+    private static <P, C extends ToFloatFunction<P>> void collectSplineCoordinates(
+            CubicSpline<P, C> spline, List<C> coordinates, Set<C> seen
+    ) {
+        if (!(spline instanceof CubicSpline.Multipoint<P, C> multipoint)) return;
+        if (seen.add(multipoint.coordinate())) coordinates.add(multipoint.coordinate());
+        for (CubicSpline<P, C> child : multipoint.values()) {
+            collectSplineCoordinates(child, coordinates, seen);
+        }
     }
 
     private static void requireCount(AstNode[] children, int expected) {

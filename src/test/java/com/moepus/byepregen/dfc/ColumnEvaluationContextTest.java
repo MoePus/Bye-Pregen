@@ -9,23 +9,18 @@ import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import org.junit.jupiter.api.Test;
 
 final class ColumnEvaluationContextTest {
-    @Test
-    void sentinelUsesStableRawBits() {
-        assertEquals(ColumnEvaluationContext.MEMO_MISS_BITS,
-                Double.doubleToRawLongBits(ColumnEvaluationContext.MEMO_MISS));
-    }
+    private static final long SENTINEL_BITS = 0x7ffd_db97_2d48_6a4fL;
+    private static final double SENTINEL = Double.longBitsToDouble(SENTINEL_BITS);
 
     @Test
     void actualSentinelPayloadCanBeMarkedReady() {
         ColumnEvaluationContext context = activeContext();
         try {
             context.prepareMemoizedCount(1);
-            assertFalse(context.memoizedValueReady(0));
             assertTrue(context.memoizedValueMiss(0));
-            context.setMemoizedValue(0, ColumnEvaluationContext.MEMO_MISS);
-            assertTrue(context.memoizedValueReady(0));
+            context.setMemoizedValue(0, SENTINEL);
             assertFalse(context.memoizedValueMiss(0));
-            assertEquals(ColumnEvaluationContext.MEMO_MISS_BITS,
+            assertEquals(SENTINEL_BITS,
                     Double.doubleToRawLongBits(context.memoizedValue(0)));
         } finally {
             context.clear();

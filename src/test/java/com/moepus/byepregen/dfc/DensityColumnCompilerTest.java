@@ -9,14 +9,19 @@ import com.moepus.byepregen.dfc.compile.DensityColumnCompiler;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.world.level.levelgen.DensityFunction;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-@Disabled("Covered by DensityColumnDelegateProbe in the bootstrapped worldgen harness")
 final class DensityColumnCompilerTest {
+    @Test
+    void runtimeTemplateDoesNotRetainGeneratedClassBytes() {
+        assertTrue(Arrays.stream(ColumnTemplate.class.getDeclaredFields())
+                .noneMatch(field -> field.getType() == byte[].class));
+    }
+
     @Test
     void unknownDelegateCompilesAndRunsOncePerLane() {
         CountingDelegate delegate = new CountingDelegate();

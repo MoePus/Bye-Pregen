@@ -29,7 +29,9 @@ import com.moepus.byepregen.dfc.ast.AstNodes.SqueezeNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.WeirdScaledNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.YClampedGradientNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Axis;
+import com.moepus.byepregen.dfc.codegen.ColumnClassBuilder;
 import com.moepus.byepregen.dfc.frontend.DensityFunctionFrontend;
+import com.moepus.byepregen.dfc.opt.ColumnOptimizer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -231,9 +233,13 @@ final class DensityColumnFrontendProbe {
                 DensityFunctions.add(
                         DensityFunctions.spline(CubicSpline.constant(0.25F)),
                         new UnsupportedDelegate(2.0D)));
-        var template = com.moepus.byepregen.dfc.compile.DensityColumnCompiler.compile(graph);
-        require(template.available(), "reachable graph audit did not compile: " + template.disabledReason());
-        byte[] bytes = template.classBytes();
+        DensityFunctionFrontend frontend = new DensityFunctionFrontend();
+        AstNode initial = new RootNode(new AddNode(frontend.convert(graph),
+                frontend.convert(DensityFunctions.BeardifierMarker.INSTANCE)));
+        AstNode optimized = ColumnOptimizer.optimize(initial).root();
+        ColumnSpecializer.Result specialized = ColumnSpecializer.specialize(optimized);
+        byte[] bytes = new ColumnClassBuilder(specialized.memoizedSlots())
+                .build(specialized.root()).classBytes();
         String constants = new String(bytes, StandardCharsets.ISO_8859_1);
         require(!constants.contains("com/ishland/c2me"), "generated graph references C2ME DFC");
         require(!constants.contains("evalMulti"), "generated graph contains evalMulti");

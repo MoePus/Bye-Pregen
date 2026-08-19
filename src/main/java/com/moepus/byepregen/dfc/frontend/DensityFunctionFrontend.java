@@ -157,9 +157,8 @@ public final class DensityFunctionFrontend {
     }
 
     private AstNode spline(DensityFunctions.Spline function) {
-        Map<DensityFunctions.Spline.Coordinate, Boolean> coordinates = AstNodes.identityMap();
-        AstNodes.collectSplineCoordinates(function.spline(), coordinates);
-        List<DensityFunctions.Spline.Coordinate> keys = new ArrayList<>(coordinates.keySet());
+        List<DensityFunctions.Spline.Coordinate> keys =
+                AstNodes.collectSplineCoordinates(function.spline());
         List<AstNode> children = new ArrayList<>(keys.size());
         for (DensityFunctions.Spline.Coordinate coordinate : keys) {
             children.add(this.convert(coordinate.function().value()));

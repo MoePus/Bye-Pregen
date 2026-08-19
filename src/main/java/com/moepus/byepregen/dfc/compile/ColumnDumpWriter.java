@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,20 +29,24 @@ final class ColumnDumpWriter {
 
     private static String dot(AstNode root) {
         StringBuilder output = new StringBuilder("digraph FinalDensity {\n");
-        Set<AstNode> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        append(root, output, visited);
+        Map<AstNode, Integer> ids = new IdentityHashMap<>();
+        Set<AstNode> emitted = Collections.newSetFromMap(new IdentityHashMap<>());
+        append(root, output, ids, emitted);
         return output.append("}\n").toString();
     }
 
-    private static void append(AstNode node, StringBuilder output, Set<AstNode> visited) {
-        if (!visited.add(node)) return;
-        int id = System.identityHashCode(node);
+    private static void append(
+            AstNode node, StringBuilder output, Map<AstNode, Integer> ids, Set<AstNode> emitted
+    ) {
+        int id = ids.computeIfAbsent(node, ignored -> ids.size());
+        if (!emitted.add(node)) return;
         output.append("  n").append(id).append(" [label=\"")
                 .append(node.getClass().getSimpleName()).append("\"];\n");
         for (AstNode child : node.children()) {
+            int childId = ids.computeIfAbsent(child, ignored -> ids.size());
             output.append("  n").append(id).append(" -> n")
-                    .append(System.identityHashCode(child)).append(";\n");
-            append(child, output, visited);
+                    .append(childId).append(";\n");
+            append(child, output, ids, emitted);
         }
     }
 }

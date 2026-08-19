@@ -13,6 +13,8 @@ import net.minecraft.world.level.levelgen.DensityFunctions;
 final class DensityColumnDelegateProbe {
     private static final int COLUMN_LENGTH = 5;
     private static final int CELL_HEIGHT = 4;
+    private static final double MEMO_SENTINEL =
+            Double.longBitsToDouble(0x7ffd_db97_2d48_6a4fL);
 
     private DensityColumnDelegateProbe() {
     }
@@ -31,9 +33,8 @@ final class DensityColumnDelegateProbe {
 
         SentinelDelegate sentinel = new SentinelDelegate();
         ColumnDensityFunctionRegistry.registerYIndependentDelegate(SentinelDelegate.class);
-        assertColumn(sentinel, new double[]{ColumnEvaluationContext.MEMO_MISS,
-                ColumnEvaluationContext.MEMO_MISS, ColumnEvaluationContext.MEMO_MISS,
-                ColumnEvaluationContext.MEMO_MISS, ColumnEvaluationContext.MEMO_MISS});
+        assertColumn(sentinel, new double[]{MEMO_SENTINEL, MEMO_SENTINEL, MEMO_SENTINEL,
+                MEMO_SENTINEL, MEMO_SENTINEL});
         require(sentinel.calls.get() == 1,
                 "a valid sentinel-valued memoized delegate was evaluated more than once");
 
@@ -178,7 +179,7 @@ final class DensityColumnDelegateProbe {
     private static final class SentinelDelegate extends TestDelegate {
         @Override public double compute(FunctionContext context) {
             this.calls.incrementAndGet();
-            return ColumnEvaluationContext.MEMO_MISS;
+            return MEMO_SENTINEL;
         }
     }
 
