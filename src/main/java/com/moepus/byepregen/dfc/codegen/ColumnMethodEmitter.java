@@ -35,15 +35,10 @@ final class ColumnMethodEmitter {
     private final PointMethodEmitter points;
     private final Map<AstNode, String> methods = new IdentityHashMap<>();
 
-    ColumnMethodEmitter(
-            String owner,
-            ClassWriter writer,
-            BindingRegistry bindings,
-            PointMethodEmitter points
-    ) {
-        this.owner = owner;
-        this.writer = writer;
-        this.bindings = bindings;
+    ColumnMethodEmitter(GenerationContext context, PointMethodEmitter points) {
+        this.owner = context.owner();
+        this.writer = context.writer();
+        this.bindings = context.bindings();
         this.points = points;
     }
 

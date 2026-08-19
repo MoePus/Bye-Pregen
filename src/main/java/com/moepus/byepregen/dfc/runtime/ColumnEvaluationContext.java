@@ -24,7 +24,6 @@ public final class ColumnEvaluationContext {
     private boolean[] memoizedReady = new boolean[0];
     private double[][] interpolationColumns = new double[0][];
     private double[][] scratchArrays = new double[4][];
-    private float[][] splineCoordinateArrays = new float[0][];
     private InterpolationProvider interpolationProvider;
     private double[] output;
     private int memoizedCount;
@@ -140,20 +139,6 @@ public final class ColumnEvaluationContext {
         Objects.requireNonNull(array, "array");
         if (this.scratchDepth == 0) throw new IllegalStateException("Scratch pool underflow");
         this.scratchArrays[--this.scratchDepth] = array;
-    }
-
-    public float[] splineCoordinates(int slot, int count) {
-        this.requireActive();
-        if (slot < 0 || count < 0) throw new IllegalArgumentException("Invalid spline buffer request");
-        if (this.splineCoordinateArrays.length <= slot) {
-            this.splineCoordinateArrays = Arrays.copyOf(this.splineCoordinateArrays, slot * 2 + 1);
-        }
-        float[] coordinates = this.splineCoordinateArrays[slot];
-        if (coordinates == null || coordinates.length < count) {
-            coordinates = new float[count];
-            this.splineCoordinateArrays[slot] = coordinates;
-        }
-        return coordinates;
     }
 
     public double[] output() { this.requireActive(); return this.output; }

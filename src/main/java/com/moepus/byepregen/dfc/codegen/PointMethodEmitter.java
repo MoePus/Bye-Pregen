@@ -11,7 +11,6 @@ import com.moepus.byepregen.dfc.ast.AstNodes.*;
 import com.moepus.byepregen.dfc.codegen.BindingRegistry.FieldRef;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnMath;
-import com.moepus.byepregen.dfc.runtime.SplineProgram;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -29,20 +28,21 @@ final class PointMethodEmitter {
     private static final String COLUMN_MATH = Type.getInternalName(ColumnMath.class);
     private static final String NOISE_HOLDER = Type.getInternalName(DensityFunction.NoiseHolder.class);
     private static final String DENSITY_FUNCTION = Type.getInternalName(DensityFunction.class);
-    private static final String SPLINE_PROGRAM = Type.getInternalName(SplineProgram.class);
 
     private final String owner;
     private final ClassWriter writer;
     private final BindingRegistry bindings;
+    private final PointBinaryEmitter binaries;
+    private final SplineMethodEmitter splines;
     private final Map<AstNode, String> methods = new IdentityHashMap<>();
     private final Map<DensityFunction, Integer> interpolationSlots = new IdentityHashMap<>();
-    private final Map<SplineNode, Integer> splineSlots = new IdentityHashMap<>();
-    private final Map<SplineNode, SplineProgram> splinePrograms = new IdentityHashMap<>();
 
-    PointMethodEmitter(String owner, ClassWriter writer, BindingRegistry bindings) {
-        this.owner = owner;
-        this.writer = writer;
-        this.bindings = bindings;
+    PointMethodEmitter(GenerationContext context) {
+        this.owner = context.owner();
+        this.writer = context.writer();
+        this.bindings = context.bindings();
+        this.binaries = new PointBinaryEmitter(this::call);
+        this.splines = new SplineMethodEmitter(context, this::method);
     }
 
     String method(AstNode node) {
@@ -81,7 +81,7 @@ final class PointMethodEmitter {
         else if (node instanceof WeirdScaledNode weird) this.emitWeird(method, weird);
         else if (node instanceof SplineNode spline) this.emitSpline(method, spline);
         else if (node instanceof UnaryNode unary) this.emitUnary(method, unary);
-        else if (node instanceof BinaryNode binary) this.emitBinary(method, binary);
+        else if (node instanceof BinaryNode binary) this.binaries.emit(method, binary);
         else throw new UnsupportedOperationException("Unsupported column AST node " + node.getClass().getName());
     }
 
@@ -119,61 +119,6 @@ final class PointMethodEmitter {
         method.visitInsn(Opcodes.DMUL);
         method.visitJumpInsn(Opcodes.GOTO, end);
         method.visitLabel(positive);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        method.visitLabel(end);
-    }
-
-    private void emitBinary(MethodVisitor method, BinaryNode node) {
-        if (node instanceof MinShortNode min) {
-            this.emitShortMin(method, min);
-            return;
-        }
-        if (node instanceof MaxShortNode max) {
-            this.emitShortMax(method, max);
-            return;
-        }
-        this.call(method, node.left());
-        this.call(method, node.right());
-        if (node instanceof AddNode) method.visitInsn(Opcodes.DADD);
-        else if (node instanceof MulNode) method.visitInsn(Opcodes.DMUL);
-        else if (node instanceof DivNode) method.visitInsn(Opcodes.DDIV);
-        else if (node instanceof MinNode) invokeBinaryMath(method, "min");
-        else if (node instanceof MaxNode) invokeBinaryMath(method, "max");
-        else throw new UnsupportedOperationException("Unsupported binary node " + node.getClass().getName());
-    }
-
-    private void emitShortMin(MethodVisitor method, MinShortNode node) {
-        Label cached = new Label();
-        Label end = new Label();
-        this.call(method, node.left());
-        method.visitVarInsn(Opcodes.DSTORE, 5);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        method.visitLdcInsn(node.rightMin());
-        method.visitInsn(Opcodes.DCMPG);
-        method.visitJumpInsn(Opcodes.IFLT, cached);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        this.call(method, node.right());
-        invokeBinaryMath(method, "min");
-        method.visitJumpInsn(Opcodes.GOTO, end);
-        method.visitLabel(cached);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        method.visitLabel(end);
-    }
-
-    private void emitShortMax(MethodVisitor method, MaxShortNode node) {
-        Label cached = new Label();
-        Label end = new Label();
-        this.call(method, node.left());
-        method.visitVarInsn(Opcodes.DSTORE, 5);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        method.visitLdcInsn(node.rightMax());
-        method.visitInsn(Opcodes.DCMPL);
-        method.visitJumpInsn(Opcodes.IFGT, cached);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        this.call(method, node.right());
-        invokeBinaryMath(method, "max");
-        method.visitJumpInsn(Opcodes.GOTO, end);
-        method.visitLabel(cached);
         method.visitVarInsn(Opcodes.DLOAD, 5);
         method.visitLabel(end);
     }
@@ -265,25 +210,7 @@ final class PointMethodEmitter {
     }
 
     private void emitSpline(MethodVisitor method, SplineNode node) {
-        SplineProgram program = this.splinePrograms.computeIfAbsent(node, SplineProgram::compile);
-        FieldRef field = this.bindings.field(program, SplineProgram.class, false);
-        method.visitVarInsn(Opcodes.ALOAD, 4);
-        ColumnClassBuilder.pushInt(method, this.splineSlot(node));
-        ColumnClassBuilder.pushInt(method, program.coordinateCount());
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "splineCoordinates", "(II)[F", false);
-        method.visitVarInsn(Opcodes.ASTORE, 5);
-        AstNode[] coordinates = node.children();
-        for (int i = 0; i < coordinates.length; ++i) {
-            method.visitVarInsn(Opcodes.ALOAD, 5);
-            ColumnClassBuilder.pushInt(method, i);
-            this.call(method, coordinates[i]);
-            method.visitInsn(Opcodes.D2F);
-            method.visitInsn(Opcodes.FASTORE);
-        }
-        this.loadField(method, field);
-        method.visitVarInsn(Opcodes.ALOAD, 5);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, SPLINE_PROGRAM, "sample", "([F)F", false);
-        method.visitInsn(Opcodes.F2D);
+        this.splines.emitSample(node, method);
     }
 
     private void emitMemoized(MethodVisitor method, Memoized2DNode node) {
@@ -333,10 +260,6 @@ final class PointMethodEmitter {
         return this.interpolationSlots.computeIfAbsent(source, ignored -> this.interpolationSlots.size());
     }
 
-    private int splineSlot(SplineNode node) {
-        return this.splineSlots.computeIfAbsent(node, ignored -> this.splineSlots.size());
-    }
-
     void ensureInterpolationToken(DensityFunction source) {
         if (!(source instanceof com.moepus.byepregen.worldgen.arena.InterpolatedMarkerAccess access)) {
             throw new IllegalArgumentException("Interpolated marker is not token-capable: "
@@ -363,7 +286,4 @@ final class PointMethodEmitter {
         method.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", name, "(D)D", false);
     }
 
-    private static void invokeBinaryMath(MethodVisitor method, String name) {
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", name, "(DD)D", false);
-    }
 }

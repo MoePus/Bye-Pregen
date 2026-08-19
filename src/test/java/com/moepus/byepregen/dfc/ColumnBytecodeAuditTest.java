@@ -14,6 +14,7 @@ import com.moepus.byepregen.dfc.ast.AstNodes.Memoized2DNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MinShortNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MulNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.RangeChoiceNode;
+import com.moepus.byepregen.dfc.ast.AstNodes.SplineNode;
 import com.moepus.byepregen.dfc.codegen.ColumnClassBuilder;
 import com.moepus.byepregen.dfc.codegen.ColumnClassDefiner;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
@@ -22,8 +23,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.util.CubicSpline;
+import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -31,6 +35,7 @@ import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
 
 final class ColumnBytecodeAuditTest {
     @Test
@@ -106,6 +111,33 @@ final class ColumnBytecodeAuditTest {
         assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DALOAD));
         assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DASTORE));
         assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DMUL));
+    }
+
+    @Test
+    void directSplineHelpersExecuteAndUseTableSwitch() throws Throwable {
+        SplineFixture fixture = splineFixture();
+        ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(fixture.node());
+        CompiledColumnEvaluator evaluator = instantiate(generated);
+        double[] actual = new double[7];
+        ColumnEvaluationContext context = new ColumnEvaluationContext();
+        context.prepare(actual, 3, 5, -6, 2, source -> new double[7]);
+        try {
+            evaluator.evalColumn(context);
+        } finally {
+            context.clear();
+        }
+        for (int lane = 0; lane < actual.length; ++lane) {
+            int y = -6 + lane * 2;
+            double expected = sampleSpline(fixture.spline(), y);
+            assertEquals(expected, actual[lane], 1.0E-6D * (1.0D + Math.abs(expected)));
+        }
+
+        byte[] bytes = generated.classBytes();
+        assertFalse(new String(bytes, StandardCharsets.ISO_8859_1).contains("SplineProgram"));
+        ClassNode type = read(bytes);
+        assertTrue(type.methods.stream()
+                .filter(method -> method.name.startsWith("spline"))
+                .anyMatch(ColumnBytecodeAuditTest::containsTableSwitch));
     }
 
     @Test
@@ -198,6 +230,81 @@ final class ColumnBytecodeAuditTest {
         return type;
     }
 
+    private static CompiledColumnEvaluator instantiate(
+            ColumnClassBuilder.BuildResult generated
+    ) throws Throwable {
+        Object[] values = generated.bindings().stream()
+                .map(com.moepus.byepregen.dfc.runtime.ColumnTemplate.Binding::value)
+                .toArray();
+        return (CompiledColumnEvaluator) ColumnClassDefiner
+                .defineConstructor(generated.classBytes()).invoke((Object) values);
+    }
+
+    private static SplineFixture splineFixture() {
+        DensityFunctions.Spline.Coordinate coordinate = SplineTestFixtures.coordinate();
+        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> child =
+                new CubicSpline.Multipoint<>(coordinate, new float[]{-2.0F, 2.0F},
+                        List.of(CubicSpline.constant(-1.0F), CubicSpline.constant(3.0F)),
+                        new float[]{0.25F, -0.5F}, -1.0F, 3.0F);
+        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> root =
+                new CubicSpline.Multipoint<>(coordinate, new float[]{-4.0F, 0.0F, 4.0F},
+                        List.of(CubicSpline.constant(-5.0F), child, CubicSpline.constant(7.0F)),
+                        new float[]{0.0F, 0.5F, 0.0F}, -5.0F, 7.0F);
+        return new SplineFixture(
+                new SplineNode(root, List.of(coordinate),
+                        List.of(new CoordinateNode(Axis.Y))),
+                root);
+    }
+
+    private static float sampleSpline(
+            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
+            float point
+    ) {
+        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Point,
+                DensityFunctions.Spline.Coordinate> constant) return constant.value();
+        CubicSpline.Multipoint<DensityFunctions.Spline.Point,
+                DensityFunctions.Spline.Coordinate> values = (CubicSpline.Multipoint<
+                DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>) spline;
+        int range = referenceRange(values.locations(), point);
+        int last = values.locations().length - 1;
+        if (range < 0 || range == last) {
+            int index = range < 0 ? 0 : last;
+            return sampleSpline(values.values().get(index), point)
+                    + values.derivatives()[index] * (point - values.locations()[index]);
+        }
+        return sampleInside(values, point, range);
+    }
+
+    private static float sampleInside(
+            CubicSpline.Multipoint<DensityFunctions.Spline.Point,
+                    DensityFunctions.Spline.Coordinate> spline,
+            float point,
+            int range
+    ) {
+        float leftLocation = spline.locations()[range];
+        float span = spline.locations()[range + 1] - leftLocation;
+        float alpha = (point - leftLocation) / span;
+        float left = sampleSpline(spline.values().get(range), point);
+        float right = sampleSpline(spline.values().get(range + 1), point);
+        float delta = right - left;
+        float leftSlope = spline.derivatives()[range] * span - delta;
+        float rightSlope = -spline.derivatives()[range + 1] * span + delta;
+        return left + alpha * (delta + (1.0F - alpha)
+                * (leftSlope + alpha * (rightSlope - leftSlope)));
+    }
+
+    private static int referenceRange(float[] locations, float point) {
+        int range = -1;
+        while (range + 1 < locations.length && point >= locations[range + 1]) ++range;
+        return range;
+    }
+
+    private record SplineFixture(
+            SplineNode node,
+            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
+    ) {
+    }
+
     private static int countPointCalls(MethodNode method) {
         return countCallsWithPrefix(method, "point");
     }
@@ -229,6 +336,13 @@ final class ColumnBytecodeAuditTest {
     private static boolean containsJump(MethodNode method) {
         for (var instruction : method.instructions) {
             if (instruction instanceof JumpInsnNode) return true;
+        }
+        return false;
+    }
+
+    private static boolean containsTableSwitch(MethodNode method) {
+        for (var instruction : method.instructions) {
+            if (instruction instanceof TableSwitchInsnNode) return true;
         }
         return false;
     }

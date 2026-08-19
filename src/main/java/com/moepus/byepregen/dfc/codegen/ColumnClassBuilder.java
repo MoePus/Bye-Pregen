@@ -35,10 +35,10 @@ public final class ColumnClassBuilder {
 
     public ColumnClassBuilder(int memoizedSlots) {
         this.memoizedSlots = memoizedSlots;
-        this.points = new PointMethodEmitter(
+        GenerationContext context = new GenerationContext(
                 this.className, this.writer, this.bindings);
-        this.columns = new ColumnMethodEmitter(
-                this.className, this.writer, this.bindings, this.points);
+        this.points = new PointMethodEmitter(context);
+        this.columns = new ColumnMethodEmitter(context, this.points);
         this.writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
                 this.className, null, "java/lang/Object", new String[]{EVALUATOR});
     }
