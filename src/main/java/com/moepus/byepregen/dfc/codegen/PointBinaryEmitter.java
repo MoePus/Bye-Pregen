@@ -21,8 +21,24 @@ final class PointBinaryEmitter {
 
     void emit(MethodVisitor method, BinaryNode node) {
         if (node instanceof MinShortNode min) {
+            if (min.left() instanceof ConstantNode value) {
+                if (value.value() < min.rightMin()) {
+                    this.caller.call(method, value);
+                } else {
+                    this.emitEager(method, new MinNode(min.left(), min.right()));
+                }
+                return;
+            }
             this.emitShort(method, min, new ShortSpec(min.rightMin(), Opcodes.DCMPG, Opcodes.IFLT, "min"));
         } else if (node instanceof MaxShortNode max) {
+            if (max.left() instanceof ConstantNode value) {
+                if (value.value() > max.rightMax()) {
+                    this.caller.call(method, value);
+                } else {
+                    this.emitEager(method, new MaxNode(max.left(), max.right()));
+                }
+                return;
+            }
             this.emitShort(method, max, new ShortSpec(max.rightMax(), Opcodes.DCMPL, Opcodes.IFGT, "max"));
         } else {
             this.emitEager(method, node);

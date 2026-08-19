@@ -111,6 +111,19 @@ public final class ColumnEvaluationContext {
         System.arraycopy(values, 0, target, 0, values.length);
     }
 
+    public void copyInterpolatedColumnRange(int index, DensityFunction source, double[] target,
+                                            int fromInclusive, int toExclusive) {
+        double[] values = this.interpolatedColumn(index, source);
+        if (target.length != values.length) {
+            throw new IllegalArgumentException("Interpolation target length mismatch");
+        }
+        if (fromInclusive < 0 || toExclusive < fromInclusive || toExclusive > values.length) {
+            throw new IndexOutOfBoundsException("Interpolation column range: "
+                    + fromInclusive + ".." + toExclusive);
+        }
+        System.arraycopy(values, fromInclusive, target, fromInclusive, toExclusive - fromInclusive);
+    }
+
     public double delegateValue(DensityFunction function, int x, int y, int z) {
         return function.compute(this.point.at(x, y, z));
     }
@@ -139,6 +152,11 @@ public final class ColumnEvaluationContext {
         Objects.requireNonNull(array, "array");
         if (this.scratchDepth == 0) throw new IllegalStateException("Scratch pool underflow");
         this.scratchArrays[--this.scratchDepth] = array;
+    }
+
+    public void resetScratchAfterFailure() {
+        this.requireActive();
+        this.scratchDepth = 0;
     }
 
     public double[] output() { this.requireActive(); return this.output; }

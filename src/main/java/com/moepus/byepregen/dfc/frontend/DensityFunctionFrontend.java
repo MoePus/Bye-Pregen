@@ -65,9 +65,15 @@ public final class DensityFunctionFrontend {
         if (type == DensityFunctions.TwoArgumentSimpleFunction.Type.ADD) return new AddNode(left, right);
         if (type == DensityFunctions.TwoArgumentSimpleFunction.Type.MUL) return new MulNode(left, right);
         if (type == DensityFunctions.TwoArgumentSimpleFunction.Type.MIN) {
-            return new MinShortNode(left, right, function.argument2().minValue());
+            double rightMin = function.argument2().minValue();
+            return function.argument1().minValue() < rightMin
+                    ? new MinShortNode(left, right, rightMin)
+                    : new MinNode(left, right);
         }
-        return new MaxShortNode(left, right, function.argument2().maxValue());
+        double rightMax = function.argument2().maxValue();
+        return function.argument1().maxValue() > rightMax
+                ? new MaxShortNode(left, right, rightMax)
+                : new MaxNode(left, right);
     }
 
     private AstNode mapped(DensityFunctions.Mapped function) {

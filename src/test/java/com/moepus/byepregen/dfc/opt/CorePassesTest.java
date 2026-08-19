@@ -80,4 +80,26 @@ final class CorePassesTest {
                 CorePasses.rangePrune(outer));
         assertEquals(8.0D, assertInstanceOf(ConstantNode.class, result.whenInRange()).value());
     }
+
+    @Test
+    void rangePruneRemovesConstantMinShortCondition() {
+        MinNode eager = assertInstanceOf(MinNode.class, CorePasses.rangePrune(
+                new MinShortNode(new ConstantNode(0.0D), Y, -4.9294D)));
+        assertEquals(0.0D, assertInstanceOf(ConstantNode.class, eager.left()).value());
+
+        ConstantNode shorted = assertInstanceOf(ConstantNode.class, CorePasses.rangePrune(
+                new MinShortNode(new ConstantNode(-5.0D), Y, -4.9294D)));
+        assertEquals(-5.0D, shorted.value());
+    }
+
+    @Test
+    void rangePruneRemovesConstantMaxShortCondition() {
+        MaxNode eager = assertInstanceOf(MaxNode.class, CorePasses.rangePrune(
+                new MaxShortNode(new ConstantNode(0.0D), Y, 4.9294D)));
+        assertEquals(0.0D, assertInstanceOf(ConstantNode.class, eager.left()).value());
+
+        ConstantNode shorted = assertInstanceOf(ConstantNode.class, CorePasses.rangePrune(
+                new MaxShortNode(new ConstantNode(5.0D), Y, 4.9294D)));
+        assertEquals(5.0D, shorted.value());
+    }
 }

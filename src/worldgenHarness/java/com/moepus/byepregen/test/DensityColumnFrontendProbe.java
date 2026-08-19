@@ -68,8 +68,11 @@ final class DensityColumnFrontendProbe {
         requireNode(frontend, value, ConstantNode.class);
         requireNode(frontend, DensityFunctions.add(value, value), AddNode.class);
         requireNode(frontend, DensityFunctions.mul(value, value), MulNode.class);
-        requireNode(frontend, DensityFunctions.min(value, value), MinShortNode.class);
-        requireNode(frontend, DensityFunctions.max(value, value), MaxShortNode.class);
+        requireNode(frontend, DensityFunctions.min(value, value), MinNode.class);
+        requireNode(frontend, DensityFunctions.max(value, value), MaxNode.class);
+        DensityFunction ranged = DensityFunctions.yClampedGradient(0, 1, -3.0D, 3.0D);
+        requireNode(frontend, DensityFunctions.min(ranged, value), MinShortNode.class);
+        requireNode(frontend, DensityFunctions.max(ranged, value), MaxShortNode.class);
         requireNode(frontend, DensityFunctions.map(value, DensityFunctions.Mapped.Type.ABS), AbsNode.class);
         requireNode(frontend, DensityFunctions.map(value, DensityFunctions.Mapped.Type.SQUARE), SquareNode.class);
         requireNode(frontend, DensityFunctions.map(value, DensityFunctions.Mapped.Type.CUBE), CubeNode.class);

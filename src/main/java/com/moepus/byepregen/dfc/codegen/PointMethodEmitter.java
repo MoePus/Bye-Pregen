@@ -42,7 +42,7 @@ final class PointMethodEmitter {
         this.writer = context.writer();
         this.bindings = context.bindings();
         this.binaries = new PointBinaryEmitter(this::call);
-        this.splines = new SplineMethodEmitter(context, this::method);
+        this.splines = new SplineMethodEmitter(context, this::call);
     }
 
     String method(AstNode node) {
@@ -243,6 +243,10 @@ final class PointMethodEmitter {
     }
 
     private void call(MethodVisitor method, AstNode node) {
+        if (node instanceof ConstantNode constant) {
+            method.visitLdcInsn(constant.value());
+            return;
+        }
         method.visitVarInsn(Opcodes.ALOAD, 0);
         method.visitVarInsn(Opcodes.ILOAD, 1);
         method.visitVarInsn(Opcodes.ILOAD, 2);

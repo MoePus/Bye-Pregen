@@ -60,6 +60,7 @@ ext.byepregenRunJavaLauncher = runJavaLauncher
 apply from: 'gradle/byepregen-dependencies.gradle'
 apply from: 'gradle/byepregen-server-fixtures.gradle'
 def surfaceDumpClassesDirectory = providers.systemProperty('byepregen.surfaceDumpClasses')
+def densityColumnDumpDirectory = providers.systemProperty('byepregen.dfc.dumpDir')
 afterEvaluate {
     tasks.named('runTestWorldGen', JavaExec) {
         javaLauncher.set(runJavaLauncher)
@@ -71,6 +72,9 @@ tasks.withType(JavaExec).matching { it.name != 'runTestWorldGen' }.configureEach
     })
 }
 tasks.withType(JavaExec).configureEach {
+    if (densityColumnDumpDirectory.present) {
+        systemProperty 'byepregen.dfc.dumpDir', densityColumnDumpDirectory.get()
+    }
     if (surfaceDumpClassesDirectory.present) {
         systemProperty 'byepregen.surfaceDumpClasses', surfaceDumpClassesDirectory.get()
     }

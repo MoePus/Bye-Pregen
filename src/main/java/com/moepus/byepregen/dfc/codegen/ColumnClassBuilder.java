@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -77,13 +78,30 @@ public final class ColumnClassBuilder {
                 "evalColumn", EVAL_DESC, null, null);
         method.visitCode();
         this.prepareContext(method);
+        Label body = new Label();
+        Label end = new Label();
+        Label failure = new Label();
+        method.visitTryCatchBlock(body, end, failure, "java/lang/Throwable");
+        method.visitLabel(body);
         method.visitVarInsn(Opcodes.ALOAD, 0);
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "output", "()[D", false);
+        method.visitInsn(Opcodes.ICONST_0);
+        method.visitVarInsn(Opcodes.ALOAD, 1);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "output", "()[D", false);
+        method.visitInsn(Opcodes.ARRAYLENGTH);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.className, rootMethod,
                 ColumnMethodEmitter.DESC, false);
+        method.visitLabel(end);
         method.visitInsn(Opcodes.RETURN);
+        method.visitLabel(failure);
+        method.visitVarInsn(Opcodes.ASTORE, 2);
+        method.visitVarInsn(Opcodes.ALOAD, 1);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT,
+                "resetScratchAfterFailure", "()V", false);
+        method.visitVarInsn(Opcodes.ALOAD, 2);
+        method.visitInsn(Opcodes.ATHROW);
         method.visitMaxs(0, 0);
         method.visitEnd();
     }

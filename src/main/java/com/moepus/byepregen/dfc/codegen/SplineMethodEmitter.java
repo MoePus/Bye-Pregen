@@ -14,7 +14,7 @@ import com.moepus.byepregen.dfc.runtime.ColumnMath;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 import net.minecraft.util.CubicSpline;
 import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.objectweb.asm.ClassWriter;
@@ -33,15 +33,15 @@ final class SplineMethodEmitter {
     private final String owner;
     private final ClassWriter writer;
     private final BindingRegistry bindings;
-    private final Function<AstNode, String> pointMethods;
+    private final BiConsumer<MethodVisitor, AstNode> pointCaller;
     private final Map<SplineNode, Map<CubicSpline<?, ?>, SplineValue>> methods = new IdentityHashMap<>();
     private int methodCount;
 
-    SplineMethodEmitter(GenerationContext context, Function<AstNode, String> pointMethods) {
+    SplineMethodEmitter(GenerationContext context, BiConsumer<MethodVisitor, AstNode> pointCaller) {
         this.owner = context.owner();
         this.writer = context.writer();
         this.bindings = context.bindings();
-        this.pointMethods = pointMethods;
+        this.pointCaller = pointCaller;
     }
 
     void emitSample(SplineNode node, MethodVisitor method) {
@@ -246,13 +246,7 @@ final class SplineMethodEmitter {
     }
 
     private void callPoint(MethodVisitor method, AstNode node) {
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitVarInsn(Opcodes.ILOAD, 1);
-        method.visitVarInsn(Opcodes.ILOAD, 2);
-        method.visitVarInsn(Opcodes.ILOAD, 3);
-        method.visitVarInsn(Opcodes.ALOAD, 4);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.owner,
-                this.pointMethods.apply(node), PointMethodEmitter.DESC, false);
+        this.pointCaller.accept(method, node);
     }
 
     private void callValue(MethodVisitor method, SplineValue value) {

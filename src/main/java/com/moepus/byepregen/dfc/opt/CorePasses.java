@@ -157,6 +157,14 @@ final class CorePasses {
     }
 
     private static AstNode pruneRange(AstNode node) {
+        if (node instanceof MinShortNode min && min.left() instanceof ConstantNode value) {
+            return value.value() < min.rightMin()
+                    ? value : new MinNode(min.left(), min.right());
+        }
+        if (node instanceof MaxShortNode max && max.left() instanceof ConstantNode value) {
+            return value.value() > max.rightMax()
+                    ? value : new MaxNode(max.left(), max.right());
+        }
         if (!(node instanceof RangeChoiceNode range)) return node;
         if (range.minInclusive() >= range.maxExclusive()) return range.whenOutOfRange();
         if (range.input() instanceof ConstantNode value) {
