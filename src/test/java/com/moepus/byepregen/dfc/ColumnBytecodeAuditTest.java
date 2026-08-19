@@ -247,6 +247,32 @@ final class ColumnBytecodeAuditTest {
     }
 
     @Test
+    void zeroMemoizedSlotsDoNotEmitMemoPreparation() {
+        MethodNode entry = find(read(new ColumnClassBuilder(0)
+                .build(new CoordinateNode(Axis.Y)).classBytes()), "evalColumn", "");
+        assertTrue(calls(entry, ColumnEvaluationContext.class, "assertActive"));
+        assertFalse(calls(entry, ColumnEvaluationContext.class, "prepareMemoizedCount"));
+
+        MethodNode memoizedEntry = find(read(new ColumnClassBuilder(1)
+                .build(new Memoized2DNode(new CoordinateNode(Axis.X), 0)).classBytes()),
+                "evalColumn", "");
+        assertTrue(calls(memoizedEntry, ColumnEvaluationContext.class, "prepareMemoizedCount"));
+    }
+
+    @Test
+    void negativeMemoizedSlotsAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new ColumnClassBuilder(-1));
+    }
+
+    @Test
+    void inactiveContextIsRejectedAtColumnEntry() throws Throwable {
+        CompiledColumnEvaluator evaluator = instantiate(new ColumnClassBuilder(0)
+                .build(new CoordinateNode(Axis.Y)));
+        assertThrows(IllegalStateException.class,
+                () -> evaluator.evalColumn(new ColumnEvaluationContext()));
+    }
+
+    @Test
     void evalColumnOwnsTheOnlyCleanupHandlerAndRethrows() throws Throwable {
         AstNode graph = new MulNode(new CoordinateNode(Axis.Y),
                 new Memoized2DNode(new ConstantNode(2.0D), 1));

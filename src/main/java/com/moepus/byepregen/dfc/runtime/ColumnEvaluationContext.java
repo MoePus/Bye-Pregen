@@ -50,7 +50,6 @@ public final class ColumnEvaluationContext {
     }
 
     public void prepareMemoizedCount(int count) {
-        this.requireActive();
         if (count < 0) throw new IllegalArgumentException("Negative memoized count");
         if (this.memoizedValues.length < count) this.memoizedValues = new double[count];
         if (this.memoizedReady.length < count) this.memoizedReady = new boolean[count];
@@ -60,7 +59,6 @@ public final class ColumnEvaluationContext {
     }
 
     public void prepareInterpolationCount(int count) {
-        this.requireActive();
         if (count < 0) throw new IllegalArgumentException("Negative interpolation count");
         if (this.interpolationColumns.length < count) this.interpolationColumns = new double[count][];
         this.interpolationCount = count;
@@ -136,7 +134,6 @@ public final class ColumnEvaluationContext {
     }
 
     public double[] borrowDoubleArray(int length) {
-        this.requireActive();
         if (length < 0) throw new IllegalArgumentException("Negative scratch length");
         if (this.scratchDepth == this.scratchArrays.length) {
             this.scratchArrays = Arrays.copyOf(this.scratchArrays, this.scratchDepth * 2);
@@ -148,22 +145,25 @@ public final class ColumnEvaluationContext {
     }
 
     public void recycleDoubleArray(double[] array) {
-        this.requireActive();
         Objects.requireNonNull(array, "array");
         if (this.scratchDepth == 0) throw new IllegalStateException("Scratch pool underflow");
         this.scratchArrays[--this.scratchDepth] = array;
     }
 
     public void resetScratchAfterFailure() {
-        this.requireActive();
         this.scratchDepth = 0;
     }
 
-    public double[] output() { this.requireActive(); return this.output; }
-    public int x() { this.requireActive(); return this.blockX; }
-    public int z() { this.requireActive(); return this.blockZ; }
-    public int minY() { this.requireActive(); return this.minY; }
-    public int cellHeight() { this.requireActive(); return this.cellHeight; }
+    /** Called once by generated evalColumn before accessing the active column state. */
+    public void assertActive() {
+        if (!this.active) throw new IllegalStateException("Density column context is not active");
+    }
+
+    public double[] output() { return this.output; }
+    public int x() { return this.blockX; }
+    public int z() { return this.blockZ; }
+    public int minY() { return this.minY; }
+    public int cellHeight() { return this.cellHeight; }
 
     public void clear() {
         if (!this.active) return;
@@ -177,7 +177,6 @@ public final class ColumnEvaluationContext {
     }
 
     private double[] interpolatedColumn(int index, DensityFunction source) {
-        this.requireActive();
         if (index < 0 || index >= this.interpolationCount) {
             throw new IndexOutOfBoundsException("Column interpolation index: " + index);
         }
@@ -194,14 +193,9 @@ public final class ColumnEvaluationContext {
     }
 
     private void checkMemoizedIndex(int index) {
-        this.requireActive();
         if (index < 0 || index >= this.memoizedCount) {
             throw new IndexOutOfBoundsException("Column memoized index: " + index);
         }
-    }
-
-    private void requireActive() {
-        if (!this.active) throw new IllegalStateException("Density column context is not active");
     }
 
     private static IllegalArgumentException outsideColumn(int y) {

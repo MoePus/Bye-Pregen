@@ -35,6 +35,7 @@ public final class ColumnClassBuilder {
     private final int memoizedSlots;
 
     public ColumnClassBuilder(int memoizedSlots) {
+        if (memoizedSlots < 0) throw new IllegalArgumentException("Negative memoized slot count");
         this.memoizedSlots = memoizedSlots;
         GenerationContext context = new GenerationContext(
                 this.className, this.writer, this.bindings);
@@ -77,6 +78,8 @@ public final class ColumnClassBuilder {
         MethodVisitor method = this.writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
                 "evalColumn", EVAL_DESC, null, null);
         method.visitCode();
+        method.visitVarInsn(Opcodes.ALOAD, 1);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "assertActive", "()V", false);
         this.prepareContext(method);
         Label body = new Label();
         Label end = new Label();
@@ -107,9 +110,11 @@ public final class ColumnClassBuilder {
     }
 
     private void prepareContext(MethodVisitor method) {
-        method.visitVarInsn(Opcodes.ALOAD, 1);
-        pushInt(method, this.memoizedSlots);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "prepareMemoizedCount", "(I)V", false);
+        if (this.memoizedSlots > 0) {
+            method.visitVarInsn(Opcodes.ALOAD, 1);
+            pushInt(method, this.memoizedSlots);
+            method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "prepareMemoizedCount", "(I)V", false);
+        }
         method.visitVarInsn(Opcodes.ALOAD, 1);
         pushInt(method, this.points.interpolationCount());
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "prepareInterpolationCount", "(I)V", false);
