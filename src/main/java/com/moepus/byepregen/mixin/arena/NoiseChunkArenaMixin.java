@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Slice;
 
-@MixinGate(feature = MixinFeature.ARENA)
+@MixinGate(feature = MixinFeature.ARENA, conflictingMods = "reterraforged")
 @Mixin(NoiseChunk.class)
 public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     @Unique private static final double byepregen$PAGE_STEP_SCALE = 1.0D / Layout.PAGE_HEIGHT;
