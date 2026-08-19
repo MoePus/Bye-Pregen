@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.junit.jupiter.api.Test;
 
 final class DensityColumnCompilerTest {
@@ -41,10 +42,30 @@ final class DensityColumnCompilerTest {
         assertEquals(1, delegate.calls.get());
     }
 
+    @Test
+    void compilerLeavesBeardifierForPointEvaluation() {
+        AtomicInteger beardifierBindings = new AtomicInteger();
+        ColumnTemplate template = DensityColumnCompiler.compile(DensityFunctions.constant(2.0D));
+        assertTrue(template.available(), template.disabledReason());
+        CompiledColumnEvaluator evaluator = template.bind(source -> {
+            if (source == DensityFunctions.BeardifierMarker.INSTANCE) {
+                beardifierBindings.incrementAndGet();
+            }
+            return source;
+        });
+        double[] output = evaluate(evaluator, 4);
+
+        assertArrayEquals(new double[]{2.0D, 2.0D, 2.0D, 2.0D}, output);
+        assertEquals(0, beardifierBindings.get());
+    }
+
     private static double[] evaluate(DensityFunction function, int length) {
         ColumnTemplate template = DensityColumnCompiler.compile(function);
         assertTrue(template.available(), template.disabledReason());
-        CompiledColumnEvaluator evaluator = template.bind(value -> value);
+        return evaluate(template.bind(value -> value), length);
+    }
+
+    private static double[] evaluate(CompiledColumnEvaluator evaluator, int length) {
         ColumnEvaluationContext context = new ColumnEvaluationContext();
         double[] output = new double[length];
         context.prepare(output, 3, 9, 0, 4, source -> {

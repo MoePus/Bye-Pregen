@@ -41,6 +41,7 @@ public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvid
     @Unique private static final Logger byepregen$LOGGER = LogUtils.getLogger();
     @Shadow @Final private Map<DensityFunction, DensityFunction> wrapped;
     @Shadow @Final private List<NoiseChunk.NoiseInterpolator> interpolators;
+    @Shadow @Final private DensityFunctions.BeardifierOrMarker beardifier;
     @Shadow private int cellStartBlockY;
     @Shadow private int inCellY;
     @Shadow private long interpolationCounter;
@@ -257,10 +258,11 @@ public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvid
                     this.interpolators.get(index).value = columns[index][lane];
                 }
                 double expected = root.compute((NoiseChunk) (Object) this);
-                if (!byepregen$equivalent(expected, output[lane])) {
+                double actual = output[lane] + this.beardifier.compute((NoiseChunk) (Object) this);
+                if (!byepregen$equivalent(expected, actual)) {
                     throw new IllegalStateException("Final-density column mismatch at "
                             + blockX + ',' + blockY + ',' + blockZ + ": expected="
-                            + expected + ", actual=" + output[lane]);
+                            + expected + ", actual=" + actual);
                 }
             }
         } finally {

@@ -2,7 +2,6 @@ package com.moepus.byepregen.dfc.compile;
 
 import com.moepus.byepregen.dfc.analysis.ColumnSpecializer;
 import com.moepus.byepregen.dfc.ast.AstNode;
-import com.moepus.byepregen.dfc.ast.AstNodes.AddNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.RootNode;
 import com.moepus.byepregen.dfc.codegen.ColumnClassBuilder;
 import com.moepus.byepregen.dfc.codegen.ColumnClassDefiner;
@@ -13,7 +12,6 @@ import com.moepus.byepregen.dfc.runtime.DensityColumnMetrics;
 import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
 import net.minecraft.world.level.levelgen.DensityFunction;
-import net.minecraft.world.level.levelgen.DensityFunctions;
 import net.minecraft.world.level.levelgen.NoiseRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,8 +40,7 @@ public final class DensityColumnCompiler {
     ) {
         try {
             DensityFunctionFrontend frontend = new DensityFunctionFrontend();
-            AstNode initial = new RootNode(new AddNode(frontend.convert(finalDensity),
-                    frontend.convert(DensityFunctions.BeardifierMarker.INSTANCE)));
+            AstNode initial = new RootNode(frontend.convert(finalDensity));
             long frontendNanos = System.nanoTime() - frontendStart;
 
             ColumnOptimizer.Result optimized = ColumnOptimizer.optimize(initial);

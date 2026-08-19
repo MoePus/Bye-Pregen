@@ -3,6 +3,7 @@ package com.moepus.byepregen.mixin.accessor.arena;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import net.minecraft.world.level.levelgen.NoiseChunk;
+import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -18,4 +19,7 @@ public interface NoiseChunkAccessor {
 
     @Accessor("blockStateRule")
     NoiseChunk.BlockStateFiller byepregen$blockStateRule();
+
+    @Accessor("beardifier")
+    DensityFunctions.BeardifierOrMarker byepregen$beardifier();
 }

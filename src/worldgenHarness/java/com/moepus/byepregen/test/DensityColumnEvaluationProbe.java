@@ -105,8 +105,7 @@ final class DensityColumnEvaluationProbe {
         for (int lane = 0; lane < actual.length; ++lane) {
             int y = minY + lane * CELL_HEIGHT;
             DensityFunction.FunctionContext point = new DensityFunction.SinglePointContext(x, y, z);
-            double expected = graph.compute(point)
-                    + DensityFunctions.BeardifierMarker.INSTANCE.compute(point);
+            double expected = graph.compute(point);
             double allowed = tolerance * (1.0D + Math.abs(expected));
             require(Math.abs(expected - actual[lane]) <= allowed,
                     "column differential mismatch at " + x + ',' + y + ',' + z

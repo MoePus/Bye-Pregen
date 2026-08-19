@@ -117,7 +117,8 @@ public final class ArenaNoiseFiller {
             this.materialEvaluator = ArenaMaterialEvaluator.create(
                     this.noiseChunkAccess.byepregen$blockStateRule(),
                     this.aquifer,
-                    this.arenaNoiseChunk.byepregen$getAquiferMaterialRule()
+                    this.arenaNoiseChunk.byepregen$getAquiferMaterialRule(),
+                    this.noiseChunkAccess.byepregen$beardifier()
             );
             ChunkPos chunkPos = this.chunk.getPos();
             this.chunkStartX = chunkPos.getMinBlockX();
@@ -231,7 +232,7 @@ public final class ArenaNoiseFiller {
 
         private void sampleBlock(int blockX, int blockY, int blockZ) {
             BlockState state = this.useDensityColumn
-                    ? this.materialEvaluator.calculateColumn(
+                    ? this.materialEvaluator.calculateWithColumnDensity(
                             this.noiseChunk,
                             this.arenaNoiseChunk.byepregen$getArenaDensity(blockY)
                     )
