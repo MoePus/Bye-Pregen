@@ -72,6 +72,6 @@ def verifyOverwriteContracts = tasks.register('verifyOverwriteContracts', Test) 
 
 tasks.register('quickCheck') {
     group = 'verification'
-    description = 'Runs unit, pure-Java, mixin registry, overwrite, and production-jar checks.'
-    dependsOn(tasks.named('check'), verifyMixinRegistry, verifyOverwriteContracts)
+    description = 'Runs the unified unit and pure-Java test suite.'
+    dependsOn(tasks.named('test'))
 }

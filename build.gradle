@@ -144,6 +144,12 @@ def runtimeCheck = tasks.register('runtimeCheck') {
     dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen', 'testFastTickRuntime')
 }
 
+tasks.register('ciCheck') {
+    group = 'verification'
+    description = 'Runs production, startup, and runtime verification for continuous integration.'
+    dependsOn(tasks.named('check'), tasks.named('startupCheck'), runtimeCheck)
+}
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [minecraft_version      : minecraft_version,
                              minecraft_version_range: minecraft_version_range,

@@ -1,11 +1,11 @@
-def runtimeCheckRequested = gradle.startParameter.taskNames.any {
-    it.tokenize(':').last() == 'runtimeCheck'
+def reducedRuntimeSmokeRequested = gradle.startParameter.taskNames.any {
+    it.tokenize(':').last() in ['runtimeCheck', 'ciCheck']
 }
 def singleBiome = providers.gradleProperty('byepregenTestSingleBiome').orNull
 
 def worldGenConfig = [
         dir    : file(byepregenProp('byepregenTestWorldGenDir', 'run/test-worldgen')),
-        radius : runtimeCheckRequested ? '16' : byepregenProp('byepregenTestWorldGenRadius', '700'),
+        radius : reducedRuntimeSmokeRequested ? '16' : byepregenProp('byepregenTestWorldGenRadius', '700'),
         seed   : byepregenProp('byepregenTestWorldGenSeed', 'byepregen-test-worldgen'),
         gcFree : byepregenProp('byepregenTestWorldGenGcFree', 'true'),
         yaLight: byepregenProp('byepregenTestWorldGenYALight', 'true'),
@@ -27,6 +27,7 @@ def worldGenConfig = [
         datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
         singleBiome: singleBiome,
 ]
+logger.info("ByePregen worldgen smoke radius: ${worldGenConfig.radius}")
 def arenaPaletteRoot = file('run/arena-palette-differential')
 def arenaPaletteResult = file("${arenaPaletteRoot}/arena-palette.result")
 def chunkNbtParityRoot = file('run/chunk-nbt-parity')
