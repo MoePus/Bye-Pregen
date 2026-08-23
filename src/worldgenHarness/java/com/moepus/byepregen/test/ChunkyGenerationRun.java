@@ -35,17 +35,21 @@ final class ChunkyGenerationRun {
             return;
         }
 
-        String shape = WorldgenHarnessProperties.get("shape", "circle");
-        String pattern = WorldgenHarnessProperties.get("pattern", "concentric");
-        double centerX = WorldgenHarnessProperties.getDouble("centerX", 0.0D);
-        double centerZ = WorldgenHarnessProperties.getDouble("centerZ", 0.0D);
-        double radius = WorldgenHarnessProperties.getDouble("radius", 700.0D);
+        Options options = Options.fromSystemProperties();
         ChunkyAPI api = chunky.getApi();
         api.onGenerationProgress(this::onProgress);
         api.onGenerationComplete(this::onComplete);
         this.startedNanos = System.nanoTime();
         this.startedCpuNanos = processCpuNanos();
-        if (!api.startTask(this.controller.world(), shape, centerX, centerZ, radius, radius, pattern)) {
+        if (!api.startTask(
+                this.controller.world(),
+                options.taskSpec().shape(),
+                options.center().x(),
+                options.center().z(),
+                options.radius(),
+                options.radius(),
+                options.taskSpec().pattern()
+        )) {
             this.controller.failAndStop(
                     this.server,
                     "Chunky refused to start the worldgen task for " + this.controller.world()
@@ -53,7 +57,8 @@ final class ChunkyGenerationRun {
             return;
         }
         LOGGER.info("Started Chunky worldgen test: world={} shape={} center=({}, {}) radius={} pattern={}",
-                this.controller.world(), shape, centerX, centerZ, radius, pattern);
+                this.controller.world(), options.taskSpec().shape(), options.center().x(), options.center().z(),
+                options.radius(), options.taskSpec().pattern());
     }
 
     private void onProgress(GenerationProgressEvent event) {
@@ -110,5 +115,31 @@ final class ChunkyGenerationRun {
 
     private static long processCpuNanos() {
         return ProcessHandle.current().info().totalCpuDuration().map(Duration::toNanos).orElse(0L);
+    }
+
+    private record Options(
+            TaskSpec taskSpec,
+            Center center,
+            double radius
+    ) {
+        private static Options fromSystemProperties() {
+            return new Options(
+                    new TaskSpec(
+                            WorldgenHarnessProperties.get("shape", "circle"),
+                            WorldgenHarnessProperties.get("pattern", "concentric")
+                    ),
+                    new Center(
+                            WorldgenHarnessProperties.getDouble("centerX", 0.0D),
+                            WorldgenHarnessProperties.getDouble("centerZ", 0.0D)
+                    ),
+                    WorldgenHarnessProperties.getDouble("radius", 700.0D)
+            );
+        }
+    }
+
+    private record TaskSpec(String shape, String pattern) {
+    }
+
+    private record Center(double x, double z) {
     }
 }

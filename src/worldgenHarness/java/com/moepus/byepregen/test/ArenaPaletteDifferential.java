@@ -1,6 +1,7 @@
 package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.harness.HarnessResultFile;
+import com.moepus.byepregen.harness.HarnessServerLifecycle;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.Unpooled;
@@ -23,6 +24,12 @@ final class ArenaPaletteDifferential {
     static final String MODE = "arena_palette";
     private static final String RESULT_PROPERTY = "byepregen.arenaPaletteDifferentialResult";
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final HarnessServerLifecycle.FailureOptions FAILURE =
+            new HarnessServerLifecycle.FailureOptions(
+                    RESULT_PROPERTY,
+                    LOGGER,
+                    "BYEPREGEN_ARENA_PALETTE_DIFFERENTIAL_FAIL"
+            );
     private static final int SECTION_SIZE = 16 * 16 * 16;
     private static final List<BlockState> STATES = List.of(
             Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState(),
@@ -50,18 +57,13 @@ final class ArenaPaletteDifferential {
     }
 
     private static void run(MinecraftServer server) {
-        try {
+        HarnessServerLifecycle.execute(server, FAILURE, () -> {
             assertScenario(1);
             assertScenario(8);
             assertScenario(STATES.size());
             HarnessResultFile.write(RESULT_PROPERTY, "PASS\nscenarios=uniform,page-palette,dense\n");
             LOGGER.info("BYEPREGEN_ARENA_PALETTE_DIFFERENTIAL_PASS");
-        } catch (Throwable throwable) {
-            HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
-            LOGGER.error("BYEPREGEN_ARENA_PALETTE_DIFFERENTIAL_FAIL", throwable);
-        } finally {
-            server.halt(false);
-        }
+        });
     }
 
     private static void assertScenario(int distinctStates) {

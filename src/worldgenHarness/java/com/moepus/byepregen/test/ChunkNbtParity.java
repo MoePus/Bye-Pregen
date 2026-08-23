@@ -1,6 +1,7 @@
 package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.harness.HarnessResultFile;
+import com.moepus.byepregen.harness.HarnessServerLifecycle;
 import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import com.moepus.byepregen.chunksave.storage.ChunkSavingCompression;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
@@ -37,6 +38,12 @@ final class ChunkNbtParity {
     static final String MODE = "chunk_nbt_parity";
     private static final String RESULT_PROPERTY = "byepregen.chunkNbtParityResult";
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final HarnessServerLifecycle.FailureOptions FAILURE =
+            new HarnessServerLifecycle.FailureOptions(
+                    RESULT_PROPERTY,
+                    LOGGER,
+                    "BYEPREGEN_CHUNK_NBT_PARITY_FAIL"
+            );
     private static final int SCHEDULED_TICK_DELAY = 200;
 
     private ChunkNbtParity() {
@@ -52,7 +59,7 @@ final class ChunkNbtParity {
     }
 
     private static void run(MinecraftServer server) {
-        try {
+        HarnessServerLifecycle.execute(server, FAILURE, () -> {
             ServerLevel level = server.overworld();
             LevelChunk generated = level.getChunk(0, 0);
             int generatedBytes = assertParity(level, generated, "generated", Coverage.NONE);
@@ -67,12 +74,7 @@ final class ChunkNbtParity {
             HarnessResultFile.write(RESULT_PROPERTY, "PASS\nscenarios=generated,enriched,proto-postprocess\nrawBytes="
                     + generatedBytes + "," + enrichedBytes + "," + protoBytes + "\n");
             LOGGER.info("BYEPREGEN_CHUNK_NBT_PARITY_PASS");
-        } catch (Throwable throwable) {
-            HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
-            LOGGER.error("BYEPREGEN_CHUNK_NBT_PARITY_FAIL", throwable);
-        } finally {
-            server.halt(false);
-        }
+        });
     }
 
     private static void enrich(ServerLevel level, LevelChunk chunk) {

@@ -8,10 +8,10 @@ public final class TestWorldGen {
     }
 
     public static void registerIfEnabled() {
-        if (!Boolean.getBoolean(ENABLED_PROPERTY)) {
+        if (!WorldgenHarnessProperties.isEnabled()) {
             return;
         }
-        String mode = System.getProperty("byepregen.testWorldGen.mode", "chunky");
+        String mode = WorldgenHarnessProperties.get("mode", "chunky");
         if (ArenaPaletteDifferential.MODE.equals(mode)) {
             ArenaPaletteDifferential.register();
             return;

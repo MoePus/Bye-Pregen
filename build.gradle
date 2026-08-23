@@ -37,6 +37,8 @@ sourceSets {
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
 }
+sourceSets.test.compileClasspath += sourceSets.worldgenHarness.output
+sourceSets.test.runtimeClasspath += sourceSets.worldgenHarness.output
 
 configurations {
     benchmarkCompileOnly.extendsFrom compileOnly

@@ -121,6 +121,30 @@ def configureLightRestartRun = { run, Map config, String phase ->
     run.systemProperty('byepregen.testWorldGen.baseline', config.baseline.absolutePath)
 }
 
+def configureLightRelightRun = { run, Map options ->
+    Map runOptions = [dir: options.dir, radius: lightGoldenConfig.radius, mode: 'relight']
+    if (options.yaSchedulerWakeOnAdd != null) {
+        runOptions.yaSchedulerWakeOnAdd = options.yaSchedulerWakeOnAdd
+    }
+    if (options.jfrEnabled) {
+        runOptions.jfrFile = options.jfrFile
+        runOptions.jfrRepository = lightGoldenConfig.relightJfrRepository
+    }
+    byepregenConfigureWorldgenRun(run, runOptions)
+}
+
+def configureLightDiffProperties = { JavaExec task, Map options ->
+    task.systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
+    task.systemProperty 'byepregen.lightGolden.minComparedLayers', lightGoldenConfig.minComparedLayers
+    task.systemProperty 'byepregen.lightGolden.missingAsZero', lightGoldenConfig.missingAsZero
+    task.systemProperty 'byepregen.lightGolden.requireCompleteChunks', lightGoldenConfig.requireCompleteChunks
+    task.systemProperty 'byepregen.lightGolden.minChunkCoverage', options.minChunkCoverage
+    task.systemProperty 'byepregen.lightGolden.minChunkX', options.minChunkX
+    task.systemProperty 'byepregen.lightGolden.maxChunkX', options.maxChunkX
+    task.systemProperty 'byepregen.lightGolden.minChunkZ', options.minChunkZ
+    task.systemProperty 'byepregen.lightGolden.maxChunkZ', options.maxChunkZ
+}
+
 def prepareRelightRunTask = { String taskName, Map options ->
     Map testOptions = [
             dir         : options.dir,
@@ -193,33 +217,26 @@ neoForge {
             )
         }
         lightGoldenRelightVanilla {
-            def options = [dir: lightGoldenConfig.vanillaDir, radius: lightGoldenConfig.radius, mode: 'relight']
-            if (lightGoldenConfig.relightVanillaJfrEnabled) {
-                options.jfrFile = lightGoldenConfig.relightVanillaJfr
-                options.jfrRepository = lightGoldenConfig.relightJfrRepository
-            }
-            byepregenConfigureWorldgenRun(delegate, options)
+            configureLightRelightRun(delegate, [
+                    dir       : lightGoldenConfig.vanillaDir,
+                    jfrEnabled: lightGoldenConfig.relightVanillaJfrEnabled,
+                    jfrFile   : lightGoldenConfig.relightVanillaJfr,
+            ])
         }
         lightGoldenRelightYA {
-            def options = [
-                    dir             : lightGoldenConfig.yaDir,
-                    radius          : lightGoldenConfig.radius,
-                    mode            : 'relight',
+            configureLightRelightRun(delegate, [
+                    dir                 : lightGoldenConfig.yaDir,
                     yaSchedulerWakeOnAdd: lightGoldenConfig.yaSchedulerWakeOnAdd,
-            ]
-            if (lightGoldenConfig.relightYAJfrEnabled) {
-                options.jfrFile = lightGoldenConfig.relightYAJfr
-                options.jfrRepository = lightGoldenConfig.relightJfrRepository
-            }
-            byepregenConfigureWorldgenRun(delegate, options)
+                    jfrEnabled          : lightGoldenConfig.relightYAJfrEnabled,
+                    jfrFile             : lightGoldenConfig.relightYAJfr,
+            ])
         }
         lightGoldenRelightLux {
-            def options = [dir: lightGoldenConfig.luxDir, radius: lightGoldenConfig.radius, mode: 'relight']
-            if (lightGoldenConfig.relightLuxJfrEnabled) {
-                options.jfrFile = lightGoldenConfig.relightLuxJfr
-                options.jfrRepository = lightGoldenConfig.relightJfrRepository
-            }
-            byepregenConfigureWorldgenRun(delegate, options)
+            configureLightRelightRun(delegate, [
+                    dir       : lightGoldenConfig.luxDir,
+                    jfrEnabled: lightGoldenConfig.relightLuxJfrEnabled,
+                    jfrFile   : lightGoldenConfig.relightLuxJfr,
+            ])
         }
         lightFuzzSource {
             byepregenConfigureWorldgenRun(
@@ -296,42 +313,24 @@ lightRestartConfigs.each { config ->
     String preparedDisk = "verifyLightRestart${config.id}PreparedDisk"
     String firstDisk = "verifyLightRestart${config.id}FirstDisk"
     String secondDisk = "verifyLightRestart${config.id}SecondDisk"
-    configureLightRestartServerTask([
-            taskName    : config.prepareRun,
-            config      : config,
-            prepare     : true,
-            prerequisite: null,
-    ])
-    registerLightRestartDiskTask([
-            taskName      : preparedDisk,
-            prerequisite  : config.prepareRun,
-            config        : config,
-            relightLightOn: false,
-    ])
-    configureLightRestartServerTask([
-            taskName    : config.verifyRun,
-            config      : config,
-            prepare     : false,
-            prerequisite: preparedDisk,
-    ])
-    registerLightRestartDiskTask([
-            taskName      : firstDisk,
-            prerequisite  : config.verifyRun,
-            config        : config,
-            relightLightOn: true,
-    ])
-    configureLightRestartServerTask([
-            taskName    : config.secondRun,
-            config      : config,
-            prepare     : false,
-            prerequisite: firstDisk,
-    ])
-    registerLightRestartDiskTask([
-            taskName      : secondDisk,
-            prerequisite  : config.secondRun,
-            config        : config,
-            relightLightOn: true,
-    ])
+    [
+            [run: config.prepareRun, prepare: true, prerequisite: null, disk: preparedDisk, lightOn: false],
+            [run: config.verifyRun, prepare: false, prerequisite: preparedDisk, disk: firstDisk, lightOn: true],
+            [run: config.secondRun, prepare: false, prerequisite: firstDisk, disk: secondDisk, lightOn: true],
+    ].each { stage ->
+        configureLightRestartServerTask([
+                taskName    : stage.run,
+                config      : config,
+                prepare     : stage.prepare,
+                prerequisite: stage.prerequisite,
+        ])
+        registerLightRestartDiskTask([
+                taskName      : stage.disk,
+                prerequisite  : stage.run,
+                config        : config,
+                relightLightOn: stage.lightOn,
+        ])
+    }
     config.finalDiskTask = secondDisk
 }
 
@@ -451,15 +450,13 @@ tasks.register('diffLightGolden', JavaExec) {
     classpath = sourceSets.worldgenHarness.runtimeClasspath
     mainClass.set('com.moepus.byepregen.test.LightGoldenDiff')
     args lightGoldenConfig.expectedWorld, lightGoldenConfig.actualWorld
-    systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
-    systemProperty 'byepregen.lightGolden.minComparedLayers', lightGoldenConfig.minComparedLayers
-    systemProperty 'byepregen.lightGolden.missingAsZero', lightGoldenConfig.missingAsZero
-    systemProperty 'byepregen.lightGolden.requireCompleteChunks', lightGoldenConfig.requireCompleteChunks
-    systemProperty 'byepregen.lightGolden.minChunkCoverage', lightGoldenConfig.minChunkCoverage
-    systemProperty 'byepregen.lightGolden.minChunkX', -lightGoldenConfig.diffChunkLimit
-    systemProperty 'byepregen.lightGolden.maxChunkX', lightGoldenConfig.diffChunkLimit
-    systemProperty 'byepregen.lightGolden.minChunkZ', -lightGoldenConfig.diffChunkLimit
-    systemProperty 'byepregen.lightGolden.maxChunkZ', lightGoldenConfig.diffChunkLimit
+    configureLightDiffProperties(delegate, [
+            minChunkCoverage: lightGoldenConfig.minChunkCoverage,
+            minChunkX       : -lightGoldenConfig.diffChunkLimit,
+            maxChunkX       : lightGoldenConfig.diffChunkLimit,
+            minChunkZ       : -lightGoldenConfig.diffChunkLimit,
+            maxChunkZ       : lightGoldenConfig.diffChunkLimit,
+    ])
 }
 
 tasks.register('runLightGoldenDiff') {
@@ -533,15 +530,13 @@ tasks.register('diffLightFuzz', JavaExec) {
     mainClass.set('com.moepus.byepregen.test.LightGoldenDiff')
     args file("${lightFuzzConfig.vanillaDir}/world").absolutePath,
             file("${lightFuzzConfig.yaDir}/world").absolutePath
-    systemProperty 'byepregen.lightGolden.maxMismatches', lightGoldenConfig.maxMismatches
-    systemProperty 'byepregen.lightGolden.minComparedLayers', lightGoldenConfig.minComparedLayers
-    systemProperty 'byepregen.lightGolden.missingAsZero', lightGoldenConfig.missingAsZero
-    systemProperty 'byepregen.lightGolden.requireCompleteChunks', lightGoldenConfig.requireCompleteChunks
-    systemProperty 'byepregen.lightGolden.minChunkCoverage', lightFuzzConfig.minChunkCoverage
-    systemProperty 'byepregen.lightGolden.minChunkX', lightFuzzConfig.minChunkX
-    systemProperty 'byepregen.lightGolden.maxChunkX', lightFuzzConfig.maxChunkX
-    systemProperty 'byepregen.lightGolden.minChunkZ', lightFuzzConfig.minChunkZ
-    systemProperty 'byepregen.lightGolden.maxChunkZ', lightFuzzConfig.maxChunkZ
+    configureLightDiffProperties(delegate, [
+            minChunkCoverage: lightFuzzConfig.minChunkCoverage,
+            minChunkX       : lightFuzzConfig.minChunkX,
+            maxChunkX       : lightFuzzConfig.maxChunkX,
+            minChunkZ       : lightFuzzConfig.minChunkZ,
+            maxChunkZ       : lightFuzzConfig.maxChunkZ,
+    ])
 }
 
 tasks.register('runLightFuzzDiff') {

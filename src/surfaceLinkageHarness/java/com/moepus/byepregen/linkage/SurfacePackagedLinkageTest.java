@@ -1,6 +1,7 @@
 package com.moepus.byepregen.linkage;
 
 import com.moepus.byepregen.harness.HarnessResultFile;
+import com.moepus.byepregen.harness.HarnessServerLifecycle;
 import com.mojang.logging.LogUtils;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -18,6 +19,12 @@ public final class SurfacePackagedLinkageTest {
     static final String MOD_ID = "byepregen_surface_linkage_test";
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String RESULT_PROPERTY = "byepregen.surfaceLinkageResult";
+    private static final HarnessServerLifecycle.FailureOptions FAILURE =
+            new HarnessServerLifecycle.FailureOptions(
+                    RESULT_PROPERTY,
+                    LOGGER,
+                    "BYEPREGEN_PACKAGED_SURFACE_LINKAGE_FAIL"
+            );
     private static final int TEST_CHUNK_X = 128;
     private static final int TEST_CHUNK_Z = -128;
 
@@ -31,7 +38,7 @@ public final class SurfacePackagedLinkageTest {
     }
 
     private static void run(MinecraftServer server) {
-        try {
+        HarnessServerLifecycle.execute(server, FAILURE, () -> {
             ServerLevel level = server.overworld();
             level.getChunkSource().getChunk(
                     TEST_CHUNK_X,
@@ -40,14 +47,9 @@ public final class SurfacePackagedLinkageTest {
                     true
             );
             Evidence evidence = collectEvidence();
-            writeResult(evidence.format());
+            HarnessResultFile.write(RESULT_PROPERTY, evidence.format());
             LOGGER.info("BYEPREGEN_PACKAGED_SURFACE_LINKAGE_PASS {}", evidence);
-            server.halt(false);
-        } catch (Throwable throwable) {
-            writeFailure(throwable);
-            LOGGER.error("BYEPREGEN_PACKAGED_SURFACE_LINKAGE_FAIL", throwable);
-            server.halt(false);
-        }
+        });
     }
 
     private static Evidence collectEvidence() throws ReflectiveOperationException {
@@ -84,14 +86,6 @@ public final class SurfacePackagedLinkageTest {
             throws ReflectiveOperationException {
         Method method = target.getClass().getMethod(methodName);
         return ((Number) method.invoke(target)).longValue();
-    }
-
-    private static void writeResult(String result) throws Exception {
-        HarnessResultFile.write(RESULT_PROPERTY, result);
-    }
-
-    private static void writeFailure(Throwable throwable) {
-        HarnessResultFile.writeFailure(RESULT_PROPERTY, throwable);
     }
 
     private record Evidence(

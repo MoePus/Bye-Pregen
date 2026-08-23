@@ -3,7 +3,7 @@ package com.moepus.byepregen.startup;
 import com.moepus.byepregen.harness.HarnessResultFile;
 
 final class StartupResult {
-    private static final String RESULT_PROPERTY = "byepregen.startupResult";
+    static final String RESULT_PROPERTY = "byepregen.startupResult";
 
     private StartupResult() {
     }
