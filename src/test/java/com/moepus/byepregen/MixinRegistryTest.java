@@ -28,7 +28,6 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 final class MixinRegistryTest {
@@ -94,7 +93,9 @@ final class MixinRegistryTest {
         assertEquals(Map.of(
                 ConfigFlag.DISABLE_WORLDGEN_FEATURES, 1,
                 ConfigFlag.PLACED_FEATURES, 2,
-                ConfigFlag.FAST_CHUNK_TICKING, 2
+                ConfigFlag.FAST_CHUNK_TICKING, 2,
+                ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 1,
+                ConfigFlag.CLIENT_ARENA, 1
         ), actual);
     }
 
@@ -134,20 +135,18 @@ final class MixinRegistryTest {
     }
 
     @Test
-    void pluginExplicitMixinReferencesAreRegistered() throws Exception {
-        Set<String> registered = new HashSet<>(readRegistry().classes());
-        ClassNode plugin = readClass(MixinPlugin.class.getName());
-        List<String> missing = new ArrayList<>();
+    void specializedMixinsKeepMetadataPolicies() throws Exception {
+        AnnotationNode levelChunk = annotation(
+                readClass(MIXIN_PREFIX + "arena.LevelChunkArenaMixin"), GATE_DESCRIPTOR);
+        AnnotationNode voxy = annotation(
+                readClass(MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin"),
+                GATE_DESCRIPTOR);
+        AnnotationNode rawChunkStorage = annotation(
+                readClass(MIXIN_PREFIX + "chunkio.ChunkStorageRawMixin"), GATE_DESCRIPTOR);
 
-        for (FieldNode field : plugin.fields) {
-            if (field.value instanceof String value
-                    && value.startsWith(MIXIN_PREFIX)
-                    && (value.endsWith("Mixin") || value.endsWith("Accessor"))
-                    && !registered.contains(value)) {
-                missing.add(field.name + "=" + value);
-            }
-        }
-        assertTrue(missing.isEmpty(), "plugin mixin references are not registered: " + missing);
+        assertEquals(ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, annotationConfigFlag(levelChunk));
+        assertEquals(ConfigFlag.CLIENT_ARENA, annotationConfigFlag(voxy));
+        assertEquals(MixinFeature.GC_FREE_RAW_CHUNK_IO, annotationFeature(rawChunkStorage));
     }
 
     @Test
@@ -202,29 +201,38 @@ final class MixinRegistryTest {
         assertEquals(contract.feature(), annotationFeature(gate), mixinClassName);
         assertEquals(List.of(contract.requiredMod()), annotationStrings(gate, "requiredMods"), mixinClassName);
         assertEquals(List.of(), annotationStrings(gate, "conflictingMods"), mixinClassName);
+        Config enabledConfig = configEnabling(annotationConfigFlag(gate));
 
-        assertFalse(evaluateGate(mixinClassName, targetClassName, Set.of(), Set.of(targetClassName)), mixinClassName);
-        assertFalse(evaluateGate(mixinClassName, targetClassName, Set.of(contract.requiredMod()), Set.of()), mixinClassName);
+        assertFalse(evaluateGate(mixinClassName, targetClassName,
+                new GateEnvironment(Set.of(), Set.of(targetClassName), enabledConfig)), mixinClassName);
+        assertFalse(evaluateGate(mixinClassName, targetClassName,
+                new GateEnvironment(Set.of(contract.requiredMod()), Set.of(), enabledConfig)), mixinClassName);
         assertTrue(evaluateGate(
                 mixinClassName,
                 targetClassName,
-                Set.of(contract.requiredMod()),
-                Set.of(targetClassName)
+                new GateEnvironment(
+                        Set.of(contract.requiredMod()), Set.of(targetClassName), enabledConfig)
         ), mixinClassName);
     }
 
     private static boolean evaluateGate(
             String mixinClassName,
             String targetClassName,
-            Set<String> mods,
-            Set<String> classes
+            GateEnvironment environment
     ) throws Exception {
         MixinGateEvaluator evaluator = new MixinGateEvaluator(
                 MixinRegistryTest::readClass,
-                mods::contains,
-                classes::contains
+                environment.mods()::contains,
+                environment.classes()::contains
         );
-        return evaluator.evaluate(targetClassName, mixinClassName, new Config()).annotationEnabled();
+        return evaluator.evaluate(
+                targetClassName, mixinClassName, environment.config()).annotationEnabled();
+    }
+
+    private static Config configEnabling(ConfigFlag flag) {
+        return flag == ConfigFlag.CLIENT_ARENA
+                ? new ConfigTestBuilder().clientArena(true).build()
+                : new Config();
     }
 
     private static AnnotationNode gate(String simpleName) throws IOException {
@@ -387,7 +395,8 @@ final class MixinRegistryTest {
         EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
         counts.put(MixinFeature.ARENA, 13);
         counts.put(MixinFeature.DFC, 4);
-        counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 10);
+        counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 4);
+        counts.put(MixinFeature.GC_FREE_RAW_CHUNK_IO, 6);
         counts.put(MixinFeature.SURFACE_BIOME_CACHE, 2);
         counts.put(MixinFeature.SURFACE_RULE_COMPILER, 16);
         counts.put(MixinFeature.YA_LIGHT, 19);
@@ -398,5 +407,8 @@ final class MixinRegistryTest {
     }
 
     private record CompatGateContract(MixinFeature feature, String requiredMod) {
+    }
+
+    private record GateEnvironment(Set<String> mods, Set<String> classes, Config config) {
     }
 }

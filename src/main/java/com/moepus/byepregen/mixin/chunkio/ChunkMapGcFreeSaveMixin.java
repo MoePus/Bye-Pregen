@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
+@MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
 @Mixin(value = ChunkMap.class, remap = false)
 public abstract class ChunkMapGcFreeSaveMixin {
     @Shadow

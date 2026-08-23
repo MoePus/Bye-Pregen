@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
+@MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
 @Mixin(value = ChunkStorage.class, remap = false)
 public abstract class ChunkStorageRawMixin implements RawChunkStorage {
     @Shadow

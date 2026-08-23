@@ -3,45 +3,19 @@ package com.moepus.byepregen;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.integration.neoforge.NeoForgeConfigPath;
-import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import org.objectweb.asm.tree.ClassNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 public final class MixinPlugin implements IMixinConfigPlugin {
-    private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Plugin");
-    private static final String MIXIN_PACKAGE = "com.moepus.byepregen.mixin.";
-    private static final String CHUNK_STORAGE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.chunksave.ChunkStorageAccessor";
-    private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.chunksave.IOWorkerPendingStoreAccessor";
-    private static final String REGION_FILE_STORAGE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.chunksave.RegionFileStorageAccessor";
-    private static final String C2ME_SERIALIZER_ACCESS =
-            "com.ishland.c2me.base.common.registry.SerializerAccess";
-    private static final String LEVEL_CHUNK_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.LevelChunkArenaMixin";
-    private static final String VOXY_ARENA_MIXIN =
-            MIXIN_PACKAGE + "arena.compat.voxy.VoxyWorldConversionFactoryMixin";
-    private static final Set<String> RAW_GC_FREE_MIXINS = Set.of(
-            MIXIN_PACKAGE + "chunkio.ChunkMapGcFreeSaveMixin",
-            MIXIN_PACKAGE + "chunkio.ChunkStorageRawMixin",
-            MIXIN_PACKAGE + "chunkio.IOWorkerRawMixin",
-            CHUNK_STORAGE_ACCESSOR,
-            IO_WORKER_PENDING_STORE_ACCESSOR,
-            REGION_FILE_STORAGE_ACCESSOR
-    );
     private static final MixinGateEvaluator MIXIN_GATE_EVALUATOR = MixinGateEvaluator.createDefault();
-    public MixinPlugin() {
-    }
+    private static final MixinFeatureEvaluator MIXIN_FEATURE_EVALUATOR =
+            MixinFeatureEvaluator.createDefault();
 
-    MixinPlugin(boolean ignoredExternalDfcState) {
+    public MixinPlugin() {
     }
 
     @Override
@@ -59,75 +33,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         Config config = ConfigManager.getConfig();
         MixinGateEvaluator.GateEvaluation gate = MIXIN_GATE_EVALUATOR.evaluate(
                 targetClassName, mixinClassName, config);
-        FeatureGateContext context = new FeatureGateContext(
-                config, ModEnvironment::isClassAvailable, ModEnvironment::isModLoaded);
         return gate.annotationEnabled()
-                && this.passesFeatureGate(gate.feature(), mixinClassName, context);
-    }
-
-    boolean passesFeatureGate(
-            MixinFeature feature,
-            String mixinClassName,
-            FeatureGateContext context
-    ) {
-        Config config = context.config();
-        return switch (feature) {
-            case NONE -> true;
-            case ARENA -> passesArenaGate(mixinClassName, config, context.modExists());
-            case DFC -> config.worldgen().arena().enabled()
-                    && config.worldgen().arena().densityColumnCompiler();
-            case GC_FREE_CHUNK_SAVE -> passesGcFreeGate(
-                    mixinClassName, config, context.classExists());
-            case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
-            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
-            case YA_LIGHT -> config.lighting().ya().enabled();
-        };
-    }
-
-    private static boolean passesGcFreeGate(
-            String mixinClassName,
-            Config config,
-            Predicate<String> classExists
-    ) {
-        if (!config.chunkSaving().gcFreeWorldgen()) {
-            return false;
-        }
-        if (!RAW_GC_FREE_MIXINS.contains(mixinClassName)) {
-            return true;
-        }
-        try {
-            return !classExists.test(C2ME_SERIALIZER_ACCESS);
-        } catch (RuntimeException | LinkageError throwable) {
-            LOGGER.warn("Disabling raw GC-free chunk-save mixins: cannot inspect C2ME serializer", throwable);
-            return false;
-        }
-    }
-
-    private static boolean passesArenaGate(
-            String mixinClassName,
-            Config config,
-            Predicate<String> modExists
-    ) {
-        if (!config.worldgen().arena().enabled()) {
-            return false;
-        }
-        if (modExists.test("confluence")) {
-            return false;
-        }
-        if (LEVEL_CHUNK_ARENA_MIXIN.equals(mixinClassName)) {
-            return !config.worldgen().arena().runtime().server();
-        }
-        if (VOXY_ARENA_MIXIN.equals(mixinClassName)) {
-            return config.worldgen().arena().runtime().client();
-        }
-        return true;
-    }
-
-    record FeatureGateContext(
-            Config config,
-            Predicate<String> classExists,
-            Predicate<String> modExists
-    ) {
+                && MIXIN_FEATURE_EVALUATOR.isEnabled(gate.feature(), config);
     }
 
     @Override

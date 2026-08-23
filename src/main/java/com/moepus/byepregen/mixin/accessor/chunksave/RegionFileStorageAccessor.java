@@ -9,7 +9,7 @@ import net.minecraft.world.level.chunk.storage.RegionFileStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
+@MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
 @Mixin(value = RegionFileStorage.class, remap = false)
 public interface RegionFileStorageAccessor {
     @Invoker("getRegionFile")

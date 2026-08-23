@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
+@MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
 @Mixin(value = IOWorker.class, remap = false)
 public abstract class IOWorkerRawMixin implements RawIoWorker {
     @Unique

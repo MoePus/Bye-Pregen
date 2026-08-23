@@ -8,7 +8,11 @@ public enum ConfigFlag {
     ALWAYS(config -> true),
     DISABLE_WORLDGEN_FEATURES(config -> config.debug().disableWorldgenFeatures()),
     PLACED_FEATURES(config -> config.worldgen().placedFeatures().enabled()),
-    FAST_CHUNK_TICKING(config -> config.server().fastChunkTicking().enabled());
+    FAST_CHUNK_TICKING(config -> config.server().fastChunkTicking().enabled()),
+    MATERIALIZE_ARENA_LEVEL_CHUNK(
+            config -> !config.worldgen().arena().runtime().server()
+    ),
+    CLIENT_ARENA(config -> config.worldgen().arena().runtime().client());
 
     private final Predicate<Config> enabled;
 

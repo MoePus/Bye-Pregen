@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.arena.compat.voxy;
 
+import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
@@ -20,7 +21,11 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 
-@MixinGate(feature = MixinFeature.ARENA, requiredMods = "voxy")
+@MixinGate(
+        feature = MixinFeature.ARENA,
+        requiredMods = "voxy",
+        config = ConfigFlag.CLIENT_ARENA
+)
 @Pseudo
 @Mixin(targets = "me.cortex.voxy.common.voxelization.WorldConversionFactory", remap = false)
 public abstract class VoxyWorldConversionFactoryMixin {
