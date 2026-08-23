@@ -9,10 +9,10 @@ public record ChunkBounds(int minX, int maxX, int minZ, int maxZ) {
 
     public static ChunkBounds fromSystemProperties(String prefix) {
         return new ChunkBounds(
-                Integer.getInteger(prefix + ".minChunkX", Integer.MIN_VALUE),
-                Integer.getInteger(prefix + ".maxChunkX", Integer.MAX_VALUE),
-                Integer.getInteger(prefix + ".minChunkZ", Integer.MIN_VALUE),
-                Integer.getInteger(prefix + ".maxChunkZ", Integer.MAX_VALUE)
+                HarnessProperties.getInt(prefix + ".minChunkX", Integer.MIN_VALUE),
+                HarnessProperties.getInt(prefix + ".maxChunkX", Integer.MAX_VALUE),
+                HarnessProperties.getInt(prefix + ".minChunkZ", Integer.MIN_VALUE),
+                HarnessProperties.getInt(prefix + ".maxChunkZ", Integer.MAX_VALUE)
         );
     }
 

@@ -1,8 +1,10 @@
 package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.harness.ChunkBounds;
+import com.moepus.byepregen.harness.ChunkKey;
+import com.moepus.byepregen.harness.HarnessProperties;
+import com.moepus.byepregen.harness.RegionChunkReader;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,21 +19,18 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.chunk.storage.RegionFile;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 public final class SurfaceWorldHash {
     private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo(
             "surface-world-hash", Level.OVERWORLD, "chunk"
     );
+    private static final RegionChunkReader REGION_READER = new RegionChunkReader(REGION_INFO);
     private static final int MAX_REPORTED_MISMATCHES = 50;
 
     private SurfaceWorldHash() {
@@ -43,7 +42,9 @@ public final class SurfaceWorldHash {
             System.exit(2);
         }
         ChunkBounds bounds = ChunkBounds.fromSystemProperties("byepregen.surfaceHash");
-        boolean requireCompleteBounds = Boolean.getBoolean("byepregen.surfaceHash.requireCompleteBounds");
+        boolean requireCompleteBounds = HarnessProperties.getBoolean(
+                "byepregen.surfaceHash.requireCompleteBounds", false
+        );
         WorldHashes first = hashWorld(
                 Path.of(args[0]).toAbsolutePath().normalize(), bounds, requireCompleteBounds
         );
@@ -68,10 +69,8 @@ public final class SurfaceWorldHash {
             throw new IOException("Overworld region directory does not exist: " + regionDirectory);
         }
         TreeMap<ChunkKey, ChunkHashes> chunks = new TreeMap<>();
-        try (Stream<Path> files = Files.list(regionDirectory)) {
-            for (Path region : files.filter(SurfaceWorldHash::isRegionFile).sorted().toList()) {
-                readRegion(region, chunks, bounds);
-            }
+        for (Path region : RegionChunkReader.list(regionDirectory)) {
+            readRegion(region, chunks, bounds);
         }
         if (chunks.isEmpty()) {
             throw new IOException("No chunks found under " + regionDirectory);
@@ -88,43 +87,12 @@ public final class SurfaceWorldHash {
             Map<ChunkKey, ChunkHashes> chunks,
             ChunkBounds bounds
     ) throws IOException {
-        RegionCoords region = RegionCoords.parse(regionPath.getFileName().toString());
-        try (RegionFile file = new RegionFile(
-                REGION_INFO, regionPath, regionPath.getParent(), false
-        )) {
-            for (int localZ = 0; localZ < 32; localZ++) {
-                for (int localX = 0; localX < 32; localX++) {
-                    ChunkPos pos = new ChunkPos(
-                            region.x() * 32 + localX,
-                            region.z() * 32 + localZ
-                    );
-                    readChunk(file, pos, chunks, bounds);
-                }
-            }
-        }
-    }
-
-    private static void readChunk(
-            RegionFile file,
-            ChunkPos pos,
-            Map<ChunkKey, ChunkHashes> chunks,
-            ChunkBounds bounds
-    ) throws IOException {
-        if (!bounds.contains(pos.x, pos.z)) {
-            return;
-        }
-        DataInputStream input = file.getChunkDataInputStream(pos);
-        if (input == null) {
-            return;
-        }
-        try (input) {
-            CompoundTag chunk = NbtIo.read(input, NbtAccounter.unlimitedHeap());
-            ChunkKey key = new ChunkKey(pos.x, pos.z);
+        REGION_READER.forEachChunk(regionPath, bounds, (key, chunk) -> {
             ChunkHashes previous = chunks.put(key, hashChunk(chunk));
             if (previous != null) {
-                throw new IOException("Duplicate chunk " + key);
+                throw new IOException("Duplicate chunk " + surfaceKey(key));
             }
-        }
+        });
     }
 
     private static ChunkHashes hashChunk(CompoundTag chunk) throws IOException {
@@ -226,7 +194,7 @@ public final class SurfaceWorldHash {
                 continue;
             }
             if (mismatches++ < MAX_REPORTED_MISMATCHES) {
-                System.err.println("Surface world mismatch chunk=" + key
+                System.err.println("Surface world mismatch chunk=" + surfaceKey(key)
                         + " first=" + describe(expected)
                         + " second=" + describe(actual)
                         + describeHeightmapDifference(expected, actual));
@@ -240,6 +208,10 @@ public final class SurfaceWorldHash {
 
     private static String describe(ChunkHashes hashes) {
         return hashes == null ? "missing" : hashes.hex();
+    }
+
+    private static String surfaceKey(ChunkKey key) {
+        return "ChunkKey[x=" + key.x() + ", z=" + key.z() + "]";
     }
 
     private static String describeHeightmapDifference(ChunkHashes first, ChunkHashes second) {
@@ -259,11 +231,6 @@ public final class SurfaceWorldHash {
         return " heightmapDiff=" + differences;
     }
 
-    private static boolean isRegionFile(Path path) {
-        return Files.isRegularFile(path)
-                && path.getFileName().toString().matches("r\\.-?\\d+\\.-?\\d+\\.mca");
-    }
-
     private static MessageDigest digest() {
         try {
             return MessageDigest.getInstance("SHA-256");
@@ -279,28 +246,6 @@ public final class SurfaceWorldHash {
     private static void update(MessageDigest digest, byte[] position, byte[] value) {
         digest.update(position);
         digest.update(value);
-    }
-
-    private record RegionCoords(int x, int z) {
-        private static RegionCoords parse(String fileName) throws IOException {
-            String[] parts = fileName.split("\\.");
-            if (parts.length != 4 || !"r".equals(parts[0]) || !"mca".equals(parts[3])) {
-                throw new IOException("Invalid region file name " + fileName);
-            }
-            try {
-                return new RegionCoords(Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
-            } catch (NumberFormatException exception) {
-                throw new IOException("Invalid region coordinates " + fileName, exception);
-            }
-        }
-    }
-
-    private record ChunkKey(int x, int z) implements Comparable<ChunkKey> {
-        @Override
-        public int compareTo(ChunkKey other) {
-            int zOrder = Integer.compare(this.z, other.z);
-            return zOrder != 0 ? zOrder : Integer.compare(this.x, other.x);
-        }
     }
 
     private record ChunkHashes(
