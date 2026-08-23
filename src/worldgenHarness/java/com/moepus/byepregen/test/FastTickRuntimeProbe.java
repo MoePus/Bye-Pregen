@@ -3,13 +3,18 @@ package com.moepus.byepregen.test;
 import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
+import com.moepus.byepregen.server.tick.ChunkTickPermutationIterator;
 import com.mojang.logging.LogUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import net.minecraft.core.BlockPos;
+import java.util.ArrayList;
+import java.util.Arrays;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.NaturalSpawner;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
 
 final class FastTickRuntimeProbe {
@@ -29,12 +34,24 @@ final class FastTickRuntimeProbe {
                     "server.fast-chunk-ticking.enabled is false");
             require(ModEnvironment.isModLoaded("c2me"), "C2ME is not loaded");
             require(ModEnvironment.isModLoaded("lithium"), "Lithium is not loaded");
-            Field tickingChunks = ServerChunkCache.class.getDeclaredField("byepregen$tickingChunks");
-            require(tickingChunks.getType() == LevelChunk[].class, "fast tick field has the wrong type");
-            Method weather = ServerLevel.class.getDeclaredMethod(
-                    "byepregen$tickPrecipitation", LevelChunk.class, BlockPos.class);
-            require(weather.getReturnType() == void.class, "weather redirect helper has the wrong return type");
-            verificationSummary = "c2me=true,lithium=true,chunkTickMixin=true,weatherMixin=true";
+            require(!ModEnvironment.isModLoaded("servercore"), "ServerCore is unexpectedly loaded");
+            Field permutation = ServerChunkCache.class.getDeclaredField("byepregen$chunkTickPermutation");
+            require(permutation.getType() == ChunkTickPermutationIterator.class,
+                    "chunk tick permutation field has the wrong type");
+            Field tickingChunks = ServerChunkCache.class.getDeclaredField("byepregen$cachedTickingChunks");
+            require(tickingChunks.getType() == ArrayList.class,
+                    "tick list fallback field has the wrong type");
+            Field currentChunk = ServerLevel.class.getDeclaredField("byepregen$currentTickChunk");
+            require(currentChunk.getType() == LevelChunk.class, "weather scope field has the wrong type");
+            Method cacheSeed = ServerChunkCache.class.getDeclaredMethod(
+                    "byepregen$storeInCache", long.class, ChunkAccess.class, ChunkStatus.class);
+            require(cacheSeed.getReturnType() == void.class, "cache seed invoker has the wrong return type");
+            require(hasMethodPrefix(ServerLevel.class, "tickChunk$mixinlite$scope$"),
+                    "tickChunk MethodScope was not applied");
+            require(hasMethodContaining(NaturalSpawner.class, "byepregen$seedSpawnChunkCache"),
+                    "spawnForChunk cache seed injection was not applied");
+            verificationSummary = "c2me=true,lithium=true,servercore=false,iterationMixin=true,weatherScope=true,"
+                    + "cacheSeeding=true,fallbackList=true";
             LOGGER.info("BYEPREGEN_FAST_TICK_RUNTIME_APPLIED {}", verificationSummary);
             return true;
         } catch (Throwable throwable) {
@@ -69,6 +86,14 @@ final class FastTickRuntimeProbe {
         if (!condition) {
             throw new AssertionError(message);
         }
+    }
+
+    private static boolean hasMethodPrefix(Class<?> type, String prefix) {
+        return Arrays.stream(type.getDeclaredMethods()).anyMatch(method -> method.getName().startsWith(prefix));
+    }
+
+    private static boolean hasMethodContaining(Class<?> type, String fragment) {
+        return Arrays.stream(type.getDeclaredMethods()).anyMatch(method -> method.getName().contains(fragment));
     }
 
     private static void writeFailure(Throwable throwable) {

@@ -11,29 +11,6 @@ repositories {
     maven {
         url 'https://maven.su5ed.dev/releases'
     }
-    maven {
-        url 'https://jitpack.io'
-        content {
-            includeGroup 'com.github.bawnorton.mixinsquared'
-        }
-    }
-    exclusiveContent {
-        forRepository {
-            ivy {
-                name = 'vendoredMixinSquared'
-                url = uri('libs')
-                patternLayout {
-                    artifact '[artifact]-[revision].[ext]'
-                }
-                metadataSources {
-                    artifact()
-                }
-            }
-        }
-        filter {
-            includeGroup 'com.github.bawnorton.mixinsquared'
-        }
-    }
 }
 
 def sodiumOuterRuntime = configurations.detachedConfiguration(
@@ -59,10 +36,6 @@ def sodiumDevRuntimeMod = tasks.register('sodiumDevRuntimeMod', Zip) {
     destinationDirectory = layout.buildDirectory.dir('runtime-libs')
 }
 
-// This unreleased version is vendored in libs, but retains its real coordinates for JarJar deduplication.
-def mixinSquaredVersion = '0.3.7-beta.1'
-def mixinSquaredCommon = "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinSquaredVersion}"
-def mixinSquaredNeoForge = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinSquaredVersion}"
 def c2meExperimentJar = providers.gradleProperty('byepregen.c2meExperimentJar').orNull
 def includeC2meRuntime = providers.gradleProperty('byepregenIncludeC2meRuntime')
         .map(String::toBoolean)
@@ -81,15 +54,10 @@ dependencies {
     implementation 'org.mixinlite:mixinlite:0.2.0'
     annotationProcessor 'org.mixinlite:mixinlite:0.2.0'
     jarJar 'org.mixinlite:mixinlite:0.2.0'
-    compileOnly mixinSquaredCommon
-    annotationProcessor mixinSquaredCommon
-    runtimeOnly mixinSquaredNeoForge
-    jarJar mixinSquaredNeoForge
     compileOnly files('libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.116-all.jar')
     compileOnly files('libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar')
     compileOnly files('libs/c2me-neoforge-notickvd-mc1.21.1-0.4.0-alpha.0.116.jar')
-    compileOnly files('libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar')
 //    additionalRuntimeClasspath 'curse.maven:c2me-ocl-1563823:8436419'
     compileOnly 'com.ibm.async:asyncutil:0.1.0'
     compileOnly files('libs/voxy-0.2.15-beta+1.21.1-neoforge.jar')

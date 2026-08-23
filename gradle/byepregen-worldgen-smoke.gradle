@@ -41,8 +41,9 @@ def fastTickExpectedConflict = [
 def validateFastTickRuntime = { File root, File result ->
     String outcome = byepregenReadRequiredResult(result, 'Fast tick runtime')
     def requiredResultParts = [
-            'PASS\n', 'c2me=true', 'lithium=true',
-            'chunkTickMixin=true', 'weatherMixin=true', 'radius=16',
+            'PASS\n', 'c2me=true', 'lithium=true', 'servercore=false',
+            'iterationMixin=true', 'weatherScope=true', 'cacheSeeding=true',
+            'fallbackList=true', 'radius=16',
     ]
     if (!requiredResultParts.every { outcome.contains(it) }) {
         throw new GradleException("Fast tick runtime failed:\n${outcome}")

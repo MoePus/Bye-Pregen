@@ -33,7 +33,6 @@ final class OverwriteContractTest {
             "com.moepus.byepregen.mixin.palette.PalettedContainerNoLithiumMixin#acquire()V",
             "com.moepus.byepregen.mixin.palette.PalettedContainerNoLithiumMixin#release()V",
             "com.moepus.byepregen.mixin.feature.placement.PlacedFeatureMixin#placeWithContext(Lnet/minecraft/world/level/levelgen/placement/PlacementContext;Lnet/minecraft/util/RandomSource;Lnet/minecraft/core/BlockPos;)Z",
-            "com.moepus.byepregen.mixin.server.fasttick.ServerChunkCacheTickChunksMixin#tickChunks()V",
             "com.moepus.byepregen.mixin.feature.predicate.StateTestingPredicateMixin#test(Lnet/minecraft/world/level/WorldGenLevel;Lnet/minecraft/core/BlockPos;)Z",
             "com.moepus.byepregen.mixin.climate.ClimateParameterListSearchMixin#findValueIndex(Lnet/minecraft/world/level/biome/Climate$TargetPoint;)Ljava/lang/Object;",
             "com.moepus.byepregen.mixin.chunksave.compat.c2me.C2MEHookCompatibilityMixin#isChunkSaveEventFree()Z",
@@ -71,7 +70,7 @@ final class OverwriteContractTest {
 
     @Test
     void overwriteMethodsMatchExplicitContract() throws Exception {
-        assertEquals(44, EXPECTED.size(), "overwrite contract count changed");
+        assertEquals(43, EXPECTED.size(), "overwrite contract count changed");
         assertEquals(EXPECTED, discoverOverwrites());
     }
 

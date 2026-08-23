@@ -93,7 +93,7 @@ final class MixinRegistryTest {
         assertEquals(Map.of(
                 ConfigFlag.DISABLE_WORLDGEN_FEATURES, 1,
                 ConfigFlag.PLACED_FEATURES, 2,
-                ConfigFlag.FAST_CHUNK_TICKING, 2,
+                ConfigFlag.FAST_CHUNK_TICKING, 5,
                 ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 1,
                 ConfigFlag.CLIENT_ARENA, 1
         ), actual);
@@ -151,13 +151,23 @@ final class MixinRegistryTest {
 
     @Test
     void fastTickMixinsKeepDistinctConflictPolicies() throws Exception {
-        AnnotationNode chunkTick = gate("ServerChunkCacheTickChunksMixin");
+        AnnotationNode iteration = gate("ServerChunkCacheTickIterationMixin");
+        AnnotationNode listFallback = gate("ServerChunkCacheTickListMixin");
+        AnnotationNode naturalSpawner = gate("NaturalSpawnerChunkCacheMixin");
         AnnotationNode weatherTick = gate("ServerLevelWeatherTickMixin");
+        AnnotationNode cacheAccessor = annotation(readClass(
+                MIXIN_PREFIX + "accessor.server.tick.ServerChunkCacheTickAccessor"), GATE_DESCRIPTOR);
 
-        assertEquals(ConfigFlag.FAST_CHUNK_TICKING, annotationConfigFlag(chunkTick));
-        assertEquals(List.of("servercore"), annotationStrings(chunkTick, "conflictingMods"));
-        assertEquals(ConfigFlag.FAST_CHUNK_TICKING, annotationConfigFlag(weatherTick));
-        assertEquals(List.of(), annotationStrings(weatherTick, "conflictingMods"));
+        assertFastTickGate(iteration, List.of());
+        assertFastTickGate(listFallback, List.of("servercore"));
+        assertFastTickGate(naturalSpawner, List.of());
+        assertFastTickGate(weatherTick, List.of());
+        assertFastTickGate(cacheAccessor, List.of());
+    }
+
+    private static void assertFastTickGate(AnnotationNode gate, List<String> conflicts) {
+        assertEquals(ConfigFlag.FAST_CHUNK_TICKING, annotationConfigFlag(gate));
+        assertEquals(conflicts, annotationStrings(gate, "conflictingMods"));
     }
 
     @Test

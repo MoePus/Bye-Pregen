@@ -19,13 +19,13 @@ Status definitions:
 | `c2me-neoforge-fixes-general-threading-issues-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME general-threading compatibility artifact. |
 | `c2me-neoforge-fixes-worldgen-threading-issues-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME worldgen-threading compatibility artifact. |
 | `c2me-neoforge-fixes-worldgen-vanilla-bugs-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME vanilla-worldgen compatibility artifact. |
-| `c2me-neoforge-notickvd-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME no-tick view-distance compatibility artifact. |
+| `c2me-neoforge-notickvd-mc1.21.1-0.4.0-alpha.0.116.jar` | build-input | Compiles the light restart runtime probe against C2ME's no-tick system. |
 | `c2me-neoforge-opts-allocs-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME allocation-optimization artifact. |
 | `c2me-neoforge-opts-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME chunk-I/O optimization artifact. |
 | `c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained as a compatibility and MIT-derived implementation reference; ByePregen's compiler does not link against it. |
 | `c2me-neoforge-opts-math-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME math-optimization artifact. |
 | `c2me-neoforge-opts-natives-math-mc1.21.1-0.4.0-alpha.0.116.jar` | manual-input | Prebuilt native-math input referenced by the experiment documented in `plan.md`. |
-| `c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar` | build-input | Compiles C2ME scheduling compatibility code. |
+| `c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME scheduling optimization artifact. |
 | `c2me-neoforge-opts-worldgen-general-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME general worldgen optimization artifact. |
 | `c2me-neoforge-opts-worldgen-vanilla-mc1.21.1-0.4.0-alpha.0.116.jar` | retained-unreferenced | Retained C2ME vanilla worldgen optimization artifact. |
 | `c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar` | build-input | Compiles C2ME chunk-system compatibility mixins. |
@@ -35,8 +35,8 @@ Status definitions:
 | `caffeine-3.2.1.jar` | retained-unreferenced | Retained support library from the compatibility artifact set. |
 | `exp4j-0.4.8.jar` | retained-unreferenced | Retained support library from the compatibility artifact set. |
 | `jctools-core-4.0.5.jar` | retained-unreferenced | Retained support library from the compatibility artifact set. |
-| `mixinsquared-common-0.3.7-beta.1.jar` | coordinate-input | Local compile-time and annotation-processor artifact resolved as `com.github.bawnorton.mixinsquared:mixinsquared-common`. |
-| `mixinsquared-neoforge-0.3.7-beta.1.jar` | coordinate-input | Local runtime and JarJar artifact resolved as `com.github.bawnorton.mixinsquared:mixinsquared-neoforge`. |
+| `mixinsquared-common-0.3.7-beta.1.jar` | retained-unreferenced | Retained MixinSquared compatibility research artifact. |
+| `mixinsquared-neoforge-0.3.7-beta.1.jar` | retained-unreferenced | Retained MixinSquared NeoForge compatibility research artifact. |
 | `reactive-streams-1.0.4.jar` | retained-unreferenced | Retained support library from the compatibility artifact set. |
 | `rxjava-3.1.12.jar` | retained-unreferenced | Retained support library for C2ME signatures; not a direct Gradle file dependency. |
 | `voxy-0.2.15-beta+1.21.1-neoforge.jar` | build-input | NeoForge build from `https://github.com/m3t4f1v3/voxy` commit `b4746ab9`; compiles the Voxy world-conversion compatibility mixin against Mojmap types. |
