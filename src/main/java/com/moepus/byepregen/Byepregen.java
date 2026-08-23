@@ -1,7 +1,7 @@
 package com.moepus.byepregen;
 
 import com.moepus.byepregen.integration.c2me.GcFreeCompat;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
@@ -17,7 +17,7 @@ public class Byepregen {
     }
 
     private static void onLoadComplete(FMLLoadCompleteEvent event) {
-        if (ConfigParser.getConfig().enableYALightEngine) {
+        if (ConfigManager.getConfig().lighting().ya().enabled()) {
             event.enqueueWork(() -> YABlockStateLightClass.initialize());
         }
     }

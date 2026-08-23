@@ -14,5 +14,5 @@ public @interface MixinGate {
 
     String[] conflictingMods() default {};
 
-    String config() default "";
+    ConfigFlag config() default ConfigFlag.ALWAYS;
 }

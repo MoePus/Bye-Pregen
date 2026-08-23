@@ -1,6 +1,6 @@
 package com.moepus.byepregen.chunksave.storage;
 
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -14,7 +14,7 @@ public final class ChunkSavingCompression {
     private ChunkSavingCompression() {}
 
     public static OutputStream wrap(RegionFileVersion version, OutputStream output) throws IOException {
-        return wrap(version, output, ConfigParser.getConfig().retainChunkSavingBuffer);
+        return wrap(version, output, ConfigManager.getConfig().chunkSaving().retainBuffer());
     }
 
     public static OutputStream wrap(

@@ -11,8 +11,6 @@ import com.google.gson.JsonParser;
 import com.moepus.byepregen.config.Config;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -83,18 +81,21 @@ final class MixinRegistryTest {
     }
 
     @Test
-    void gateConfigNamesArePublicBooleanFields() throws Exception {
+    void gateConfigFlagsAreValidAndComplete() throws Exception {
+        EnumMap<ConfigFlag, Integer> actual = new EnumMap<>(ConfigFlag.class);
         for (String className : readRegistry().classes()) {
             ClassNode node = readClass(className);
             AnnotationNode gate = annotation(node, GATE_DESCRIPTOR);
-            String configName = annotationString(gate, "config");
-            if (configName.isEmpty()) {
-                continue;
+            ConfigFlag flag = annotationConfigFlag(gate);
+            if (flag != ConfigFlag.ALWAYS) {
+                actual.merge(flag, 1, Integer::sum);
             }
-            Field field = Config.class.getField(configName);
-            assertEquals(boolean.class, field.getType(), "gate field is not boolean: " + configName);
-            assertTrue(Modifier.isPublic(field.getModifiers()), "gate field is not public: " + configName);
         }
+        assertEquals(Map.of(
+                ConfigFlag.DISABLE_WORLDGEN_FEATURES, 1,
+                ConfigFlag.PLACED_FEATURES, 2,
+                ConfigFlag.FAST_CHUNK_TICKING, 2
+        ), actual);
     }
 
     @Test
@@ -154,9 +155,9 @@ final class MixinRegistryTest {
         AnnotationNode chunkTick = gate("ServerChunkCacheTickChunksMixin");
         AnnotationNode weatherTick = gate("ServerLevelWeatherTickMixin");
 
-        assertEquals("enableFastTickChunks", annotationString(chunkTick, "config"));
+        assertEquals(ConfigFlag.FAST_CHUNK_TICKING, annotationConfigFlag(chunkTick));
         assertEquals(List.of("servercore"), annotationStrings(chunkTick, "conflictingMods"));
-        assertEquals("enableFastTickChunks", annotationString(weatherTick, "config"));
+        assertEquals(ConfigFlag.FAST_CHUNK_TICKING, annotationConfigFlag(weatherTick));
         assertEquals(List.of(), annotationStrings(weatherTick, "conflictingMods"));
     }
 
@@ -367,6 +368,19 @@ final class MixinRegistryTest {
             }
         }
         return MixinFeature.NONE;
+    }
+
+    private static ConfigFlag annotationConfigFlag(AnnotationNode annotation) {
+        if (annotation == null || annotation.values == null) {
+            return ConfigFlag.ALWAYS;
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if ("config".equals(annotation.values.get(index))) {
+                String[] value = (String[]) annotation.values.get(index + 1);
+                return ConfigFlag.valueOf(value[1]);
+            }
+        }
+        return ConfigFlag.ALWAYS;
     }
 
     private static EnumMap<MixinFeature, Integer> featureCounts() {

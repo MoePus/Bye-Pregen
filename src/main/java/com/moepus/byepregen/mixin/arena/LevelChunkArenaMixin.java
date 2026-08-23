@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.arena;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.palette.arena.materialize.ArenaSectionMaterializer;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
@@ -22,12 +22,12 @@ public abstract class LevelChunkArenaMixin {
     )
     private void byepregen$materializeArenaSections(
             ServerLevel level, ProtoChunk protoChunk, @Nullable LevelChunk.PostLoadProcessor postLoad) {
-        Config config = ConfigParser.getConfig();
-        if (!config.enableArenaPalette) {
+        Config config = ConfigManager.getConfig();
+        if (!config.worldgen().arena().enabled()) {
             return;
         }
 
-        if (!config.enableServerRuntimeArenaPalette) {
+        if (!config.worldgen().arena().runtime().server()) {
             ArenaSectionMaterializer.materializeChunk((LevelChunk) (Object) this);
         }
     }

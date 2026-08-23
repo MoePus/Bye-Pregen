@@ -184,18 +184,20 @@ neoForge {
 }
 
 tasks.matching { it.name == 'runArenaPaletteDifferential' }.configureEach {
+    Map testOptions = [
+            dir         : arenaPaletteRoot,
+            arenaPalette: 'true',
+            yaLight     : 'false',
+            gcFree      : 'false',
+            clearWorld  : true,
+    ]
+    byepregenUseWorldgenTestConfig(delegate, testOptions)
     group = 'verification'
     description = 'Differentially checks Arena palette operations against vanilla.'
     notCompatibleWithConfigurationCache('Validates a result produced by a disposable test server')
     doFirst {
         delete(arenaPaletteResult)
-        byepregenPrepareWorldgenRunDir([
-                dir         : arenaPaletteRoot,
-                arenaPalette: 'true',
-                yaLight     : 'false',
-                gcFree      : 'false',
-                clearWorld  : true,
-        ])
+        byepregenPrepareWorldgenRunDir(testOptions)
     }
     doLast {
         String result = byepregenAssertPassResult(arenaPaletteResult, 'Arena palette differential')
@@ -210,18 +212,20 @@ tasks.register('testArenaPaletteDifferential') {
 }
 
 tasks.matching { it.name == 'runChunkNbtParity' }.configureEach {
+    Map testOptions = [
+            dir         : chunkNbtParityRoot,
+            arenaPalette: 'false',
+            yaLight     : 'false',
+            gcFree      : 'false',
+            clearWorld  : true,
+    ]
+    byepregenUseWorldgenTestConfig(delegate, testOptions)
     group = 'verification'
     description = 'Checks full chunk NBT parity and raw-save compression round trips.'
     notCompatibleWithConfigurationCache('Validates a result produced by a disposable test server')
     doFirst {
         delete(chunkNbtParityResult)
-        byepregenPrepareWorldgenRunDir([
-                dir         : chunkNbtParityRoot,
-                arenaPalette: 'false',
-                yaLight     : 'false',
-                gcFree      : 'false',
-                clearWorld  : true,
-        ])
+        byepregenPrepareWorldgenRunDir(testOptions)
     }
     doLast {
         String result = byepregenAssertPassResult(chunkNbtParityResult, 'Chunk NBT parity')
@@ -236,20 +240,22 @@ tasks.register('testChunkNbtParity') {
 }
 
 tasks.matching { it.name == 'runFastTickRuntime' }.configureEach {
+    Map testOptions = [
+            dir         : fastTickRuntimeRoot,
+            arenaPalette: 'true',
+            yaLight     : 'false',
+            gcFree      : 'false',
+            fastTick    : 'true',
+            seed        : 'byepregen-fast-tick-runtime',
+            clearWorld  : true,
+    ]
+    byepregenUseWorldgenTestConfig(delegate, testOptions)
     group = 'verification'
     description = 'Runs radius-16 worldgen with fast tick and weather mixins under C2ME and Lithium.'
     notCompatibleWithConfigurationCache('Validates a result produced by a disposable test server')
     doFirst {
         delete(fastTickRuntimeResult)
-        byepregenPrepareWorldgenRunDir([
-                dir         : fastTickRuntimeRoot,
-                arenaPalette: 'true',
-                yaLight     : 'false',
-                gcFree      : 'false',
-                fastTick    : 'true',
-                seed        : 'byepregen-fast-tick-runtime',
-                clearWorld  : true,
-        ])
+        byepregenPrepareWorldgenRunDir(testOptions)
     }
     doLast {
         validateFastTickRuntime(fastTickRuntimeRoot, fastTickRuntimeResult)
@@ -265,6 +271,25 @@ tasks.register('testFastTickRuntime') {
 byepregenConfigureWorldgenResultTask('runFastTickRuntime', fastTickRuntimeRoot)
 
 tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
+    Map testOptions = [
+            dir                       : worldGenConfig.dir,
+            yaLight                   : worldGenConfig.yaLight,
+            gcFree                    : worldGenConfig.gcFree,
+            surfaceScalar             : worldGenConfig.surfaceScalar,
+            surfaceBiomeCache         : worldGenConfig.surfaceBiomeCache,
+            seed                      : worldGenConfig.seed,
+            noFeatures                : worldGenConfig.noFeatures,
+            densityColumnCompiler     : worldGenConfig.densityColumnCompiler,
+            enableMemoizedDiskPlan    : worldGenConfig.enableMemoizedDiskPlan,
+            c2meDfc                    : worldGenConfig.c2meDfc,
+            levelType                 : worldGenConfig.singleBiome == null
+                    ? worldGenConfig.levelType
+                    : 'byepregen:wwoo_single_biome',
+            enablePlacedFeatureMixin  : worldGenConfig.enablePlacedFeatureMixin,
+            initialEnabledPacks       : worldGenConfig.initialEnabledPacks,
+            clearWorld                : true,
+    ]
+    byepregenUseWorldgenTestConfig(delegate, testOptions)
     notCompatibleWithConfigurationCache('Prepares a disposable test world before launching the server')
     doFirst {
         delete(worldGenConfig.jfr)
@@ -274,23 +299,7 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
         }
         worldGenConfig.jfrRepository.mkdirs()
         worldGenConfig.tmpDir.mkdirs()
-        byepregenPrepareWorldgenRunDir([
-                dir       : worldGenConfig.dir,
-                yaLight   : worldGenConfig.yaLight,
-                gcFree    : worldGenConfig.gcFree,
-                surfaceScalar: worldGenConfig.surfaceScalar,
-                seed      : worldGenConfig.seed,
-                noFeatures: worldGenConfig.noFeatures,
-                densityColumnCompiler: worldGenConfig.densityColumnCompiler,
-                enableMemoizedDiskPlan: worldGenConfig.enableMemoizedDiskPlan,
-                c2meDfc   : worldGenConfig.c2meDfc,
-                levelType : worldGenConfig.singleBiome == null
-                        ? worldGenConfig.levelType
-                        : 'byepregen:wwoo_single_biome',
-                enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
-                initialEnabledPacks: worldGenConfig.initialEnabledPacks,
-                clearWorld: true,
-        ])
+        byepregenPrepareWorldgenRunDir(testOptions)
         if (worldGenConfig.datapack != null) {
             copy {
                 from file(worldGenConfig.datapack)

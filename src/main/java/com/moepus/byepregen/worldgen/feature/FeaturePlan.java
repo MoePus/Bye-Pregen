@@ -1,6 +1,6 @@
 package com.moepus.byepregen.worldgen.feature;
 
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import java.util.List;
 
 import net.minecraft.core.Vec3i;
@@ -33,7 +33,7 @@ public final class FeaturePlan {
             ConfiguredFeature<?, ?> feature,
             List<PlacementModifier> modifiers
     ) {
-        if (!ConfigParser.getConfig().enableMemoizedDiskPlan) {
+        if (!ConfigManager.getConfig().worldgen().placedFeatures().memoizedDiskPlan()) {
             return UNSUPPORTED;
         }
         if (feature.feature() != Feature.DISK || !(feature.config() instanceof DiskConfiguration config)) {

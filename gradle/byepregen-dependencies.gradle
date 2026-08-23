@@ -70,6 +70,9 @@ def includeC2meRuntime = providers.gradleProperty('byepregenIncludeC2meRuntime')
         .get()
 
 dependencies {
+    // NeoForge supplies Night Config during bootstrap; do not nest another copy in the mod jar.
+    compileOnly 'com.electronwill.night-config:core:3.8.3'
+    compileOnly 'com.electronwill.night-config:toml:3.8.3'
     testImplementation platform('org.junit:junit-bom:5.11.3')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

@@ -1,0 +1,43 @@
+def testConfigProperty = 'byepregen.testConfig'
+def testConfigPrefix = "${testConfigProperty}."
+
+ext.byepregenFlattenTestConfig = { Map<String, ?> config ->
+    Map<String, String> flattened = new TreeMap<>()
+    Closure<String> canonicalValue = { Object value ->
+        if (value instanceof Boolean) {
+            return value ? 'True' : 'False'
+        }
+        if (value instanceof String) {
+            String normalized = value.trim().toLowerCase(Locale.ROOT)
+            if (normalized == 'default') return 'Default'
+            if (normalized == 'true') return 'True'
+            if (normalized == 'false') return 'False'
+            throw new GradleException("Invalid ByePregen test config value: ${value}")
+        }
+        throw new GradleException("Unsupported ByePregen test config value: ${value?.getClass()?.name}")
+    }
+    Closure<Void> visit
+    visit = { List<String> path, Map<String, ?> values ->
+        values.each { key, value ->
+            String segment = key.toString()
+            if (segment.isBlank() || segment.contains('.')) {
+                throw new GradleException("Invalid ByePregen test config key: ${segment}")
+            }
+            List<String> optionPath = path + segment
+            if (value instanceof Map) {
+                visit(optionPath, value as Map<String, ?>)
+            } else {
+                flattened.put(optionPath.join('.'), canonicalValue(value))
+            }
+        }
+    }
+    visit([], config)
+    flattened
+}
+
+ext.byepregenUseTestConfig = { run, Map<String, ?> config = [:] ->
+    run.systemProperty(testConfigProperty, 'true')
+    byepregenFlattenTestConfig(config).each { path, value ->
+        run.systemProperty("${testConfigPrefix}${path}", value)
+    }
+}

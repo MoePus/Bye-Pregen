@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.server.fasttick;
 
+import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.integration.c2me.C2MECompat;
 import com.moepus.byepregen.mixin.accessor.server.tick.ChunkMapTickAccessor;
@@ -29,7 +30,7 @@ import org.spongepowered.asm.mixin.Unique;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
-@MixinGate(config = "enableFastTickChunks", conflictingMods = "servercore")
+@MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING, conflictingMods = "servercore")
 @Mixin(value = ServerChunkCache.class, remap = false, priority = 900)
 public abstract class ServerChunkCacheTickChunksMixin {
     @Shadow

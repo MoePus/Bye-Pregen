@@ -1,6 +1,7 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.Config;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.dfc.runtime.DensityColumnMetrics;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
@@ -12,8 +13,9 @@ final class DensityColumnRuntimeProbe {
     }
 
     static String verify() {
-        if (!ConfigParser.getConfig().enableArenaPalette
-                || !ConfigParser.getConfig().enableDensityColumnCompiler) {
+        Config config = ConfigManager.getConfig();
+        if (!config.worldgen().arena().enabled()
+                || !config.worldgen().arena().densityColumnCompiler()) {
             return "disabled";
         }
         DensityColumnFrontendProbe.verify();

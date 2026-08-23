@@ -2,7 +2,7 @@ package com.moepus.byepregen.integration.mixin;
 
 import com.bawnorton.mixinsquared.adjuster.tools.AdjustableAnnotationNode;
 import com.bawnorton.mixinsquared.api.MixinAnnotationAdjuster;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.util.List;
@@ -45,7 +45,7 @@ public final class FastTickChunksMixinAdjuster implements MixinAnnotationAdjuste
             MethodNode handlerNode,
             AdjustableAnnotationNode annotationNode
     ) {
-        if (annotationNode == null || !ConfigParser.getConfig().enableFastTickChunks) {
+        if (annotationNode == null || !ConfigManager.getConfig().server().fastChunkTicking().enabled()) {
             return annotationNode;
         }
         if (!targetClassNames.contains(SERVER_CHUNK_CACHE)) {

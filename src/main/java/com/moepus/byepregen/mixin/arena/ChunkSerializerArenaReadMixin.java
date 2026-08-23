@@ -6,7 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.moepus.byepregen.config.Config;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.palette.arena.codec.NbtReader;
 import com.moepus.byepregen.palette.arena.codec.StateCodec;
@@ -71,7 +71,7 @@ public abstract class ChunkSerializerArenaReadMixin {
             CompoundTag chunkTag
     ) {
         if (input instanceof CompoundTag blockStatesTag) {
-            Config config = ConfigParser.getConfig();
+            Config config = ConfigManager.getConfig();
             ChunkType chunkType = ChunkSerializer.getChunkTypeFromTag(chunkTag);
             if (byepregen$shouldReadArena(config, chunkType)) {
                 ArenaBlockStatePalettedContainer arena = NbtReader.read(blockStatesTag);
@@ -86,13 +86,13 @@ public abstract class ChunkSerializerArenaReadMixin {
 
     @Unique
     private static boolean byepregen$shouldReadArena(Config config, ChunkType chunkType) {
-        if (!config.enableArenaPalette) {
+        if (!config.worldgen().arena().enabled()) {
             return false;
         }
         if (chunkType == ChunkType.PROTOCHUNK) {
             return true;
         }
-        return config.enableServerRuntimeArenaPalette;
+        return config.worldgen().arena().runtime().server();
     }
 
     @Unique

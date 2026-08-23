@@ -4,6 +4,7 @@ import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
 import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
 import com.moepus.byepregen.worldgen.feature.FeaturePlan;
 import com.moepus.byepregen.worldgen.feature.PredicateMemoizedDiskPlacement;
+import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -21,7 +22,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
-@MixinGate(config = "enablePlacedFeatureMixin")
+@MixinGate(config = ConfigFlag.PLACED_FEATURES)
 @Mixin(value = PlacedFeature.class, remap = false)
 public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     @Unique

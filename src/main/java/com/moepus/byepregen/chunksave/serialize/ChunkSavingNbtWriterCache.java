@@ -1,6 +1,6 @@
 package com.moepus.byepregen.chunksave.serialize;
 
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 
 final class ChunkSavingNbtWriterCache {
@@ -10,7 +10,7 @@ final class ChunkSavingNbtWriterCache {
     private ChunkSavingNbtWriterCache() {}
 
     static Lease acquire() {
-        return acquire(ConfigParser.getConfig().retainChunkSavingBuffer);
+        return acquire(ConfigManager.getConfig().chunkSaving().retainBuffer());
     }
 
     static Lease acquire(boolean retainBuffer) {

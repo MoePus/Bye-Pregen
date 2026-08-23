@@ -3,6 +3,21 @@ import java.util.zip.ZipFile
 def packagedSurfaceRoot = file('run/surface-packaged-linkage')
 def packagedSurfaceResult = file("${packagedSurfaceRoot}/surface-linkage.result")
 def packagedSurfaceDatapack = providers.gradleProperty('byepregenPackagedSurfaceDatapack')
+def packagedSurfaceTestConfig = byepregenWorldgenTestConfig([
+        noFeatures              : true,
+        enablePlacedFeatureMixin: false,
+        arenaPalette            : false,
+        serverRuntimeArenaPalette: false,
+        surfaceScalar           : true,
+        surfaceBiomeCache       : true,
+        gcFree                  : false,
+        yaLight                 : false,
+])
+def opaqueSurfaceTestConfig = byepregenWorldgenTestConfig([
+        arenaPalette: false,
+        gcFree      : false,
+        yaLight     : false,
+])
 def terraBlenderTestRuntime = configurations.detachedConfiguration(
         dependencies.create('curse.maven:terrablender-neoforge-940057:6054947')
 )
@@ -262,15 +277,6 @@ def preparePackagedSurfaceLinkage = tasks.register('preparePackagedSurfaceLinkag
                         'simulation-distance': 2,
                         'spawn-protection'   : 0,
                 ],
-                byepregenConfig: [
-                        debugDisableFeatures          : true,
-                        enablePlacedFeatureMixin      : false,
-                        enableArenaPalette            : false,
-                        enableServerRuntimeArenaPalette: false,
-                        enableYALightEngine           : false,
-                        enableGcFreeWorldgenSave      : false,
-                        enableSurfaceRuleCompiler     : true,
-                ],
         ])
     }
 }
@@ -279,6 +285,7 @@ neoForge {
     runs {
         surfaceOpaqueRuntimeTest {
             server()
+            byepregenUseTestConfig(delegate, opaqueSurfaceTestConfig)
             loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
             gameDirectory = file('run/surface-opaque-runtime-test')
             programArgument '--nogui'
@@ -290,13 +297,13 @@ neoForge {
 
         surfacePackagedLinkage {
             server()
+            byepregenUseTestConfig(delegate, packagedSurfaceTestConfig)
             disableIdeRun()
             loadedMods.set([] as Set)
             sourceSet.set(sourceSets.surfacePackagedRun)
             gameDirectory = packagedSurfaceRoot
             programArgument '--nogui'
             systemProperty 'byepregen.surfaceOutputDifferential', 'false'
-            systemProperty 'byepregen.surfaceBiomeCache', 'true'
             systemProperty 'byepregen.surfaceLinkageResult', packagedSurfaceResult.absolutePath
             systemProperty 'neoforge.enabledGameTestNamespaces', ''
             jvmArgument("-Djava.io.tmpdir=${file("${packagedSurfaceRoot}/tmp").absolutePath.replace('\\', '/')}")
@@ -319,14 +326,10 @@ tasks.named('runSurfaceOpaqueRuntimeTest', JavaExec) {
             from(terraBlenderTestRuntime)
             into(modsDirectory)
         }
-        prepareDisposableServer([
-                directory: runDirectory,
-                byepregenConfig: [
-                        enableArenaPalette      : false,
-                        enableGcFreeWorldgenSave: false,
-                        enableYALightEngine     : false,
-                ],
-        ])
+        prepareDisposableServer([directory: runDirectory])
+    }
+    doLast {
+        byepregenAssertNoTestConfigFile(file('run/surface-opaque-runtime-test'))
     }
 }
 
@@ -336,6 +339,7 @@ tasks.matching { it.name == 'runSurfacePackagedLinkage' }.configureEach {
     notCompatibleWithConfigurationCache('Validates a result produced by a disposable packaged server')
     doLast {
         String result = byepregenAssertPassResult(packagedSurfaceResult, 'Packaged Surface linkage harness')
+        byepregenAssertNoTestConfigFile(packagedSurfaceRoot)
         logger.lifecycle("Packaged Surface linkage passed:\n${result.trim()}")
     }
 }

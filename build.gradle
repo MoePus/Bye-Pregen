@@ -58,7 +58,9 @@ def runJavaLauncher = javaToolchains.launcherFor {
 ext.byepregenRunJavaLauncher = runJavaLauncher
 
 apply from: 'gradle/byepregen-dependencies.gradle'
+apply from: 'gradle/byepregen-test-config.gradle'
 apply from: 'gradle/byepregen-server-fixtures.gradle'
+apply from: 'gradle/byepregen-worldgen-run-support.gradle'
 def surfaceDumpClassesDirectory = providers.systemProperty('byepregen.surfaceDumpClasses')
 def densityColumnDumpDirectory = providers.systemProperty('byepregen.dfc.dumpDir')
 afterEvaluate {
@@ -124,7 +126,6 @@ neoForge {
 
 apply from: 'gradle/byepregen-startup-verification.gradle'
 apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
-apply from: 'gradle/byepregen-worldgen-run-support.gradle'
 apply from: 'gradle/byepregen-worldgen-smoke.gradle'
 apply from: 'gradle/byepregen-light-verification.gradle'
 

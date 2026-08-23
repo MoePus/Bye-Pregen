@@ -25,11 +25,19 @@ ext.byepregenAssertPassResult = { File result, String label ->
     value
 }
 
+ext.byepregenAssertNoTestConfigFile = { File directory ->
+    File configFile = file("${directory}/config/byepregen.toml")
+    if (configFile.exists()) {
+        throw new GradleException("Test run unexpectedly created ByePregen config: ${configFile}")
+    }
+}
+
 ext.prepareDisposableServer = { Map<String, ?> options ->
     File directory = options.directory as File
     directory.mkdirs()
     file("${directory}/config").mkdirs()
     file("${directory}/tmp").mkdirs()
+    delete(file("${directory}/config/byepregen.toml"))
 
     writeUtf8File(file("${directory}/eula.txt"), 'eula=true\n')
     Map<String, ?> serverProperties = ['server-port': 0] +
@@ -39,9 +47,6 @@ ext.prepareDisposableServer = { Map<String, ?> options ->
                 .collect { key, value -> "${key}=${value}" }
                 .join('\n')
         writeUtf8File(file("${directory}/server.properties"), properties + '\n')
-    }
-    if (options.byepregenConfig != null) {
-        writeJsonFile(file("${directory}/config/byepregen.json"), options.byepregenConfig as Map<String, ?>)
     }
     if (options.chunkyConfig != null) {
         writeJsonFile(file("${directory}/config/chunky/config.json"), options.chunkyConfig as Map<String, ?>)

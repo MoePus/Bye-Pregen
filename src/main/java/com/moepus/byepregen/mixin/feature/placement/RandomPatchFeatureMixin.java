@@ -2,6 +2,7 @@ package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
+import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
@@ -13,7 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@MixinGate(config = "enablePlacedFeatureMixin")
+@MixinGate(config = ConfigFlag.PLACED_FEATURES)
 @Mixin(value = RandomPatchFeature.class, remap = false)
 public abstract class RandomPatchFeatureMixin {
     @Redirect(

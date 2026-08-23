@@ -122,7 +122,15 @@ def configureLightRestartRun = { run, Map config, String phase ->
 }
 
 def prepareRelightRunTask = { String taskName, Map options ->
+    Map testOptions = [
+            dir         : options.dir,
+            yaLight     : options.yaLight,
+            arenaPalette: options.arenaPalette,
+            gcFree      : lightGoldenConfig.gcFree,
+            clearWorld  : false,
+    ]
     tasks.matching { it.name == taskName }.configureEach {
+        byepregenUseWorldgenTestConfig(delegate, testOptions)
         notCompatibleWithConfigurationCache(options.reason)
         dependsOn('prepareLightGoldenRelight')
         if (options.mustRunAfter != null) {
@@ -134,13 +142,7 @@ def prepareRelightRunTask = { String taskName, Map options ->
                 options.jfrFile.parentFile.mkdirs()
                 lightGoldenConfig.relightJfrRepository.mkdirs()
             }
-            byepregenPrepareWorldgenRunDir([
-                    dir         : options.dir,
-                    yaLight     : options.yaLight,
-                    arenaPalette: options.arenaPalette,
-                    gcFree      : lightGoldenConfig.gcFree,
-                    clearWorld  : false,
-            ])
+            byepregenPrepareWorldgenRunDir(testOptions)
             if (options.modFiles != null) {
                 copy {
                     from options.modFiles
@@ -236,6 +238,7 @@ neoForge {
 
 def assertLightRestartResult = { Map config, String expected ->
     String result = byepregenReadRequiredResult(config.result, 'Light restart probe').trim()
+    byepregenAssertNoTestConfigFile(config.root)
     if (result != expected) {
         throw new GradleException("Light restart probe failed: ${result}")
     }
@@ -251,7 +254,16 @@ def assertLightRestartResult = { Map config, String expected ->
 
 def configureLightRestartServerTask = { Map options ->
     Map config = options.config
+    Map testOptions = [
+            dir         : config.root,
+            yaLight     : 'true',
+            gcFree      : config.gcFree,
+            clearWorld  : options.prepare,
+            flatWorld   : true,
+            arenaPalette: 'false',
+    ]
     tasks.matching { it.name == options.taskName }.configureEach {
+        byepregenUseWorldgenTestConfig(delegate, testOptions)
         notCompatibleWithConfigurationCache('Creates or reuses a restart fixture')
         if (options.prerequisite != null) {
             dependsOn(options.prerequisite)
@@ -262,14 +274,7 @@ def configureLightRestartServerTask = { Map options ->
             } else {
                 delete(config.result)
             }
-            byepregenPrepareWorldgenRunDir([
-                    dir         : config.root,
-                    yaLight     : 'true',
-                    gcFree      : config.gcFree,
-                    clearWorld  : options.prepare,
-                    flatWorld   : true,
-                    arenaPalette: 'false',
-            ])
+            byepregenPrepareWorldgenRunDir(testOptions)
         }
         doLast {
             assertLightRestartResult(config, options.prepare ? 'PREPARED' : 'PASS')

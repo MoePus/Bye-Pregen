@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.arena;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
 import javax.annotation.Nullable;
@@ -50,7 +50,7 @@ public abstract class ChunkAccessArenaMixin {
             @Nullable LevelChunkSection[] providedSections,
             @Nullable BlendingData blendingData
     ) {
-        Config config = ConfigParser.getConfig();
+        Config config = ConfigManager.getConfig();
         boolean isProtoChunk = (Object) this instanceof ProtoChunk;
         for (int i = 0; i < sections.length; ++i) {
             if (sections[i] == null) {
@@ -77,16 +77,16 @@ public abstract class ChunkAccessArenaMixin {
 
     @Unique
     private boolean byepregen$shouldUseArena(Config config, boolean isProtoChunk, LevelHeightAccessor heightAccessor) {
-        if (!config.enableArenaPalette) {
+        if (!config.worldgen().arena().enabled()) {
             return false;
         }
         if (isProtoChunk) {
             return true;
         }
         if (heightAccessor instanceof Level level && level.isClientSide()) {
-            return config.enableClientArenaPalette;
+            return config.worldgen().arena().runtime().client();
         }
-        return config.enableServerRuntimeArenaPalette;
+        return config.worldgen().arena().runtime().server();
     }
 
     @Unique

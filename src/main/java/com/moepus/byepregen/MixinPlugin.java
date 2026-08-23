@@ -1,7 +1,8 @@
 package com.moepus.byepregen;
 
 import com.moepus.byepregen.config.Config;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
+import com.moepus.byepregen.integration.neoforge.NeoForgeConfigPath;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.List;
 import java.util.Set;
@@ -16,7 +17,6 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Plugin");
     private static final String MIXIN_PACKAGE = "com.moepus.byepregen.mixin.";
-    private static final String SURFACE_BIOME_CACHE_PROPERTY = "byepregen.surfaceBiomeCache";
     private static final String CHUNK_STORAGE_ACCESSOR =
             MIXIN_PACKAGE + "accessor.chunksave.ChunkStorageAccessor";
     private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
@@ -46,9 +46,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        Config config = ConfigParser.getConfig();
-        LOGGER.info("ByePregen density column compiler is {}",
-                config.enableArenaPalette && config.enableDensityColumnCompiler ? "enabled" : "disabled");
+        ConfigManager.initialize(NeoForgeConfigPath.resolve());
     }
 
     @Override
@@ -58,7 +56,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        Config config = ConfigParser.getConfig();
+        Config config = ConfigManager.getConfig();
         MixinGateEvaluator.GateEvaluation gate = MIXIN_GATE_EVALUATOR.evaluate(
                 targetClassName, mixinClassName, config);
         FeatureGateContext context = new FeatureGateContext(
@@ -76,13 +74,13 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         return switch (feature) {
             case NONE -> true;
             case ARENA -> passesArenaGate(mixinClassName, config, context.modExists());
-            case DFC -> config.enableArenaPalette && config.enableDensityColumnCompiler;
+            case DFC -> config.worldgen().arena().enabled()
+                    && config.worldgen().arena().densityColumnCompiler();
             case GC_FREE_CHUNK_SAVE -> passesGcFreeGate(
                     mixinClassName, config, context.classExists());
-            case SURFACE_BIOME_CACHE -> Boolean.parseBoolean(
-                    System.getProperty(SURFACE_BIOME_CACHE_PROPERTY, "true"));
-            case SURFACE_RULE_COMPILER -> config.enableSurfaceRuleCompiler;
-            case YA_LIGHT -> config.enableYALightEngine;
+            case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
+            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
+            case YA_LIGHT -> config.lighting().ya().enabled();
         };
     }
 
@@ -91,7 +89,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             Config config,
             Predicate<String> classExists
     ) {
-        if (!config.enableGcFreeWorldgenSave) {
+        if (!config.chunkSaving().gcFreeWorldgen()) {
             return false;
         }
         if (!RAW_GC_FREE_MIXINS.contains(mixinClassName)) {
@@ -110,17 +108,17 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             Config config,
             Predicate<String> modExists
     ) {
-        if (!config.enableArenaPalette) {
+        if (!config.worldgen().arena().enabled()) {
             return false;
         }
         if (modExists.test("confluence")) {
             return false;
         }
         if (LEVEL_CHUNK_ARENA_MIXIN.equals(mixinClassName)) {
-            return !config.enableServerRuntimeArenaPalette;
+            return !config.worldgen().arena().runtime().server();
         }
         if (VOXY_ARENA_MIXIN.equals(mixinClassName)) {
-            return config.enableClientArenaPalette;
+            return config.worldgen().arena().runtime().client();
         }
         return true;
     }

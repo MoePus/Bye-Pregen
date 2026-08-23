@@ -12,6 +12,61 @@ ext.byepregenSanitizeRunName = { String value ->
 
 def jfrSettings = byepregenProp('byepregenJfrSettings', 'profile')
 
+ext.byepregenWorldgenTestConfig = { Map options ->
+    Object arenaPalette = options.containsKey('arenaPalette') ? options.arenaPalette : true
+    Object serverRuntimeArenaPalette = options.containsKey('serverRuntimeArenaPalette')
+            ? options.serverRuntimeArenaPalette
+            : (options.containsKey('yaLight') ? options.yaLight : false)
+    Object surfaceBiomeCache = options.containsKey('surfaceBiomeCache')
+            ? options.surfaceBiomeCache
+            : true
+    [
+            debug         : [
+                    'disable-worldgen-features': options.containsKey('noFeatures')
+                            ? options.noFeatures
+                            : false,
+            ],
+            worldgen      : [
+                    'placed-features': [
+                            enabled             : options.containsKey('enablePlacedFeatureMixin')
+                                    ? options.enablePlacedFeatureMixin
+                                    : false,
+                            'memoized-disk-plan': options.containsKey('enableMemoizedDiskPlan')
+                                    ? options.enableMemoizedDiskPlan
+                                    : true,
+                    ],
+                    arena            : [
+                            enabled                  : arenaPalette,
+                            'density-column-compiler': options.containsKey('densityColumnCompiler')
+                                    ? options.densityColumnCompiler
+                                    : true,
+                            'server-runtime'         : serverRuntimeArenaPalette,
+                    ],
+                    surface          : [
+                            'rule-compiler': options.containsKey('surfaceScalar')
+                                    ? options.surfaceScalar
+                                    : true,
+                            'biome-cache'  : surfaceBiomeCache,
+                    ],
+            ],
+            server        : [
+                    'fast-chunk-ticking': [enabled: options.containsKey('fastTick')
+                            ? options.fastTick
+                            : false],
+            ],
+            'chunk-saving': [
+                    'gc-free-worldgen': options.containsKey('gcFree') ? options.gcFree : false,
+            ],
+            lighting      : [
+                    ya: [enabled: options.containsKey('yaLight') ? options.yaLight : false],
+            ],
+    ]
+}
+
+ext.byepregenUseWorldgenTestConfig = { run, Map options ->
+    byepregenUseTestConfig(run, byepregenWorldgenTestConfig(options))
+}
+
 ext.byepregenWorldgenResult = { File dir ->
     file("${dir}/worldgen.result")
 }
@@ -19,6 +74,7 @@ ext.byepregenWorldgenResult = { File dir ->
 ext.byepregenValidateWorldgenResult = { File dir ->
     File result = byepregenWorldgenResult(dir)
     String value = byepregenAssertPassResult(result, 'Worldgen harness')
+    byepregenAssertNoTestConfigFile(dir)
     logger.lifecycle("Worldgen harness passed:\n${value.trim()}")
 }
 
@@ -48,7 +104,6 @@ ext.byepregenConfigureWorldgenRun = { run, Map options ->
             'byepregen.testWorldGen.runResult',
             byepregenWorldgenResult(options.dir).absolutePath
     )
-    run.systemProperty('byepregen.surfaceBiomeCache', options.surfaceBiomeCache ?: 'true')
     run.systemProperty(
             'byepregen.surfaceOutputDifferential',
             options.surfaceOutputDifferential ?: 'false'
@@ -86,27 +141,11 @@ ext.byepregenConfigureWorldgenRun = { run, Map options ->
 
 ext.byepregenPrepareWorldgenRunDir = { Map options ->
     File dir = options.dir
-    String arenaPalette = options.get('arenaPalette') ?: 'true'
-    String serverRuntimeArenaPalette = options.get('serverRuntimeArenaPalette')
-            ?: options.get('yaLight')
-            ?: 'false'
     if (options.clearWorld) {
         delete(file("${dir}/world"))
     }
     prepareDisposableServer([
             directory: dir,
-            byepregenConfig: [
-                    debugDisableFeatures          : (options.noFeatures ?: 'false').toBoolean(),
-                    enablePlacedFeatureMixin      : (options.enablePlacedFeatureMixin ?: 'false').toBoolean(),
-                    enableMemoizedDiskPlan       : (options.enableMemoizedDiskPlan ?: 'true').toBoolean(),
-                    enableFastTickChunks          : (options.fastTick ?: 'false').toBoolean(),
-                    enableArenaPalette            : arenaPalette.toBoolean(),
-                    enableDensityColumnCompiler   : (options.densityColumnCompiler ?: 'true').toBoolean(),
-                    enableServerRuntimeArenaPalette: serverRuntimeArenaPalette.toBoolean(),
-                    enableYALightEngine           : (options.yaLight ?: 'false').toBoolean(),
-                    enableGcFreeWorldgenSave      : (options.gcFree ?: 'false').toBoolean(),
-                    enableSurfaceRuleCompiler     : (options.surfaceScalar ?: 'true').toBoolean(),
-            ],
             chunkyConfig: [
                     version                : 2,
                     language               : 'en',
@@ -143,6 +182,7 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
 ext.byepregenPrepareRunTask = { String taskName, Map options ->
     tasks.matching { it.name == taskName }.configureEach {
         File result = byepregenWorldgenResult(options.prepare.dir)
+        byepregenUseWorldgenTestConfig(delegate, options.prepare)
         notCompatibleWithConfigurationCache(options.reason)
         if (options.mustRunAfter != null) {
             mustRunAfter(options.mustRunAfter)

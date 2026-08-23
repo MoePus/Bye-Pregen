@@ -41,30 +41,28 @@ final class MixinPluginPolicyTest {
 
     @Test
     void dfcRequiresArenaAndCompilerConfigButNotC2me() {
-        Config config = new Config();
         String mixin = MIXIN_PREFIX + "dfc.DensityNoiseChunkMixin";
 
-        assertTrue(passes(MixinFeature.DFC, mixin, config, false));
-        assertTrue(passes(MixinFeature.DFC, mixin, config, true));
-        config.enableDensityColumnCompiler = false;
-        assertFalse(passes(MixinFeature.DFC, mixin, config, true));
-        config.enableDensityColumnCompiler = true;
-        config.enableArenaPalette = false;
-        assertFalse(passes(MixinFeature.DFC, mixin, config, true));
+        assertTrue(passes(MixinFeature.DFC, mixin, new Config(), false));
+        assertTrue(passes(MixinFeature.DFC, mixin, new Config(), true));
+        Config noCompiler = new ConfigTestBuilder().densityColumnCompiler(false).build();
+        assertFalse(passes(MixinFeature.DFC, mixin, noCompiler, true));
+        Config noArena = new ConfigTestBuilder().arena(false).build();
+        assertFalse(passes(MixinFeature.DFC, mixin, noArena, true));
     }
 
     @Test
     void arenaPreservesConfluenceAndRuntimeExceptions() {
-        Config config = new Config();
+        Config defaults = new Config();
 
         assertFalse(passes(new PolicyRequest(
-                MixinFeature.ARENA, CORE_ARENA, config, false, Set.of("confluence"))));
-        assertTrue(passes(MixinFeature.ARENA, LEVEL_CHUNK_ARENA, config));
-        config.enableServerRuntimeArenaPalette = true;
-        assertFalse(passes(MixinFeature.ARENA, LEVEL_CHUNK_ARENA, config));
-        assertFalse(passes(MixinFeature.ARENA, VOXY_ARENA, config));
-        config.enableClientArenaPalette = true;
-        assertTrue(passes(MixinFeature.ARENA, VOXY_ARENA, config));
+                MixinFeature.ARENA, CORE_ARENA, defaults, false, Set.of("confluence"))));
+        assertTrue(passes(MixinFeature.ARENA, LEVEL_CHUNK_ARENA, defaults));
+        Config serverRuntime = new ConfigTestBuilder().serverRuntimeArena(true).build();
+        assertFalse(passes(MixinFeature.ARENA, LEVEL_CHUNK_ARENA, serverRuntime));
+        assertFalse(passes(MixinFeature.ARENA, VOXY_ARENA, defaults));
+        Config client = new ConfigTestBuilder().clientArena(true).build();
+        assertTrue(passes(MixinFeature.ARENA, VOXY_ARENA, client));
     }
 
     @Test
@@ -92,19 +90,12 @@ final class MixinPluginPolicyTest {
     }
 
     @Test
-    void surfaceBiomeCacheUsesItsDedicatedProperty() {
-        String property = "byepregen.surfaceBiomeCache";
-        String previous = System.getProperty(property);
-        try {
-            System.setProperty(property, "false");
-            assertFalse(passes(MixinFeature.SURFACE_BIOME_CACHE,
-                    MIXIN_PREFIX + "surface.biome.SurfaceSystemBiomeCacheMixin", new Config()));
-            System.setProperty(property, "true");
-            assertTrue(passes(MixinFeature.SURFACE_BIOME_CACHE,
-                    MIXIN_PREFIX + "accessor.surface.BiomeManagerAccessor", new Config()));
-        } finally {
-            restoreProperty(property, previous);
-        }
+    void surfaceBiomeCacheUsesWorldgenSurfaceConfig() {
+        Config disabled = new ConfigTestBuilder().surfaceBiomeCache(false).build();
+        assertFalse(passes(MixinFeature.SURFACE_BIOME_CACHE,
+                MIXIN_PREFIX + "surface.biome.SurfaceSystemBiomeCacheMixin", disabled));
+        assertTrue(passes(MixinFeature.SURFACE_BIOME_CACHE,
+                MIXIN_PREFIX + "accessor.surface.BiomeManagerAccessor", new Config()));
     }
 
     private static boolean passes(MixinFeature feature, String mixin, Config config) {
@@ -123,20 +114,12 @@ final class MixinPluginPolicyTest {
     }
 
     private static Config disabledConfig() {
-        Config config = new Config();
-        config.enableArenaPalette = false;
-        config.enableGcFreeWorldgenSave = false;
-        config.enableSurfaceRuleCompiler = false;
-        config.enableYALightEngine = false;
-        return config;
-    }
-
-    private static void restoreProperty(String property, String previous) {
-        if (previous == null) {
-            System.clearProperty(property);
-        } else {
-            System.setProperty(property, previous);
-        }
+        return new ConfigTestBuilder()
+                .arena(false)
+                .gcFreeWorldgen(false)
+                .surfaceRuleCompiler(false)
+                .yaLight(false)
+                .build();
     }
 
     private record PolicyRequest(

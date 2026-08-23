@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.server.fasttick;
 
+import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,7 +37,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.function.Supplier;
 
-@MixinGate(config = "enableFastTickChunks")
+@MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING)
 @Mixin(value = ServerLevel.class, remap = false)
 public abstract class ServerLevelWeatherTickMixin extends Level {
     protected ServerLevelWeatherTickMixin(

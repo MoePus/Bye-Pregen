@@ -3,7 +3,7 @@ package com.moepus.byepregen.integration.c2me;
 import com.ibm.asyncutil.util.Either;
 import com.ishland.c2me.base.common.registry.SerializerAccess;
 import com.mojang.logging.LogUtils;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import org.slf4j.Logger;
@@ -17,7 +17,7 @@ public final class GcFreeCompat {
     }
 
     public static void register() {
-        if (!ConfigParser.getConfig().enableGcFreeWorldgenSave) {
+        if (!ConfigManager.getConfig().chunkSaving().gcFreeWorldgen()) {
             return;
         }
         boolean serializerAvailable;

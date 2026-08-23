@@ -2,7 +2,6 @@ package com.moepus.byepregen;
 
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
-import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,7 +52,7 @@ final class MixinGateEvaluator {
     }
 
     private boolean passesAnnotationGate(AnnotationGateContext context, GateSpec gate) {
-        if (!isConfigEnabled(gate.config(), context.config(), context.mixinClassName())) {
+        if (!gate.config().isEnabled(context.config())) {
             return false;
         }
         if (!allModsExist(gate.requiredMods())) {
@@ -114,22 +113,6 @@ final class MixinGateEvaluator {
         }
     }
 
-    private static boolean isConfigEnabled(String fieldName, Config config, String mixinClassName) {
-        if (fieldName.isEmpty()) {
-            return true;
-        }
-
-        try {
-            Field field = Config.class.getField(fieldName);
-            if (field.getType() != boolean.class) {
-                throw invalidGate(mixinClassName, "Config." + fieldName + " is not boolean", null);
-            }
-            return field.getBoolean(config);
-        } catch (NoSuchFieldException | IllegalAccessException exception) {
-            throw invalidGate(mixinClassName, "invalid Config field: " + fieldName, exception);
-        }
-    }
-
     private static IllegalStateException invalidGate(String mixinClassName, String message, Throwable cause) {
         return new IllegalStateException("Invalid @MixinGate on " + mixinClassName + ": " + message, cause);
     }
@@ -153,10 +136,10 @@ final class MixinGateEvaluator {
             MixinFeature feature,
             List<String> requiredMods,
             List<String> conflictingMods,
-            String config
+            ConfigFlag config
     ) {
         private static final GateSpec NONE = new GateSpec(
-                MixinFeature.NONE, List.of(), List.of(), ""
+                MixinFeature.NONE, List.of(), List.of(), ConfigFlag.ALWAYS
         );
 
         static GateSpec from(AnnotationNode annotation, String mixinClassName) {
@@ -164,8 +147,25 @@ final class MixinGateEvaluator {
                     featureValue(annotation, mixinClassName),
                     stringListValue(annotation, "requiredMods", mixinClassName),
                     stringListValue(annotation, "conflictingMods", mixinClassName),
-                    stringValue(annotation, "config", mixinClassName)
+                    configValue(annotation, mixinClassName)
             );
+        }
+
+        private static ConfigFlag configValue(AnnotationNode annotation, String mixinClassName) {
+            Object value = value(annotation, "config");
+            if (value == null) {
+                return ConfigFlag.ALWAYS;
+            }
+            if (!(value instanceof String[] enumValue)
+                    || enumValue.length != 2
+                    || !Type.getDescriptor(ConfigFlag.class).equals(enumValue[0])) {
+                throw invalidGate(mixinClassName, "config must be a ConfigFlag", null);
+            }
+            try {
+                return ConfigFlag.valueOf(enumValue[1]);
+            } catch (IllegalArgumentException exception) {
+                throw invalidGate(mixinClassName, "unknown config flag: " + enumValue[1], exception);
+            }
         }
 
         private static MixinFeature featureValue(AnnotationNode annotation, String mixinClassName) {
@@ -198,17 +198,6 @@ final class MixinGateEvaluator {
                 throw invalidGate(mixinClassName, name + " must be a string array", null);
             }
             return values.stream().map(String.class::cast).toList();
-        }
-
-        private static String stringValue(AnnotationNode annotation, String name, String mixinClassName) {
-            Object value = value(annotation, name);
-            if (value == null) {
-                return "";
-            }
-            if (!(value instanceof String string)) {
-                throw invalidGate(mixinClassName, name + " must be a string", null);
-            }
-            return string;
         }
 
         private static Object value(AnnotationNode annotation, String name) {

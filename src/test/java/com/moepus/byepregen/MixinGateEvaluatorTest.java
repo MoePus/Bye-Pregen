@@ -30,30 +30,28 @@ final class MixinGateEvaluatorTest {
     }
 
     @Test
-    void configFieldControlsApplication() {
-        ClassNode gated = node(gate("config", "enablePlacedFeatureMixin"));
+    void configFlagControlsApplication() {
+        ClassNode gated = node(gate("config", enumValue(ConfigFlag.class, "PLACED_FEATURES")));
         EvaluatorFixture fixture = fixture(gated, Set.of(), Set.of());
-        Config config = new Config();
 
-        assertFalse(fixture.evaluator().shouldApply(TARGET, MIXIN, config));
-        config.enablePlacedFeatureMixin = true;
-        assertTrue(fixture.evaluator().shouldApply(TARGET, MIXIN, config));
+        assertFalse(fixture.evaluator().shouldApply(TARGET, MIXIN, new Config()));
+        assertTrue(fixture.evaluator().shouldApply(
+                TARGET, MIXIN, new ConfigTestBuilder().placedFeatures(true).build()));
     }
 
     @Test
     void featureMetadataIsReturnedWithAnnotationResult() {
         ClassNode gated = node(gate(
-                "feature", new String[] {Type.getDescriptor(MixinFeature.class), "YA_LIGHT"},
-                "config", "enableYALightEngine"
+                "feature", enumValue(MixinFeature.class, "YA_LIGHT"),
+                "config", enumValue(ConfigFlag.class, "PLACED_FEATURES")
         ));
         MixinGateEvaluator evaluator = fixture(gated, Set.of(), Set.of()).evaluator();
-        Config config = new Config();
 
-        MixinGateEvaluator.GateEvaluation disabled = evaluator.evaluate(TARGET, MIXIN, config);
+        MixinGateEvaluator.GateEvaluation disabled = evaluator.evaluate(TARGET, MIXIN, new Config());
         assertEquals(MixinFeature.YA_LIGHT, disabled.feature());
         assertFalse(disabled.annotationEnabled());
-        config.enableYALightEngine = true;
-        assertTrue(evaluator.evaluate(TARGET, MIXIN, config).annotationEnabled());
+        Config enabled = new ConfigTestBuilder().placedFeatures(true).build();
+        assertTrue(evaluator.evaluate(TARGET, MIXIN, enabled).annotationEnabled());
     }
 
     @Test
@@ -90,18 +88,18 @@ final class MixinGateEvaluatorTest {
     }
 
     @Test
-    void invalidConfigFieldIsReported() {
+    void invalidConfigFlagIsReported() {
         MixinGateEvaluator evaluator = fixture(
-                node(gate("config", "doesNotExist")), Set.of(), Set.of()
+                node(gate("config", enumValue(ConfigFlag.class, "DOES_NOT_EXIST"))), Set.of(), Set.of()
         ).evaluator();
 
-        assertInvalid(evaluator, "invalid Config field: doesNotExist");
+        assertInvalid(evaluator, "unknown config flag: DOES_NOT_EXIST");
     }
 
     @Test
     void malformedGateValuesAreReported() {
         MixinGateEvaluator wrongConfigType = fixture(
-                node(gate("config", List.of("enableArenaPalette"))), Set.of(), Set.of()
+                node(gate("config", List.of("PLACED_FEATURES"))), Set.of(), Set.of()
         ).evaluator();
         MixinGateEvaluator blankMod = fixture(
                 node(gate("requiredMods", List.of(""))), Set.of(), Set.of()
@@ -113,7 +111,7 @@ final class MixinGateEvaluatorTest {
                 )), Set.of(), Set.of()
         ).evaluator();
 
-        assertInvalid(wrongConfigType, "config must be a string");
+        assertInvalid(wrongConfigType, "config must be a ConfigFlag");
         assertInvalid(blankMod, "mod ids must not be blank");
         assertInvalid(contradictoryMod, "a mod cannot be both required and conflicting");
     }
@@ -155,6 +153,10 @@ final class MixinGateEvaluatorTest {
         AnnotationNode annotation = new AnnotationNode(GATE_DESCRIPTOR);
         annotation.values = List.of(values);
         return annotation;
+    }
+
+    private static String[] enumValue(Class<?> type, String value) {
+        return new String[] {Type.getDescriptor(type), value};
     }
 
     private record EvaluatorFixture(MixinGateEvaluator evaluator, List<String> classLookups) {

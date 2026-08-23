@@ -31,6 +31,7 @@ neoForge {
     runs {
         startupServer {
             server()
+            byepregenUseTestConfig(delegate)
             sourceSet.set(sourceSets.startupHarness)
             loadedMods.set([
                     neoForge.mods.named(project.mod_id).get(),
@@ -44,6 +45,7 @@ neoForge {
         }
         startupClient {
             client()
+            byepregenUseTestConfig(delegate)
             sourceSet.set(sourceSets.startupHarness)
             loadedMods.set([
                     neoForge.mods.named(project.mod_id).get(),
@@ -59,6 +61,7 @@ neoForge {
 
 def validateStartup = { String side, File root, File result ->
     String outcome = byepregenAssertPassResult(result, "${side} startup")
+    byepregenAssertNoTestConfigFile(root)
     File log = file("${root}/logs/latest.log")
     if (!log.isFile()) {
         throw new GradleException("${side} startup produced no latest.log: ${log}")

@@ -1,7 +1,7 @@
 package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.harness.HarnessResultFile;
-import com.moepus.byepregen.config.ConfigParser;
+import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import com.mojang.logging.LogUtils;
 import java.lang.reflect.Field;
@@ -25,7 +25,8 @@ final class FastTickRuntimeProbe {
             return true;
         }
         try {
-            require(ConfigParser.getConfig().enableFastTickChunks, "enableFastTickChunks is false");
+            require(ConfigManager.getConfig().server().fastChunkTicking().enabled(),
+                    "server.fast-chunk-ticking.enabled is false");
             require(ModEnvironment.isModLoaded("c2me"), "C2ME is not loaded");
             require(ModEnvironment.isModLoaded("lithium"), "Lithium is not loaded");
             Field tickingChunks = ServerChunkCache.class.getDeclaredField("byepregen$tickingChunks");
