@@ -22,6 +22,7 @@ final class ConfigParserTest {
 
         assertTrue(config.enableArenaPalette);
         assertTrue(config.enableDensityColumnCompiler);
+        assertTrue(config.enableMemoizedDiskPlan);
         assertTrue(Files.exists(path));
         assertTrue(Files.readString(path, StandardCharsets.UTF_8).contains("enableArenaPalette"));
     }

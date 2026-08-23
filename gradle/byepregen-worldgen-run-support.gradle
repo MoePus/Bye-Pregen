@@ -98,6 +98,7 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
             byepregenConfig: [
                     debugDisableFeatures          : (options.noFeatures ?: 'false').toBoolean(),
                     enablePlacedFeatureMixin      : (options.enablePlacedFeatureMixin ?: 'false').toBoolean(),
+                    enableMemoizedDiskPlan       : (options.enableMemoizedDiskPlan ?: 'true').toBoolean(),
                     enableFastTickChunks          : (options.fastTick ?: 'false').toBoolean(),
                     enableArenaPalette            : arenaPalette.toBoolean(),
                     enableDensityColumnCompiler   : (options.densityColumnCompiler ?: 'true').toBoolean(),
@@ -125,6 +126,7 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
                     'spawn-protection'    : 0,
                     'level-type'          : options.levelType
                             ?: (options.flatWorld ? 'minecraft:flat' : 'minecraft:normal'),
+                    'initial-enabled-packs': options.initialEnabledPacks ?: 'vanilla',
             ],
     ])
     if (options.c2meDfc != null) {

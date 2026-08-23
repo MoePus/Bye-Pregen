@@ -1,13 +1,16 @@
 package com.moepus.byepregen.worldgen.feature;
 
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 
@@ -20,6 +23,9 @@ public final class FastPlacementContext {
     private RandomSource random;
     private ConfiguredFeature<?, ?> feature;
     private List<PlacementModifier> modifiers;
+    private FastPlacementContext parent;
+    private IdentityHashMap<DiskConfiguration, KnownFalseDiskPredicateCache> nestedDiskCaches;
+    private Terminal terminal;
     private boolean placed;
 
     private FastPlacementContext() {
@@ -31,8 +37,11 @@ public final class FastPlacementContext {
         ConfiguredFeature<?, ?> feature,
         List<PlacementModifier> modifiers
     ) {
-        FastPlacementContext context = STACK.get().acquire();
+        Stack stack = STACK.get();
+        FastPlacementContext parent = stack.current();
+        FastPlacementContext context = stack.acquire();
         context.init(placementContext, random, feature, modifiers);
+        context.parent = parent;
         return context;
     }
 
@@ -54,6 +63,8 @@ public final class FastPlacementContext {
         this.random = random;
         this.feature = feature;
         this.modifiers = modifiers;
+        this.nestedDiskCaches = null;
+        this.terminal = null;
         this.placed = false;
     }
 
@@ -62,11 +73,18 @@ public final class FastPlacementContext {
         this.random = null;
         this.feature = null;
         this.modifiers = null;
+        this.parent = null;
+        this.nestedDiskCaches = null;
+        this.terminal = null;
         this.placed = false;
     }
 
     public boolean apply(int index, int x, int y, int z) {
         if (index == this.modifiers.size()) {
+            if (this.terminal != null) {
+                this.terminal.accept(x, y, z);
+                return this.placed;
+            }
             BlockPos pos = new BlockPos(x, y, z);
             if (this.feature.place(this.placementContext.getLevel(), this.placementContext.generator(), this.random, pos)) {
                 this.placed = true;
@@ -96,6 +114,41 @@ public final class FastPlacementContext {
 
     public RandomSource random() {
         return this.random;
+    }
+
+    public ConfiguredFeature<?, ?> feature() {
+        return this.feature;
+    }
+
+    public List<PlacementModifier> modifiers() {
+        return this.modifiers;
+    }
+
+    public FastPlacementContext parent() {
+        return this.parent;
+    }
+
+    KnownFalseDiskPredicateCache nestedDiskCache(
+            DiskConfiguration config,
+            Vec3i[] dependencies
+    ) {
+        if (this.nestedDiskCaches == null) {
+            this.nestedDiskCaches = new IdentityHashMap<>();
+        }
+        return this.nestedDiskCaches.computeIfAbsent(config, ignored -> new KnownFalseDiskPredicateCache(
+                dependencies,
+                this.placementContext.getLevel().getMinBuildHeight(),
+                this.placementContext.getLevel().getMaxBuildHeight()
+        ));
+    }
+
+    public void terminal(Terminal terminal) {
+        this.terminal = terminal;
+    }
+
+    @FunctionalInterface
+    public interface Terminal {
+        void accept(int x, int y, int z);
     }
 
     private static final class Stack {

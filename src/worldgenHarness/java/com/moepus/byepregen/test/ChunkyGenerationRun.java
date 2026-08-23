@@ -93,7 +93,8 @@ final class ChunkyGenerationRun {
         );
         logSurfaceScalarMetrics();
         this.controller.succeedAndStop(this.server,
-                "world=" + event.world() + "\ndensityColumn=" + densityColumnMetrics);
+                "world=" + event.world() + "\ndensityColumn=" + densityColumnMetrics
+        );
     }
 
     private static void logSurfaceScalarMetrics() {

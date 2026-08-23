@@ -3,6 +3,7 @@ package com.moepus.byepregen.mixin.feature.predicate;
 import com.moepus.byepregen.worldgen.feature.FastBlockPredicateOptimizer;
 import com.moepus.byepregen.worldgen.feature.FastDiskBlockPredicate;
 import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
+import com.moepus.byepregen.worldgen.feature.FastStateTestingPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.WorldGenLevel;
@@ -14,13 +15,18 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(value = StateTestingPredicate.class, priority = 1100, remap = false)
-public abstract class StateTestingPredicateMixin implements FastDiskBlockPredicate {
+public abstract class StateTestingPredicateMixin implements FastDiskBlockPredicate, FastStateTestingPredicate {
     @Shadow
     @Final
     protected Vec3i offset;
 
     @Shadow
     protected abstract boolean test(BlockState state);
+
+    @Override
+    public final Vec3i byepregen$getOffset() {
+        return this.offset;
+    }
 
     @Override
     public final boolean byepregen$test(FastDiskStateCursor cursor, BlockPos pos) {

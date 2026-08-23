@@ -1,6 +1,7 @@
 def runtimeCheckRequested = gradle.startParameter.taskNames.any {
     it.tokenize(':').last() == 'runtimeCheck'
 }
+def singleBiome = providers.gradleProperty('byepregenTestSingleBiome').orNull
 
 def worldGenConfig = [
         dir    : file(byepregenProp('byepregenTestWorldGenDir', 'run/test-worldgen')),
@@ -16,6 +17,7 @@ def worldGenConfig = [
                 .get(),
         noFeatures: byepregenProp('byepregenTestWorldGenNoFeatures', 'false'),
         densityColumnCompiler: byepregenProp('byepregenTestDensityColumnCompiler', 'true'),
+        enableMemoizedDiskPlan: byepregenProp('byepregenTestEnableMemoizedDiskPlan', 'true'),
         verifyDfcColumn: byepregenProp('byepregenTestVerifyDfcColumn', 'false'),
         c2meDfc: providers.gradleProperty('byepregenTestC2meDfc').orNull,
         levelType: byepregenProp('byepregenTestWorldGenLevelType', 'minecraft:normal'),
@@ -23,6 +25,7 @@ def worldGenConfig = [
         logCompilation: byepregenProp('byepregenTestLogCompilation', 'false').toBoolean(),
         surfaceBiomeProfile: byepregenProp('byepregenTestSurfaceBiomeProfile', 'false'),
         datapack: providers.gradleProperty('byepregenTestWorldGenDatapack').orNull,
+        singleBiome: singleBiome,
 ]
 def arenaPaletteRoot = file('run/arena-palette-differential')
 def arenaPaletteResult = file("${arenaPaletteRoot}/arena-palette.result")
@@ -92,6 +95,52 @@ worldGenConfig.compilationLog = file(byepregenProp(
         'byepregenTestCompilationLog',
         "${worldGenConfig.dir}/hotspot-compilation.log"
 ))
+def initialWorldgenPacks = ['vanilla']
+if (worldGenConfig.datapack != null) {
+    initialWorldgenPacks.add("file/${file(worldGenConfig.datapack).name}")
+}
+if (worldGenConfig.singleBiome != null) {
+    initialWorldgenPacks.add('file/byepregen-single-biome')
+}
+worldGenConfig.initialEnabledPacks = initialWorldgenPacks.join(',')
+
+def writeSingleBiomeWorldPreset = { File runDir, String biome ->
+    File pack = file("${runDir}/world/datapacks/byepregen-single-biome")
+    writeJsonFile(file("${pack}/pack.mcmeta"), [
+            pack: [
+                    pack_format: 48,
+                    description: "ByePregen fixed-biome worldgen profile for ${biome}",
+            ],
+    ])
+    writeJsonFile(file("${pack}/data/byepregen/worldgen/world_preset/wwoo_single_biome.json"), [
+            dimensions: [
+                    'minecraft:overworld': [
+                            type: 'minecraft:overworld',
+                            generator: [
+                                    type: 'minecraft:noise',
+                                    biome_source: [type: 'minecraft:fixed', biome: biome],
+                                    settings: 'minecraft:overworld',
+                            ],
+                    ],
+                    'minecraft:the_nether': [
+                            type: 'minecraft:the_nether',
+                            generator: [
+                                    type: 'minecraft:noise',
+                                    biome_source: [type: 'minecraft:multi_noise', preset: 'minecraft:nether'],
+                                    settings: 'minecraft:nether',
+                            ],
+                    ],
+                    'minecraft:the_end': [
+                            type: 'minecraft:the_end',
+                            generator: [
+                                    type: 'minecraft:noise',
+                                    biome_source: [type: 'minecraft:the_end'],
+                                    settings: 'minecraft:end',
+                            ],
+                    ],
+            ],
+    ])
+}
 
 neoForge {
     runs {
@@ -233,9 +282,13 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 seed      : worldGenConfig.seed,
                 noFeatures: worldGenConfig.noFeatures,
                 densityColumnCompiler: worldGenConfig.densityColumnCompiler,
+                enableMemoizedDiskPlan: worldGenConfig.enableMemoizedDiskPlan,
                 c2meDfc   : worldGenConfig.c2meDfc,
-                levelType : worldGenConfig.levelType,
+                levelType : worldGenConfig.singleBiome == null
+                        ? worldGenConfig.levelType
+                        : 'byepregen:wwoo_single_biome',
                 enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
+                initialEnabledPacks: worldGenConfig.initialEnabledPacks,
                 clearWorld: true,
         ])
         if (worldGenConfig.datapack != null) {
@@ -243,6 +296,9 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 from file(worldGenConfig.datapack)
                 into file("${worldGenConfig.dir}/world/datapacks")
             }
+        }
+        if (worldGenConfig.singleBiome != null) {
+            writeSingleBiomeWorldPreset(worldGenConfig.dir, worldGenConfig.singleBiome)
         }
     }
 }
