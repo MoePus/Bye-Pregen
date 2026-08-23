@@ -92,7 +92,7 @@ dependencies {
     compileOnly files('libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar')
 //    additionalRuntimeClasspath 'curse.maven:c2me-ocl-1563823:8436419'
     compileOnly 'com.ibm.async:asyncutil:0.1.0'
-    compileOnly files('libs/voxy-0.2.15-beta-3.jar')
+    compileOnly files('libs/voxy-0.2.15-beta+1.21.1-neoforge.jar')
     if (includeC2meRuntime) {
         if (c2meExperimentJar != null) {
             runtimeOnly files(c2meExperimentJar)

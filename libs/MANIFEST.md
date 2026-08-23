@@ -39,4 +39,5 @@ Status definitions:
 | `mixinsquared-neoforge-0.3.7-beta.1.jar` | coordinate-input | Local runtime and JarJar artifact resolved as `com.github.bawnorton.mixinsquared:mixinsquared-neoforge`. |
 | `reactive-streams-1.0.4.jar` | retained-unreferenced | Retained support library from the compatibility artifact set. |
 | `rxjava-3.1.12.jar` | retained-unreferenced | Retained support library for C2ME signatures; not a direct Gradle file dependency. |
-| `voxy-0.2.15-beta-3.jar` | build-input | Compiles the Voxy world-conversion compatibility mixin. |
+| `voxy-0.2.15-beta+1.21.1-neoforge.jar` | build-input | NeoForge build from `https://github.com/m3t4f1v3/voxy` commit `b4746ab9`; compiles the Voxy world-conversion compatibility mixin against Mojmap types. |
+| `voxy-0.2.15-beta-3.jar` | retained-unreferenced | Fabric build retained for Connector ABI compatibility checks. |
