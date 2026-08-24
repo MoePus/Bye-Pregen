@@ -7,17 +7,12 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
-import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
-import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.lighting.LevelLightEngine;
+import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
 import java.util.BitSet;
@@ -33,15 +28,16 @@ public abstract class ClientPacketListenerYALightMixin {
      * @author MoePus
      * @reason Feed packet light bytes directly into YA light storage without constructing vanilla DataLayer objects.
      */
-    @Overwrite
-    private void readSectionList(
+    @InjectLite(method = "readSectionList", at = @At("HEAD"), cancel = true)
+    private void byepregen$readSectionList(
             int chunkX,
             int chunkZ,
             LevelLightEngine lightEngine,
             LightLayer layer,
             BitSet yMask,
             BitSet emptyYMask,
-            Iterator<byte[]> updates
+            Iterator<byte[]> updates,
+            boolean markSectionDirty
     ) {
         YALightEngineHolder holder = (YALightEngineHolder)lightEngine;
         for (int i = 0; i < lightEngine.getLightSectionCount(); ++i) {
@@ -58,7 +54,9 @@ public abstract class ClientPacketListenerYALightMixin {
             } else {
                 holder.byepregen$getYALightEngine().queueZeroSectionData(layer, sectionPos);
             }
-            this.level.setSectionDirtyWithNeighbors(chunkX, sectionY, chunkZ);
+            if (markSectionDirty) {
+                this.level.setSectionDirtyWithNeighbors(chunkX, sectionY, chunkZ);
+            }
         }
     }
 

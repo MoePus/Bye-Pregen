@@ -38,7 +38,6 @@ final class OverwriteContractTest {
             "com.moepus.byepregen.mixin.arena.compat.fastnoise.FastNoiseOpenCLArenaMixin#copyData(Lnet/minecraft/util/StaticCache2D;[Lnet/minecraft/world/level/block/state/BlockState;ILnet/minecraft/world/level/levelgen/NoiseGeneratorSettings;ILjava/nio/ByteBuffer;Lnet/minecraft/world/level/ChunkPos;I)V",
             "com.moepus.byepregen.mixin.nbt.CompoundTagFastRuntimeMixin#copy()Lnet/minecraft/nbt/CompoundTag;",
             "com.moepus.byepregen.mixin.nbt.CompoundTagLoadSizingMixin#loadCompound(Ljava/io/DataInput;Lnet/minecraft/nbt/NbtAccounter;)Lnet/minecraft/nbt/CompoundTag;",
-            "com.moepus.byepregen.mixin.yalight.ClientPacketListenerYALightMixin#readSectionList(IILnet/minecraft/world/level/lighting/LevelLightEngine;Lnet/minecraft/world/level/LightLayer;Ljava/util/BitSet;Ljava/util/BitSet;Ljava/util/Iterator;)V",
             "com.moepus.byepregen.mixin.yalight.ClientboundLightUpdatePacketDataYALightMixin#prepareSectionData(Lnet/minecraft/world/level/ChunkPos;Lnet/minecraft/world/level/lighting/LevelLightEngine;Lnet/minecraft/world/level/LightLayer;ILjava/util/BitSet;Ljava/util/BitSet;Ljava/util/List;)V",
             "com.moepus.byepregen.mixin.yalight.LevelLightEngineYAMixin#checkBlock(Lnet/minecraft/core/BlockPos;)V",
             "com.moepus.byepregen.mixin.yalight.LevelLightEngineYAMixin#getDebugData(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;)Ljava/lang/String;",
@@ -69,7 +68,7 @@ final class OverwriteContractTest {
 
     @Test
     void overwriteMethodsMatchExplicitContract() throws Exception {
-        assertEquals(42, EXPECTED.size(), "overwrite contract count changed");
+        assertEquals(41, EXPECTED.size(), "overwrite contract count changed");
         assertEquals(EXPECTED, discoverOverwrites());
     }
 

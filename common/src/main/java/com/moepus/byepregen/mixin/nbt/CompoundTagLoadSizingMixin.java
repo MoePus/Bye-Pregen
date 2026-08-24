@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.nbt;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.mixin.accessor.nbt.CompoundTagAccessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.util.Map;
 
 @Mixin(targets = "net.minecraft.nbt.CompoundTag$1")
+@MixinGate(conflictingMods = "c2me")
 public abstract class CompoundTagLoadSizingMixin {
     private static final long COMPOUND_OVERHEAD_BYTES = 48L;
     private static final long STRING_OVERHEAD_BYTES = 28L;
