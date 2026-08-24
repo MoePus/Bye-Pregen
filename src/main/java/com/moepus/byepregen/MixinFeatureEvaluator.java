@@ -43,7 +43,8 @@ final class MixinFeatureEvaluator {
             case GC_FREE_RAW_CHUNK_IO -> this.rawChunkIoEnabled(config);
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
             case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
-            case YA_LIGHT -> config.lighting().ya().enabled();
+            case YA_LIGHT -> config.lighting().ya().enabled()
+                    && !this.modExists.test(YALightCompatibility.SCALABLELUX_MOD_ID);
         };
     }
 
