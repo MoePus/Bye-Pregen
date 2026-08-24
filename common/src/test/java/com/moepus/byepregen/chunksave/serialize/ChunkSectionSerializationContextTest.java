@@ -1,0 +1,85 @@
+package com.moepus.byepregen.chunksave.serialize;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import net.minecraft.util.CrudeIncrementalIntIdentityHashBiMap;
+import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.PalettedContainerRO;
+import net.minecraft.world.level.chunk.Strategy;
+import org.junit.jupiter.api.Test;
+
+public final class ChunkSectionSerializationContextTest {
+    private ChunkSectionSerializationContextTest() {}
+
+    @Test
+    void matchesVanillaPackingStrategies() {
+        assertEquivalent(new TestCase(true, 1, 4));
+        assertEquivalent(new TestCase(true, 5, 4));
+        assertEquivalent(new TestCase(true, 17, 4));
+        assertEquivalent(new TestCase(true, 300, 4));
+        assertEquivalent(new TestCase(false, 1, 0));
+        assertEquivalent(new TestCase(false, 3, 0));
+        assertEquivalent(new TestCase(false, 9, 0));
+    }
+
+    private static void assertEquivalent(TestCase testCase) {
+        int distinctValues = testCase.distinctValues();
+        int registrySize = Math.max(512, distinctValues);
+        CrudeIncrementalIntIdentityHashBiMap<Object> registry =
+                CrudeIncrementalIntIdentityHashBiMap.create(registrySize);
+        List<Object> values = new ArrayList<>(registrySize);
+        for (int index = 0; index < registrySize; ++index) {
+            Object value = new Object();
+            values.add(value);
+            registry.add(value);
+        }
+
+        Strategy<Object> strategy = testCase.blockStates()
+                ? Strategy.createForBlockStates(registry)
+                : Strategy.createForBiomes(registry);
+        PalettedContainer<Object> container = new PalettedContainer<>(values.get(0), strategy);
+        fill(container, values, testCase);
+        PalettedContainerRO.PackedData<Object> expected = container.pack(strategy);
+        ChunkSectionSerializationContext actual = new ChunkSectionSerializationContext();
+        actual.pack(container, testCase.minimumBits());
+
+        assertPalette(expected.paletteEntries(), actual, testCase);
+        long[] expectedStorage = expected.storage().map(stream -> stream.toArray()).orElseGet(() -> new long[0]);
+        long[] actualStorage = actual.packedLength() == 0
+                ? new long[0]
+                : Arrays.copyOf(actual.packed(), actual.packedLength());
+        if (!Arrays.equals(expectedStorage, actualStorage)) {
+            throw new AssertionError("packed data mismatch for " + testCase);
+        }
+    }
+
+    private static void fill(
+            PalettedContainer<Object> container, List<Object> values, TestCase testCase) {
+        int axisSize = testCase.blockStates() ? 16 : 4;
+        int index = 0;
+        for (int y = 0; y < axisSize; ++y) {
+            for (int z = 0; z < axisSize; ++z) {
+                for (int x = 0; x < axisSize; ++x) {
+                    container.set(x, y, z, values.get(index++ % testCase.distinctValues()));
+                }
+            }
+        }
+    }
+
+    private static void assertPalette(
+            List<Object> expected, ChunkSectionSerializationContext actual,
+            TestCase testCase) {
+        if (expected.size() != actual.paletteSize()) {
+            throw new AssertionError("palette size mismatch for " + testCase);
+        }
+        for (int index = 0; index < expected.size(); ++index) {
+            if (expected.get(index) != actual.paletteEntry(index)) {
+                throw new AssertionError("palette order mismatch at index " + index);
+            }
+        }
+    }
+
+    private record TestCase(boolean blockStates, int distinctValues, int minimumBits) {
+    }
+}

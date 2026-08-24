@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": ["${mod_authors}"],
+  "license": "${mod_license}",
+  "environment": "*",
+  "accessWidener": "${mod_id}.accesswidener",
+  "entrypoints": {
+    "main": ["com.moepus.byepregen.fabric.ByepregenFabric"]
+  },
+  "mixins": ["${mod_id}.mixins.json"],
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": "*",
+    "minecraft": "=${minecraft_version}",
+    "java": ">=${java_version}"
+  },
+  "breaks": {
+    "noisiumed": "*",
+    "noisium": "*",
+    "antixray": "*"
+  },
+  "custom": {
+    "lithium:options": {
+      "mixin.world.chunk_access": false,
+      "mixin.alloc.nbt": false
+    }
+  }
+}

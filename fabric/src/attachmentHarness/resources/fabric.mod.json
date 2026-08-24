@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "byepregen_attachment_harness",
+  "version": "1",
+  "name": "ByePregen Attachment Harness",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.moepus.byepregen.fabric.test.AttachmentRoundTripHarness"]
+  },
+  "depends": {
+    "fabricloader": "*",
+    "fabric-api": "*",
+    "minecraft": "=26.1.2",
+    "byepregen": "*"
+  }
+}

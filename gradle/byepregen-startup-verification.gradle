@@ -3,31 +3,12 @@ def serverStartupRoot = file("${startupRoot}/server")
 def clientStartupRoot = file("${startupRoot}/client")
 def serverStartupResult = file("${serverStartupRoot}/startup.result")
 def clientStartupResult = file("${clientStartupRoot}/startup.result")
-def expectedOverwriteConflictParts = [
+def allowedOverwriteConflictParts = [
         'c2me-opts-allocs.mixins.json:predicates.mixinoffsetpredicate',
         'com.moepus.byepregen.mixin.feature.predicate.statetestingpredicatemixin',
 ]
 
-sourceSets {
-    startupHarness {
-        java.setSrcDirs(['src/startupHarness/java', 'src/harnessCommon/java'])
-        resources.setSrcDirs(['src/startupHarness/resources'])
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
-    }
-}
-
-configurations {
-    startupHarnessCompileOnly.extendsFrom compileOnly
-    startupHarnessAnnotationProcessor.extendsFrom annotationProcessor
-}
-
 neoForge {
-    mods {
-        byepregen_startup_harness {
-            sourceSet(sourceSets.startupHarness)
-        }
-    }
     runs {
         startupServer {
             server()
@@ -67,13 +48,15 @@ def validateStartup = { String side, File root, File result ->
         throw new GradleException("${side} startup produced no latest.log: ${log}")
     }
     def logLines = log.readLines('UTF-8')
-    def expectedConflicts = logLines.findAll { line ->
+    def allowedConflicts = logLines.findAll { line ->
         String lower = line.toLowerCase(Locale.ROOT)
-        expectedOverwriteConflictParts.every { lower.contains(it) }
+        allowedOverwriteConflictParts.every { lower.contains(it) }
     }
-    if (expectedConflicts.size() != 1) {
-        throw new GradleException("${side} startup expected exactly one known overwrite conflict, found "
-                + "${expectedConflicts.size()}")
+    if (allowedConflicts.size() > 1 || allowedConflicts.any {
+        !it.toLowerCase(Locale.ROOT).contains('skipping method')
+    }) {
+        throw new GradleException("${side} startup found an unexpected C2ME overwrite conflict:\n"
+                + allowedConflicts.join('\n'))
     }
     def failures = logLines.findAll { line ->
         String lower = line.toLowerCase(Locale.ROOT)
@@ -83,8 +66,9 @@ def validateStartup = { String side, File root, File result ->
                 'invalid mixin', 'error loading class', 'unregistered mixin', 'gate drift',
                 'skipped overwrite', 'overwrite conflict', 'byepregen_startup_fail',
         ].any { lower.contains(it) }
-        boolean expectedConflict = expectedOverwriteConflictParts.every { lower.contains(it) }
-        byepregenLine && failureMarker && !expectedConflict
+        boolean allowedConflict = allowedOverwriteConflictParts.every { lower.contains(it) }
+                && lower.contains('skipping method')
+        byepregenLine && failureMarker && !allowedConflict
     }
     if (!failures.isEmpty()) {
         throw new GradleException("${side} startup log contains ByePregen mixin failures:\n"

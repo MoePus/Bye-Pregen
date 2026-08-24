@@ -60,7 +60,7 @@ lightGoldenConfig.relightLuxJfr = file("${lightGoldenConfig.rootDir}/jfr/${byepr
 )}")
 
 def scalableLuxRuntime = configurations.detachedConfiguration(
-        dependencies.create('curse.maven:scalablelux-1055925:6952385')
+        dependencies.create("maven.modrinth:scalablelux:${scalablelux_neoforge_version}")
 )
 scalableLuxRuntime.transitive = false
 
@@ -85,7 +85,7 @@ def lightRestartConfigs = [lightRestartStandard, lightRestartRaw]
 lightRestartConfigs.each { config ->
     config.result = file("${config.root}/light-restart.result")
     config.baseline = file("${config.root}/light-restart.baseline")
-    config.world = file("${config.root}/world")
+    config.world = file("${config.root}/world/dimensions/minecraft/overworld")
 }
 def lightFuzzConfig = [
         sourceDir  : file("${lightFuzzRoot}/source"),
@@ -262,9 +262,10 @@ def assertLightRestartResult = { Map config, String expected ->
     if (config.gcFree.toBoolean()) {
         File log = file("${config.root}/logs/latest.log")
         String text = log.isFile() ? log.getText('UTF-8') : ''
-        if (!text.contains('Registered ByePregen GC-free worldgen chunk serializer with C2ME')
+        if (!text.contains('ByePregen GC-free raw chunk save is using C2ME IDirectStorage')
+                || !text.contains('ByePregen GC-free raw chunk save intercepted C2ME ReadFromDisk')
                 || !text.contains('CAN_USE_RAW_SAVE=true')) {
-            throw new GradleException("C2ME raw serializer was not exercised: ${log}")
+            throw new GradleException("C2ME core raw serializer was not exercised: ${log}")
         }
     }
 }
@@ -303,7 +304,7 @@ def registerLightRestartDiskTask = { Map options ->
     tasks.register(options.taskName, JavaExec) {
         group = 'verification'
         dependsOn(options.prerequisite)
-        classpath = sourceSets.worldgenHarness.runtimeClasspath
+        byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.worldgenHarness)
         mainClass.set('com.moepus.byepregen.test.LightRestartDiskVerifier')
         args options.config.world.absolutePath, options.relightLightOn.toString()
     }
@@ -397,7 +398,7 @@ tasks.register('prepareLightGoldenRelight', JavaExec) {
     group = 'verification'
     description = 'Copies one source terrain world into vanilla/YA worlds and strips saved light data.'
     dependsOn('runLightGoldenSource')
-    classpath = sourceSets.worldgenHarness.runtimeClasspath
+    byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.worldgenHarness)
     mainClass.set('com.moepus.byepregen.test.LightGoldenPrepareRelight')
     args file("${lightGoldenConfig.sourceDir}/world").absolutePath,
             file("${lightGoldenConfig.vanillaDir}/world").absolutePath,
@@ -447,7 +448,7 @@ tasks.register('diffLightGolden', JavaExec) {
     group = 'verification'
     description = 'Compares saved BlockLight/SkyLight section data between two generated worlds.'
     mustRunAfter('runLightGoldenYA', 'runLightGoldenRelightYA')
-    classpath = sourceSets.worldgenHarness.runtimeClasspath
+    byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.worldgenHarness)
     mainClass.set('com.moepus.byepregen.test.LightGoldenDiff')
     args lightGoldenConfig.expectedWorld, lightGoldenConfig.actualWorld
     configureLightDiffProperties(delegate, [
@@ -480,6 +481,7 @@ byepregenPrepareRunTask('runLightFuzzSource', [
                 gcFree                    : lightGoldenConfig.gcFree,
                 clearWorld                : true,
                 flatWorld                 : lightFuzzConfig.variant != 'blackout',
+                densityColumnCompiler     : lightFuzzConfig.variant == 'blackout',
                 serverRuntimeArenaPalette : 'false',
         ],
 ])
@@ -488,7 +490,7 @@ tasks.register('prepareLightFuzzWorlds', JavaExec) {
     group = 'verification'
     description = 'Copies one source terrain world into vanilla/YA fuzz worlds and strips saved light data.'
     dependsOn('runLightFuzzSource')
-    classpath = sourceSets.worldgenHarness.runtimeClasspath
+    byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.worldgenHarness)
     mainClass.set('com.moepus.byepregen.test.LightGoldenPrepareRelight')
     args file("${lightFuzzConfig.sourceDir}/world").absolutePath,
             file("${lightFuzzConfig.vanillaDir}/world").absolutePath,
@@ -526,7 +528,7 @@ tasks.register('diffLightFuzz', JavaExec) {
     group = 'verification'
     description = 'Compares saved light data after deterministic block-update light fuzzing.'
     mustRunAfter('runLightFuzzYA')
-    classpath = sourceSets.worldgenHarness.runtimeClasspath
+    byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.worldgenHarness)
     mainClass.set('com.moepus.byepregen.test.LightGoldenDiff')
     args file("${lightFuzzConfig.vanillaDir}/world").absolutePath,
             file("${lightFuzzConfig.yaDir}/world").absolutePath

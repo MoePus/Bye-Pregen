@@ -1,0 +1,202 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.neoforged.moddev'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://moepus.github.io/MixinLite/' }
+    maven { url = 'https://api.modrinth.com/maven' }
+    maven {
+        name = 'Sinytra'
+        url = 'https://maven.sinytra.org/'
+    }
+}
+
+sourceSets {
+    startupHarness {
+        java.setSrcDirs(['src/startupHarness/java', project(':common').file('src/harnessCommon/java')])
+        resources.setSrcDirs(['src/startupHarness/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    surfaceLinkageHarness {
+        java.setSrcDirs(['src/surfaceLinkageHarness/java', project(':common').file('src/harnessCommon/java')])
+        resources.setSrcDirs(['src/surfaceLinkageHarness/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    surfacePackagedRun {
+        java.setSrcDirs([])
+        resources.setSrcDirs([])
+    }
+    surfaceTest {
+        java.setSrcDirs(['src/surfaceTest/java', project(':common').file('src/harnessCommon/java')])
+        resources.setSrcDirs(['src/surfaceTest/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    worldgenHarness {
+        java.setSrcDirs(['src/worldgenHarness/java', project(':common').file('src/harnessCommon/java')])
+        resources.setSrcDirs(['src/worldgenHarness/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    benchmark {
+        java.setSrcDirs(['src/benchmark/java'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    startupHarnessCompileOnly.extendsFrom(compileOnly)
+    startupHarnessAnnotationProcessor.extendsFrom(annotationProcessor)
+    surfaceLinkageHarnessCompileOnly.extendsFrom(compileOnly)
+    surfaceLinkageHarnessAnnotationProcessor.extendsFrom(annotationProcessor)
+    surfaceTestCompileOnly.extendsFrom(compileOnly)
+    surfaceTestAnnotationProcessor.extendsFrom(annotationProcessor)
+    worldgenHarnessCompileOnly.extendsFrom(compileOnly)
+    worldgenHarnessAnnotationProcessor.extendsFrom(annotationProcessor)
+    benchmarkCompileOnly.extendsFrom(compileOnly)
+    benchmarkAnnotationProcessor.extendsFrom(annotationProcessor)
+}
+
+def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
+        .map(Integer::parseInt)
+        .orElse(java_version as int)
+ext.byepregenRunJavaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
+}
+
+neoForge {
+    enable {
+        version = neoforge_version
+        disableRecompilation = true
+    }
+    def accessTransformer = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (accessTransformer.exists()) {
+        accessTransformers.from(accessTransformer.absolutePath)
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+            sourceSet(project(':common').sourceSets.main)
+        }
+        byepregen_startup_harness {
+            sourceSet(sourceSets.startupHarness)
+        }
+        byepregen_surface_test {
+            sourceSet(sourceSets.surfaceTest)
+        }
+        byepregen_worldgen_harness {
+            sourceSet(sourceSets.worldgenHarness)
+        }
+    }
+    runs {
+        configureEach {
+            systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
+            ideName = "NeoForge ${name.capitalize()} (${project.path})"
+        }
+        client {
+            client()
+            loadedMods.set([neoForge.mods.named(mod_id).get()] as Set)
+            gameDirectory = file('runs/client')
+        }
+        server {
+            server()
+            loadedMods.set([neoForge.mods.named(mod_id).get()] as Set)
+            gameDirectory = file('runs/server')
+            programArgument '--nogui'
+        }
+    }
+}
+
+def worldgenValidationTasks = [
+        'runTestWorldGen', 'runtimeCheck', 'ciCheck',
+        'runArenaPaletteDifferential', 'testArenaPaletteDifferential',
+        'runChunkNbtParity', 'testChunkNbtParity',
+        'runFastTickRuntime', 'testFastTickRuntime',
+]
+def requestedValidationTasks = gradle.startParameter.taskNames.collect {
+    it.tokenize(':').last()
+}
+def worldgenValidationRequested = requestedValidationTasks.any {
+    it in worldgenValidationTasks
+            || it.startsWith('runLight')
+            || it.startsWith('testYALight')
+            || it.startsWith('prepareLight')
+            || it.startsWith('diffLight')
+            || it.startsWith('verifyLight')
+}
+def fastTickRuntimeRequested = requestedValidationTasks.any {
+    it in ['runFastTickRuntime', 'testFastTickRuntime', 'runtimeCheck', 'ciCheck']
+}
+def optionalRuntimeEnabled = providers.gradleProperty('byepregen.enableOptionalRuntime')
+        .map(String::toBoolean)
+        .orElse(false)
+        .get()
+
+dependencies {
+    implementation("org.mixinlite:mixinlite:${mixinlite_version}")
+    annotationProcessor("org.mixinlite:mixinlite:${mixinlite_version}")
+    jarJar("org.mixinlite:mixinlite:${mixinlite_version}")
+    compileOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}")
+
+    if (optionalRuntimeEnabled) {
+        runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_neoforge_version}")
+        runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_neoforge_version}")
+        runtimeOnly("maven.modrinth:lithium:${lithium_neoforge_version}")
+        runtimeOnly("maven.modrinth:sodium:${sodium_neoforge_version}")
+        runtimeOnly("maven.modrinth:architectury-api:${architectury_neoforge_version}")
+        runtimeOnly("maven.modrinth:chunky:${chunky_neoforge_version}")
+    } else if (worldgenValidationRequested) {
+        runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_neoforge_version}")
+        runtimeOnly("maven.modrinth:chunky:${chunky_neoforge_version}")
+        if (fastTickRuntimeRequested) {
+            runtimeOnly("maven.modrinth:lithium:${lithium_neoforge_version}")
+        }
+    }
+
+    if (providers.gradleProperty('byepregen.enableConnectorRuntime').map(String::toBoolean).orElse(false).get()) {
+        implementation("org.sinytra.launchpad:launchpad:${launchpad_version}")
+        implementation("org.sinytra.forgified-fabric-api:forgified-fabric-api:${forgified_fabric_api_version}")
+        implementation("org.sinytra:connector:${connector_version}")
+        runtimeOnly("maven.modrinth:voxy:${voxy_fabric_version}")
+    }
+}
+
+apply from: rootProject.file('gradle/byepregen-test-config.gradle')
+apply from: rootProject.file('gradle/byepregen-server-fixtures.gradle')
+apply from: rootProject.file('gradle/byepregen-worldgen-run-support.gradle')
+apply from: rootProject.file('gradle/byepregen-startup-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-packaged-surface-linkage.gradle')
+apply from: rootProject.file('gradle/byepregen-worldgen-smoke.gradle')
+apply from: rootProject.file('gradle/byepregen-light-verification.gradle')
+
+def runtimeCheck = tasks.register('runtimeCheck') {
+    group = 'verification'
+    description = 'Runs packaged Surface, fast tick, and radius-16 worldgen smoke checks.'
+    dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen', 'testFastTickRuntime')
+}
+
+tasks.register('ciCheck') {
+    group = 'verification'
+    description = 'Runs production, startup, and runtime verification for continuous integration.'
+    dependsOn(tasks.named('check'), tasks.named('startupCheck'), runtimeCheck)
+}
+
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes.attribute(loaderAttribute, 'neoforge')
+    }
+}
+sourceSets.configureEach {
+    [compileClasspathConfigurationName, runtimeClasspathConfigurationName,
+     getTaskName(null, 'jarJar')].each { variant ->
+        configurations.named(variant) {
+            attributes.attribute(loaderAttribute, 'neoforge')
+        }
+    }
+}

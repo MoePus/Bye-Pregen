@@ -10,6 +10,16 @@ ext.byepregenSanitizeRunName = { String value ->
     value.replaceAll('[^0-9A-Za-z._-]', '_')
 }
 
+def standaloneMinecraftJar = project(':common').layout.buildDirectory.file(
+        "moddev/artifacts/vanilla-${project.neo_form_version}.jar"
+)
+ext.byepregenUseStandaloneMinecraftClasspath = { JavaExec task, SourceSet sourceSet ->
+    task.dependsOn(':common:createMinecraftArtifacts')
+    task.classpath = sourceSet.runtimeClasspath.filter { File entry ->
+        !entry.name.startsWith('minecraft-patched-')
+    } + files(standaloneMinecraftJar)
+}
+
 def jfrSettings = byepregenProp('byepregenJfrSettings', 'profile')
 
 ext.byepregenWorldgenTestConfig = { Map options ->

@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "accessor.server.chunk.ChunkMapUnloadAccessor"
+  ]
+}

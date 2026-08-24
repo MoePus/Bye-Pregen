@@ -1,0 +1,183 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.fabricmc.fabric-loom'
+}
+
+repositories {
+    maven { url = 'https://moepus.github.io/MixinLite/' }
+    maven { url = 'https://api.modrinth.com/maven' }
+}
+
+sourceSets {
+    attachmentHarness {
+        java.setSrcDirs(['src/attachmentHarness/java'])
+        resources.setSrcDirs(['src/attachmentHarness/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    attachmentHarnessCompileOnly.extendsFrom(compileOnly)
+    attachmentHarnessImplementation.extendsFrom(implementation)
+    attachmentHarnessRuntimeOnly.extendsFrom(runtimeOnly)
+}
+
+def attachmentValidationTasks = [
+        'runAttachmentRawWrite',
+        'runAttachmentRawVerify',
+        'testAttachmentRawRoundTrip',
+]
+def attachmentValidationRequested = gradle.startParameter.taskNames.any {
+    it.tokenize(':').last() in attachmentValidationTasks
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}")
+    implementation("org.mixinlite:mixinlite:${mixinlite_version}")
+    include("org.mixinlite:mixinlite:${mixinlite_version}")
+
+    implementation('com.electronwill.night-config:core:3.8.3')
+    implementation('com.electronwill.night-config:toml:3.8.3')
+    include('com.electronwill.night-config:core:3.8.3')
+    include('com.electronwill.night-config:toml:3.8.3')
+
+    if (providers.gradleProperty('byepregen.enableOptionalRuntime').map(String::toBoolean).orElse(false).get()) {
+        runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
+        runtimeOnly("maven.modrinth:c2me-fabric:${c2me_fabric_version}")
+        runtimeOnly("maven.modrinth:voxy:${voxy_fabric_version}")
+        runtimeOnly("maven.modrinth:lithium:${lithium_fabric_version}")
+        runtimeOnly("maven.modrinth:sodium:${sodium_fabric_version}")
+        runtimeOnly("maven.modrinth:architectury-api:${architectury_fabric_version}")
+        runtimeOnly("maven.modrinth:chunky:${chunky_fabric_version}")
+    } else if (attachmentValidationRequested) {
+        runtimeOnly("maven.modrinth:c2me-fabric:${c2me_fabric_version}")
+    }
+}
+
+loom {
+    def accessWidener = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (accessWidener.exists()) {
+        accessWidenerPath.set(accessWidener)
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+            sourceSet(project(':common').sourceSets.main)
+        }
+        byepregen_attachment_harness {
+            sourceSet(sourceSets.attachmentHarness)
+        }
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+        attachmentRawWrite {
+            server()
+            setConfigName('Fabric Attachment Raw Write')
+            ideConfigGenerated(false)
+            source(sourceSets.attachmentHarness)
+            runDir('run/attachment-raw-roundtrip')
+            programArgs('--nogui')
+            vmArgs(
+                    '-Dbyepregen.testConfig=true',
+                    '-Dbyepregen.testConfig.chunk-saving.gc-free-worldgen=True',
+                    '-Dbyepregen.attachmentHarness.phase=write',
+                    "-Dbyepregen.attachmentHarness.result=${file('run/attachment-raw-roundtrip/attachment.result').absolutePath}"
+            )
+        }
+        attachmentRawVerify {
+            server()
+            setConfigName('Fabric Attachment Raw Verify')
+            ideConfigGenerated(false)
+            source(sourceSets.attachmentHarness)
+            runDir('run/attachment-raw-roundtrip')
+            programArgs('--nogui')
+            vmArgs(
+                    '-Dbyepregen.testConfig=true',
+                    '-Dbyepregen.testConfig.chunk-saving.gc-free-worldgen=True',
+                    '-Dbyepregen.attachmentHarness.phase=verify',
+                    "-Dbyepregen.attachmentHarness.result=${file('run/attachment-raw-roundtrip/attachment.result').absolutePath}"
+            )
+        }
+    }
+}
+
+def attachmentRunDir = file('run/attachment-raw-roundtrip')
+def attachmentResult = file("${attachmentRunDir}/attachment.result")
+def prepareAttachmentServer = {
+    attachmentRunDir.mkdirs()
+    file("${attachmentRunDir}/eula.txt").setText('eula=true\n', 'UTF-8')
+    file("${attachmentRunDir}/server.properties").setText(
+            'level-name=world\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                    'view-distance=2\nsimulation-distance=2\nspawn-protection=0\n',
+            'UTF-8'
+    )
+}
+
+tasks.matching { it.name == 'runAttachmentRawWrite' }.configureEach {
+    group = 'verification'
+    description = 'Writes a persistent Fabric chunk attachment through C2ME raw serialization.'
+    doFirst {
+        delete(attachmentRunDir)
+        prepareAttachmentServer()
+    }
+    doLast {
+        String result = attachmentResult.isFile() ? attachmentResult.getText('UTF-8').trim() : ''
+        String log = file("${attachmentRunDir}/logs/latest.log").getText('UTF-8')
+        if (result != 'WRITE_PASS'
+                || !log.contains('ByePregen GC-free raw chunk save is using C2ME IDirectStorage')
+                || !log.contains('ByePregen GC-free raw chunk save intercepted C2ME ReadFromDisk')) {
+            throw new GradleException("Fabric attachment raw write failed: ${result}")
+        }
+    }
+}
+
+tasks.matching { it.name == 'runAttachmentRawVerify' }.configureEach {
+    group = 'verification'
+    description = 'Reloads a persistent Fabric chunk attachment written by GC-free serialization.'
+    mustRunAfter('runAttachmentRawWrite')
+    doFirst {
+        delete(attachmentResult)
+        prepareAttachmentServer()
+    }
+    doLast {
+        String result = attachmentResult.isFile() ? attachmentResult.getText('UTF-8').trim() : ''
+        if (result != 'VERIFY_PASS') {
+            throw new GradleException("Fabric attachment raw reload failed: ${result}")
+        }
+    }
+}
+
+tasks.register('testAttachmentRawRoundTrip') {
+    group = 'verification'
+    description = 'Verifies persistent Fabric chunk attachments across a C2ME GC-free restart.'
+    dependsOn('runAttachmentRawWrite', 'runAttachmentRawVerify')
+}
+
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements',
+ 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named(variant) {
+        attributes.attribute(loaderAttribute, 'fabric')
+    }
+}
+sourceSets.configureEach {
+    [compileClasspathConfigurationName, runtimeClasspathConfigurationName].each { variant ->
+        configurations.named(variant) {
+            attributes.attribute(loaderAttribute, 'fabric')
+        }
+    }
+}

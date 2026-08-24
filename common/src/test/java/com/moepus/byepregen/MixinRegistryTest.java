@@ -1,0 +1,469 @@
+package com.moepus.byepregen;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.moepus.byepregen.config.Config;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
+
+final class MixinRegistryTest {
+    private static final String MIXIN_PREFIX = "com.moepus.byepregen.mixin.";
+    private static final String FAST_TICK_PREFIX = MIXIN_PREFIX + "server.fasttick.";
+    private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
+    private static final String GATE_DESCRIPTOR = Type.getDescriptor(MixinGate.class);
+    private static final String UNIQUE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Unique;";
+    private static final String METHOD_SCOPE_DESCRIPTOR = "Lorg/mixinlite/injector/MethodScope;";
+    private static final String WRAP_OPERATION_DESCRIPTOR =
+            "Lcom/llamalad7/mixinextras/injector/wrapoperation/WrapOperation;";
+    private static final Set<String> INJECTION_DESCRIPTORS = Set.of(
+            "Lcom/llamalad7/mixinextras/injector/ModifyExpressionValue;",
+            WRAP_OPERATION_DESCRIPTOR,
+            "Lorg/mixinlite/injector/InjectLite;",
+            METHOD_SCOPE_DESCRIPTOR,
+            "Lorg/spongepowered/asm/mixin/injection/Inject;",
+            "Lorg/spongepowered/asm/mixin/injection/ModifyArg;",
+            "Lorg/spongepowered/asm/mixin/injection/ModifyConstant;",
+            "Lorg/spongepowered/asm/mixin/injection/ModifyVariable;",
+            "Lorg/spongepowered/asm/mixin/injection/Redirect;"
+    );
+    private static final EnumMap<MixinFeature, Integer> FEATURE_COUNTS = featureCounts();
+    private static final Map<String, CompatGateContract> COMPAT_GATE_CONTRACTS = Map.of(
+            MIXIN_PREFIX + "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin",
+            new CompatGateContract(MixinFeature.ARENA, "zfastnoise"),
+            MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin",
+            new CompatGateContract(MixinFeature.ARENA, "voxy"),
+            MIXIN_PREFIX + "chunkio.compat.c2me.C2MEChunkSavingCompressionMixin",
+            new CompatGateContract(MixinFeature.NONE, "c2me"),
+            MIXIN_PREFIX + "chunkio.compat.c2me.C2MEReadFromDiskGcFreeSaveMixin",
+            new CompatGateContract(MixinFeature.GC_FREE_RAW_CHUNK_IO, "c2me"),
+            MIXIN_PREFIX + "chunksave.compat.architectury.ArchitecturyEventImplAccessor",
+            new CompatGateContract(MixinFeature.GC_FREE_CHUNK_SAVE, "architectury"),
+            MIXIN_PREFIX + "palette.compat.lithium.LithiumHashPaletteMixin",
+            new CompatGateContract(MixinFeature.NONE, "lithium"),
+            MIXIN_PREFIX + "postprocess.compat.c2me.C2MEServerBlockTickingMixin",
+            new CompatGateContract(MixinFeature.NONE, "c2me"),
+            MIXIN_PREFIX + "surface.compat.fastnoise.FastNoiseSurfaceOwnershipMixin",
+            new CompatGateContract(MixinFeature.NONE, "zfastnoise")
+    );
+
+    @Test
+    void registryIsCompleteAndReferencesCompiledMixins() throws Exception {
+        Registry registry = readRegistry();
+        Set<String> registered = new LinkedHashSet<>(registry.classes());
+
+        assertEquals(registry.classes().size(), registered.size(), "duplicate mixin registry entries");
+        for (String className : registered) {
+            assertNotNull(resourceUrl(className), "registered mixin has no compiled class: " + className);
+        }
+        assertEquals(discoverCompiledMixins(), registered, "mixin registry is missing or has stale classes");
+    }
+
+    @Test
+    void gateConfigFlagsAreValidAndComplete() throws Exception {
+        EnumMap<ConfigFlag, Integer> actual = new EnumMap<>(ConfigFlag.class);
+        for (String className : readRegistry().classes()) {
+            ClassNode node = readClass(className);
+            AnnotationNode gate = annotation(node, GATE_DESCRIPTOR);
+            ConfigFlag flag = annotationConfigFlag(gate);
+            if (flag != ConfigFlag.ALWAYS) {
+                actual.merge(flag, 1, Integer::sum);
+            }
+        }
+        assertEquals(Map.of(
+                ConfigFlag.DISABLE_WORLDGEN_FEATURES, 1,
+                ConfigFlag.PLACED_FEATURES, 11,
+                ConfigFlag.FAST_CHUNK_TICKING, 4,
+                ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 2,
+                ConfigFlag.CLIENT_ARENA, 1
+        ), actual);
+    }
+
+    @Test
+    void featureMetadataIsValidAndComplete() throws Exception {
+        EnumMap<MixinFeature, Integer> actual = new EnumMap<>(MixinFeature.class);
+        for (String className : readRegistry().classes()) {
+            AnnotationNode gate = annotation(readClass(className), GATE_DESCRIPTOR);
+            MixinFeature feature = annotationFeature(gate);
+            if (feature != MixinFeature.NONE) {
+                actual.merge(feature, 1, Integer::sum);
+            }
+        }
+
+        assertEquals(FEATURE_COUNTS, actual);
+    }
+
+    @Test
+    void privateInjectedAndUniqueMembersUseProjectPrefix() throws Exception {
+        List<String> violations = new ArrayList<>();
+        for (String className : readRegistry().classes()) {
+            ClassNode node = readClass(className);
+            node.fields.stream()
+                    .filter(field -> isPrivate(field.access))
+                    .filter(field -> hasAnnotation(field.visibleAnnotations, UNIQUE_DESCRIPTOR)
+                            || hasAnnotation(field.invisibleAnnotations, UNIQUE_DESCRIPTOR))
+                    .filter(field -> !field.name.startsWith("byepregen$"))
+                    .forEach(field -> violations.add(className + "#" + field.name));
+            node.methods.stream()
+                    .filter(method -> isPrivate(method.access))
+                    .filter(MixinRegistryTest::isInjectedOrUnique)
+                    .filter(method -> !method.name.startsWith("byepregen$"))
+                    .forEach(method -> violations.add(className + "#" + method.name + method.desc));
+        }
+
+        assertTrue(violations.isEmpty(), "private mixin members lack byepregen$ prefix: " + violations);
+    }
+
+    @Test
+    void specializedMixinsKeepMetadataPolicies() throws Exception {
+        AnnotationNode levelChunk = annotation(
+                readClass(MIXIN_PREFIX + "arena.LevelChunkArenaMixin"), GATE_DESCRIPTOR);
+        AnnotationNode voxy = annotation(
+                readClass(MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin"),
+                GATE_DESCRIPTOR);
+        AnnotationNode rawChunkStorage = annotation(
+                readClass(MIXIN_PREFIX + "chunkio.ChunkStorageRawMixin"), GATE_DESCRIPTOR);
+        AnnotationNode worldgenSectionCache = annotation(readClass(
+                MIXIN_PREFIX + "worldgen.cache.WorldGenRegionSectionCacheMixin"), GATE_DESCRIPTOR);
+
+        assertEquals(ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, annotationConfigFlag(levelChunk));
+        assertEquals(ConfigFlag.CLIENT_ARENA, annotationConfigFlag(voxy));
+        assertEquals(MixinFeature.GC_FREE_RAW_CHUNK_IO, annotationFeature(rawChunkStorage));
+        assertEquals(ConfigFlag.ALWAYS, annotationConfigFlag(worldgenSectionCache));
+    }
+
+    @Test
+    void paletteRawIdMixinsKeepAlwaysOnPolicy() throws Exception {
+        for (String name : List.of(
+                "palette.GlobalPaletteMixin",
+                "palette.HashMapPaletteMixin",
+                "palette.LinearPaletteMixin",
+                "palette.PalettedContainerRawIdMixin",
+                "palette.SingleValuePaletteMixin",
+                "palette.compat.lithium.LithiumHashPaletteMixin"
+        )) {
+            AnnotationNode gate = annotation(readClass(MIXIN_PREFIX + name), GATE_DESCRIPTOR);
+            assertEquals(MixinFeature.NONE, annotationFeature(gate), name);
+        }
+    }
+
+    @Test
+    void fastNoiseSurfaceOwnershipWrapsOutsideDefaultOrder() throws Exception {
+        ClassNode type = readClass(
+                MIXIN_PREFIX + "surface.compat.fastnoise.FastNoiseSurfaceOwnershipMixin");
+        MethodNode handler = type.methods.stream()
+                .filter(method -> method.name.equals("byepregen$selectSurfaceImplementation"))
+                .findFirst()
+                .orElseThrow();
+        AnnotationNode wrap = findAnnotation(handler.invisibleAnnotations, WRAP_OPERATION_DESCRIPTOR);
+        if (wrap == null) wrap = findAnnotation(handler.visibleAnnotations, WRAP_OPERATION_DESCRIPTOR);
+
+        assertNotNull(wrap, "FastNoise surface ownership handler must use WrapOperation");
+        assertEquals(1100, annotationValue(wrap, "order"));
+    }
+
+    @Test
+    void fastTickMixinsKeepDistinctConflictPolicies() throws Exception {
+        AnnotationNode iteration = gate("ServerChunkCacheTickIterationMixin");
+        AnnotationNode naturalSpawner = gate("NaturalSpawnerChunkCacheMixin");
+        AnnotationNode weatherTick = gate("ServerLevelWeatherTickMixin");
+        AnnotationNode cacheAccessor = annotation(readClass(
+                MIXIN_PREFIX + "accessor.server.tick.ServerChunkCacheTickAccessor"), GATE_DESCRIPTOR);
+
+        assertFastTickGate(iteration, List.of());
+        assertFastTickGate(naturalSpawner, List.of());
+        assertFastTickGate(weatherTick, List.of());
+        assertFastTickGate(cacheAccessor, List.of());
+    }
+
+    private static void assertFastTickGate(AnnotationNode gate, List<String> conflicts) {
+        assertEquals(ConfigFlag.FAST_CHUNK_TICKING, annotationConfigFlag(gate));
+        assertEquals(conflicts, annotationStrings(gate, "conflictingMods"));
+    }
+
+    @Test
+    void densityMarkerUsesOptionalMethodScopeForC2meDelegate() throws Exception {
+        ClassNode type = readClass(MIXIN_PREFIX + "dfc.DensityMarkerTokenMixin");
+        MethodNode enter = type.methods.stream()
+                .filter(method -> method.name.equals("byepregen$enterWithDelegate"))
+                .findFirst()
+                .orElseThrow();
+        AnnotationNode scope = findAnnotation(enter.invisibleAnnotations, METHOD_SCOPE_DESCRIPTOR);
+        if (scope == null) scope = findAnnotation(enter.visibleAnnotations, METHOD_SCOPE_DESCRIPTOR);
+
+        assertNotNull(scope, "C2ME delegate token propagation must use MethodScope");
+        assertEquals(List.of("c2me$withDelegate"), annotationStrings(scope, "method"));
+        assertEquals("byepregen$exitWithDelegate", annotationString(scope, "exit"));
+        assertEquals(0, annotationValue(scope, "require"));
+        assertEquals(false, annotationValue(scope, "remap"));
+    }
+
+    @Test
+    void compatMixinsKeepExactOptionalDependencyGates() throws Exception {
+        Set<String> registeredCompat = new HashSet<>();
+        for (String className : readRegistry().classes()) {
+            if (className.contains(".compat.")) {
+                registeredCompat.add(className);
+            }
+        }
+        assertEquals(COMPAT_GATE_CONTRACTS.keySet(), registeredCompat);
+
+        for (Map.Entry<String, CompatGateContract> entry : COMPAT_GATE_CONTRACTS.entrySet()) {
+            assertCompatGate(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static void assertCompatGate(
+            String mixinClassName,
+            CompatGateContract contract
+    ) throws Exception {
+        String targetClassName = "contract.Target";
+        AnnotationNode gate = annotation(readClass(mixinClassName), GATE_DESCRIPTOR);
+        assertEquals(contract.feature(), annotationFeature(gate), mixinClassName);
+        assertEquals(List.of(contract.requiredMod()), annotationStrings(gate, "requiredMods"), mixinClassName);
+        assertEquals(List.of(), annotationStrings(gate, "conflictingMods"), mixinClassName);
+        Config enabledConfig = configEnabling(annotationConfigFlag(gate));
+
+        assertFalse(evaluateGate(mixinClassName, targetClassName,
+                new GateEnvironment(Set.of(), Set.of(targetClassName), enabledConfig)), mixinClassName);
+        assertFalse(evaluateGate(mixinClassName, targetClassName,
+                new GateEnvironment(Set.of(contract.requiredMod()), Set.of(), enabledConfig)), mixinClassName);
+        assertTrue(evaluateGate(
+                mixinClassName,
+                targetClassName,
+                new GateEnvironment(
+                        Set.of(contract.requiredMod()), Set.of(targetClassName), enabledConfig)
+        ), mixinClassName);
+    }
+
+    @Test
+    void c2mePostprocessPathsAreMutuallyExclusive() throws Exception {
+        AnnotationNode vanilla = annotation(readClass(
+                MIXIN_PREFIX + "postprocess.ChunkStatusPostProcessingPreNormMixin"), GATE_DESCRIPTOR);
+        AnnotationNode c2me = annotation(readClass(
+                MIXIN_PREFIX + "postprocess.compat.c2me.C2MEServerBlockTickingMixin"), GATE_DESCRIPTOR);
+
+        assertEquals(List.of("c2me"), annotationStrings(vanilla, "conflictingMods"));
+        assertEquals(List.of("c2me"), annotationStrings(c2me, "requiredMods"));
+    }
+
+    private static boolean evaluateGate(
+            String mixinClassName,
+            String targetClassName,
+            GateEnvironment environment
+    ) throws Exception {
+        MixinGateEvaluator evaluator = new MixinGateEvaluator(
+                MixinRegistryTest::readClass,
+                environment.mods()::contains,
+                environment.classes()::contains
+        );
+        return evaluator.evaluate(
+                targetClassName, mixinClassName, environment.config()).annotationEnabled();
+    }
+
+    private static Config configEnabling(ConfigFlag flag) {
+        return flag == ConfigFlag.CLIENT_ARENA
+                ? new ConfigTestBuilder().clientArena(true).build()
+                : new Config();
+    }
+
+    private static AnnotationNode gate(String simpleName) throws IOException {
+        return annotation(readClass(FAST_TICK_PREFIX + simpleName), GATE_DESCRIPTOR);
+    }
+
+    private static Registry readRegistry() throws IOException {
+        try (InputStream input = MixinRegistryTest.class.getResourceAsStream("/byepregen.mixins.json")) {
+            assertNotNull(input, "missing byepregen.mixins.json");
+            JsonObject json = JsonParser.parseReader(new java.io.InputStreamReader(
+                    input, java.nio.charset.StandardCharsets.UTF_8
+            )).getAsJsonObject();
+            String packageName = json.get("package").getAsString();
+            List<String> classes = new ArrayList<>();
+            addClasses(classes, packageName, json.getAsJsonArray("mixins"));
+            addClasses(classes, packageName, json.getAsJsonArray("client"));
+            return new Registry(List.copyOf(classes));
+        }
+    }
+
+    private static void addClasses(List<String> target, String packageName, JsonArray entries) {
+        if (entries == null) {
+            return;
+        }
+        entries.forEach(entry -> target.add(packageName + "." + entry.getAsString()));
+    }
+
+    private static Set<String> discoverCompiledMixins() throws IOException, URISyntaxException {
+        Path packageRoot = Path.of(MixinRegistryTest.class.getResource("/com/moepus/byepregen/mixin").toURI());
+        Set<String> mixins = new LinkedHashSet<>();
+        try (var paths = Files.walk(packageRoot)) {
+            paths.filter(path -> path.toString().endsWith(".class"))
+                    .map(packageRoot::relativize)
+                    .map(Path::toString)
+                    .map(name -> MIXIN_PREFIX + name.substring(0, name.length() - 6).replace('\\', '.'))
+                    .filter(MixinRegistryTest::hasMixinAnnotation)
+                    .forEach(mixins::add);
+        }
+        return mixins;
+    }
+
+    private static boolean hasMixinAnnotation(String className) {
+        try {
+            return annotation(readClass(className), MIXIN_DESCRIPTOR) != null;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Cannot inspect " + className, exception);
+        }
+    }
+
+    private static ClassNode readClass(String className) throws IOException {
+        try (InputStream input = resource(className)) {
+            if (input == null) {
+                throw new IOException("Missing class resource " + className);
+            }
+            ClassNode node = new ClassNode();
+            new ClassReader(input).accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
+            return node;
+        }
+    }
+
+    private static InputStream resource(String className) {
+        return MixinRegistryTest.class.getResourceAsStream("/" + className.replace('.', '/') + ".class");
+    }
+
+    private static URL resourceUrl(String className) {
+        return MixinRegistryTest.class.getResource("/" + className.replace('.', '/') + ".class");
+    }
+
+    private static AnnotationNode annotation(ClassNode node, String descriptor) {
+        AnnotationNode annotation = findAnnotation(node.invisibleAnnotations, descriptor);
+        return annotation != null ? annotation : findAnnotation(node.visibleAnnotations, descriptor);
+    }
+
+    private static AnnotationNode findAnnotation(List<AnnotationNode> annotations, String descriptor) {
+        if (annotations == null) {
+            return null;
+        }
+        return annotations.stream().filter(item -> descriptor.equals(item.desc)).findFirst().orElse(null);
+    }
+
+    private static boolean isPrivate(int access) {
+        return (access & Opcodes.ACC_PRIVATE) != 0;
+    }
+
+    private static boolean isInjectedOrUnique(MethodNode method) {
+        return hasAnnotation(method.visibleAnnotations, UNIQUE_DESCRIPTOR)
+                || hasAnnotation(method.invisibleAnnotations, UNIQUE_DESCRIPTOR)
+                || hasAnyAnnotation(method.visibleAnnotations, INJECTION_DESCRIPTORS)
+                || hasAnyAnnotation(method.invisibleAnnotations, INJECTION_DESCRIPTORS);
+    }
+
+    private static boolean hasAnnotation(List<AnnotationNode> annotations, String descriptor) {
+        return findAnnotation(annotations, descriptor) != null;
+    }
+
+    private static boolean hasAnyAnnotation(List<AnnotationNode> annotations, Set<String> descriptors) {
+        return annotations != null && annotations.stream().anyMatch(item -> descriptors.contains(item.desc));
+    }
+
+    private static String annotationString(AnnotationNode annotation, String name) {
+        if (annotation == null || annotation.values == null) {
+            return "";
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if (name.equals(annotation.values.get(index))) {
+                return (String) annotation.values.get(index + 1);
+            }
+        }
+        return "";
+    }
+
+    private static List<String> annotationStrings(AnnotationNode annotation, String name) {
+        if (annotation == null || annotation.values == null) {
+            return List.of();
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if (name.equals(annotation.values.get(index))) {
+                List<?> values = (List<?>) annotation.values.get(index + 1);
+                return values.stream().map(String.class::cast).toList();
+            }
+        }
+        return List.of();
+    }
+
+    private static Object annotationValue(AnnotationNode annotation, String name) {
+        if (annotation == null || annotation.values == null) return null;
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if (name.equals(annotation.values.get(index))) return annotation.values.get(index + 1);
+        }
+        return null;
+    }
+
+    private static MixinFeature annotationFeature(AnnotationNode annotation) {
+        if (annotation == null || annotation.values == null) {
+            return MixinFeature.NONE;
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if ("feature".equals(annotation.values.get(index))) {
+                String[] value = (String[]) annotation.values.get(index + 1);
+                return MixinFeature.valueOf(value[1]);
+            }
+        }
+        return MixinFeature.NONE;
+    }
+
+    private static ConfigFlag annotationConfigFlag(AnnotationNode annotation) {
+        if (annotation == null || annotation.values == null) {
+            return ConfigFlag.ALWAYS;
+        }
+        for (int index = 0; index < annotation.values.size(); index += 2) {
+            if ("config".equals(annotation.values.get(index))) {
+                String[] value = (String[]) annotation.values.get(index + 1);
+                return ConfigFlag.valueOf(value[1]);
+            }
+        }
+        return ConfigFlag.ALWAYS;
+    }
+
+    private static EnumMap<MixinFeature, Integer> featureCounts() {
+        EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
+        counts.put(MixinFeature.ARENA, 16);
+        counts.put(MixinFeature.DFC, 5);
+        counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 5);
+        counts.put(MixinFeature.GC_FREE_RAW_CHUNK_IO, 7);
+        counts.put(MixinFeature.SURFACE_BIOME_CACHE, 2);
+        counts.put(MixinFeature.SURFACE_RULE_COMPILER, 16);
+        counts.put(MixinFeature.YA_LIGHT, 20);
+        return counts;
+    }
+
+    private record Registry(List<String> classes) {
+    }
+
+    private record CompatGateContract(MixinFeature feature, String requiredMod) {
+    }
+
+    private record GateEnvironment(Set<String> mods, Set<String> classes, Config config) {
+    }
+}

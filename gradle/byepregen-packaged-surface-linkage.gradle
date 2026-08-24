@@ -19,28 +19,13 @@ def opaqueSurfaceTestConfig = byepregenWorldgenTestConfig([
         yaLight     : false,
 ])
 def terraBlenderTestRuntime = configurations.detachedConfiguration(
-        dependencies.create('curse.maven:terrablender-neoforge-940057:6054947')
+        dependencies.create("maven.modrinth:terrablender:${terrablender_neoforge_version}")
 )
 terraBlenderTestRuntime.transitive = false
 
-sourceSets {
-    surfaceLinkageHarness {
-        java.setSrcDirs(['src/surfaceLinkageHarness/java', 'src/harnessCommon/java'])
-        resources.setSrcDirs(['src/surfaceLinkageHarness/resources'])
-        compileClasspath += sourceSets.main.compileClasspath
-    }
-    surfacePackagedRun {
-        java.setSrcDirs([])
-        resources.setSrcDirs([])
-    }
-}
+def commonMainOutput = project(':common').sourceSets.main.output
 sourceSets.surfacePackagedRun.runtimeClasspath = sourceSets.surfacePackagedRun.output +
-        (sourceSets.main.runtimeClasspath - sourceSets.main.output)
-
-configurations {
-    surfaceLinkageHarnessCompileOnly.extendsFrom compileOnly
-    surfaceLinkageHarnessAnnotationProcessor.extendsFrom annotationProcessor
-}
+        (sourceSets.main.runtimeClasspath - sourceSets.main.output - commonMainOutput)
 
 def surfaceLinkageHarnessJar = tasks.register('surfaceLinkageHarnessJar', Jar) {
     group = 'verification'
@@ -76,7 +61,7 @@ tasks.register('compareSurfaceWorlds', JavaExec) {
     group = 'verification'
     description = 'Compares saved Surface block-state, heightmap, and postprocessing hashes.'
     dependsOn(sourceSets.surfaceTest.classesTaskName)
-    classpath = sourceSets.surfaceTest.runtimeClasspath
+    byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.surfaceTest)
     mainClass.set('com.moepus.byepregen.test.SurfaceWorldHash')
     args(
             providers.gradleProperty('byepregenSurfaceExpectedWorld').orElse('').get(),

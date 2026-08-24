@@ -43,7 +43,7 @@ def validateFastTickRuntime = { File root, File result ->
     def requiredResultParts = [
             'PASS\n', 'c2me=true', 'lithium=true', 'servercore=false',
             'iterationMixin=true', 'weatherScope=true', 'cacheSeeding=true',
-            'fallbackList=true', 'radius=16',
+            'directList=true', 'radius=16',
     ]
     if (!requiredResultParts.every { outcome.contains(it) }) {
         throw new GradleException("Fast tick runtime failed:\n${outcome}")
@@ -58,9 +58,11 @@ def validateFastTickRuntime = { File root, File result ->
         String lower = line.toLowerCase(Locale.ROOT)
         fastTickExpectedConflict.every { lower.contains(it) }
     }
-    if (expectedConflicts.size() != 1) {
-        throw new GradleException("Fast tick runtime expected exactly one known overwrite conflict, found "
-                + expectedConflicts.size())
+    if (expectedConflicts.size() > 1 || expectedConflicts.any {
+        !it.toLowerCase(Locale.ROOT).contains('skipping method')
+    }) {
+        throw new GradleException("Fast tick runtime found an unexpected C2ME overwrite conflict:\n"
+                + expectedConflicts.join('\n'))
     }
     def failures = logLines.findAll { line ->
         String lower = line.toLowerCase(Locale.ROOT)
@@ -71,6 +73,7 @@ def validateFastTickRuntime = { File root, File result ->
                 'skipped overwrite', 'overwrite conflict', 'byepregen_fast_tick_runtime_fail',
         ].any { lower.contains(it) }
         boolean expectedConflict = fastTickExpectedConflict.every { lower.contains(it) }
+                && lower.contains('skipping method')
         byepregenLine && failureMarker && !expectedConflict
     }
     if (!failures.isEmpty()) {
@@ -310,6 +313,16 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
         }
         if (worldGenConfig.singleBiome != null) {
             writeSingleBiomeWorldPreset(worldGenConfig.dir, worldGenConfig.singleBiome)
+        }
+    }
+    doLast {
+        if (worldGenConfig.gcFree.toBoolean()) {
+            File log = file("${worldGenConfig.dir}/logs/latest.log")
+            String text = log.isFile() ? log.getText('UTF-8') : ''
+            if (!text.contains('ByePregen GC-free raw chunk save is using C2ME IDirectStorage')
+                    || !text.contains('ByePregen GC-free raw chunk save intercepted C2ME ReadFromDisk')) {
+                throw new GradleException("C2ME core raw serializer was not exercised: ${log}")
+            }
         }
     }
 }

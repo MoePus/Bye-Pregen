@@ -1,0 +1,79 @@
+accessWidener v2 official
+
+extendable class net/minecraft/nbt/CompoundTag
+accessible method net/minecraft/nbt/CompoundTag <init> (Ljava/util/Map;)V
+accessible class net/minecraft/world/level/levelgen/blockpredicates/CombiningPredicate
+accessible class net/minecraft/world/level/chunk/Configuration
+accessible class net/minecraft/world/level/chunk/PalettedContainer$Data
+accessible method net/minecraft/world/level/chunk/PalettedContainer$Data <init> (Lnet/minecraft/world/level/chunk/Configuration;Lnet/minecraft/util/BitStorage;Lnet/minecraft/world/level/chunk/Palette;)V
+accessible field net/minecraft/world/level/chunk/PalettedContainer data Lnet/minecraft/world/level/chunk/PalettedContainer$Data;
+accessible method net/minecraft/world/level/chunk/PalettedContainer createOrReuseData (Lnet/minecraft/world/level/chunk/PalettedContainer$Data;I)Lnet/minecraft/world/level/chunk/PalettedContainer$Data;
+accessible field net/minecraft/world/level/lighting/ChunkSkyLightSources mutablePos1 Lnet/minecraft/core/BlockPos$MutableBlockPos;
+accessible field net/minecraft/world/level/lighting/ChunkSkyLightSources mutablePos2 Lnet/minecraft/core/BlockPos$MutableBlockPos;
+accessible class net/minecraft/world/level/biome/Climate$RTree
+accessible class net/minecraft/world/level/biome/Climate$RTree$Node
+accessible class net/minecraft/world/level/biome/Climate$RTree$SubTree
+accessible class net/minecraft/world/level/biome/Climate$RTree$Leaf
+accessible field net/minecraft/world/level/biome/Climate$ParameterList index Lnet/minecraft/world/level/biome/Climate$RTree;
+accessible field net/minecraft/world/level/biome/Climate$RTree root Lnet/minecraft/world/level/biome/Climate$RTree$Node;
+accessible field net/minecraft/world/level/biome/Climate$RTree lastResult Ljava/lang/ThreadLocal;
+accessible field net/minecraft/world/level/biome/Climate$RTree$Node parameterSpace [Lnet/minecraft/world/level/biome/Climate$Parameter;
+accessible field net/minecraft/world/level/biome/Climate$RTree$SubTree children [Lnet/minecraft/world/level/biome/Climate$RTree$Node;
+accessible method net/minecraft/world/level/biome/Climate$RTree$SubTree <init> (Ljava/util/List;)V
+accessible field net/minecraft/world/level/biome/Climate$RTree$Leaf value Ljava/lang/Object;
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise000 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise001 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise010 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise011 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise100 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise101 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise110 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator noise111 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator valueXZ00 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator valueXZ01 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator valueXZ10 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator valueXZ11 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator valueZ0 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator valueZ1 D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk$NoiseInterpolator value D
+accessible field net/minecraft/world/level/levelgen/NoiseChunk firstNoiseX I
+accessible field net/minecraft/world/level/levelgen/NoiseChunk firstNoiseZ I
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$BlendAlpha
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$BlendDensity
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$BlendDensity <init> (Lnet/minecraft/world/level/levelgen/DensityFunction;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$BlendOffset
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$BeardifierMarker
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Clamp
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$Clamp <init> (Lnet/minecraft/world/level/levelgen/DensityFunction;DD)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Constant
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$Constant <init> (D)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Mapped
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$Mapped <init> (Lnet/minecraft/world/level/levelgen/DensityFunctions$Mapped$Type;Lnet/minecraft/world/level/levelgen/DensityFunction;DD)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Mapped$Type
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Marker
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$Marker <init> (Lnet/minecraft/world/level/levelgen/DensityFunctions$Marker$Type;Lnet/minecraft/world/level/levelgen/DensityFunction;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Marker$Type
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Noise
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$Noise <init> (Lnet/minecraft/world/level/levelgen/DensityFunction$NoiseHolder;DD)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$RangeChoice
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$RangeChoice <init> (Lnet/minecraft/world/level/levelgen/DensityFunction;DDLnet/minecraft/world/level/levelgen/DensityFunction;Lnet/minecraft/world/level/levelgen/DensityFunction;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Shift
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$Shift <init> (Lnet/minecraft/world/level/levelgen/DensityFunction$NoiseHolder;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$ShiftA
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$ShiftA <init> (Lnet/minecraft/world/level/levelgen/DensityFunction$NoiseHolder;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$ShiftB
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$ShiftB <init> (Lnet/minecraft/world/level/levelgen/DensityFunction$NoiseHolder;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$ShiftedNoise
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$ShiftedNoise <init> (Lnet/minecraft/world/level/levelgen/DensityFunction;Lnet/minecraft/world/level/levelgen/DensityFunction;Lnet/minecraft/world/level/levelgen/DensityFunction;DDLnet/minecraft/world/level/levelgen/DensityFunction$NoiseHolder;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$TwoArgumentSimpleFunction
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$TwoArgumentSimpleFunction$Type
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$WeirdScaledSampler
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$WeirdScaledSampler <init> (Lnet/minecraft/world/level/levelgen/DensityFunction;Lnet/minecraft/world/level/levelgen/DensityFunction$NoiseHolder;Lnet/minecraft/world/level/levelgen/DensityFunctions$WeirdScaledSampler$RarityValueMapper;)V
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$YClampedGradient
+accessible method net/minecraft/world/level/levelgen/DensityFunctions$YClampedGradient <init> (IIDD)V
+accessible class net/minecraft/world/level/lighting/BlockLightEngine
+extendable class net/minecraft/world/level/lighting/BlockLightEngine
+accessible class net/minecraft/world/level/lighting/SkyLightEngine
+extendable class net/minecraft/world/level/lighting/SkyLightEngine
+accessible class net/minecraft/server/level/ThreadedLevelLightEngine$TaskType
+accessible method net/minecraft/server/level/ThreadedLevelLightEngine addTask (IILjava/util/function/IntSupplier;Lnet/minecraft/server/level/ThreadedLevelLightEngine$TaskType;Ljava/lang/Runnable;)V

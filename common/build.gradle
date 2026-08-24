@@ -1,0 +1,112 @@
+plugins {
+    id 'multiloader-common'
+    id 'net.neoforged.moddev'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://moepus.github.io/MixinLite/' }
+    maven { url = 'https://api.modrinth.com/maven' }
+}
+
+neoForge {
+    enable {
+        neoFormVersion = neo_form_version
+        disableRecompilation = true
+    }
+    def accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (accessTransformer.exists()) {
+        accessTransformers.from(accessTransformer.absolutePath)
+    }
+}
+
+def c2meCompileBundle = configurations.create('c2meCompileBundle') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+def extractC2meCompileJars = tasks.register('extractC2meCompileJars', Sync) {
+    from({ c2meCompileBundle.collect { zipTree(it) } }) {
+        include('META-INF/jars/*.jar')
+        eachFile { details -> details.path = details.name }
+        includeEmptyDirs = false
+    }
+    into(layout.buildDirectory.dir('c2me-compile-jars'))
+}
+def c2meCompileJars = files(provider {
+    fileTree(extractC2meCompileJars.get().destinationDir) {
+        include('*.jar')
+    }.files
+})
+c2meCompileJars.builtBy(extractC2meCompileJars)
+
+dependencies {
+    compileOnly("net.fabricmc:sponge-mixin:${mixin_version}")
+    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
+    compileOnly("org.mixinlite:mixinlite:${mixinlite_version}")
+    annotationProcessor("org.mixinlite:mixinlite:${mixinlite_version}")
+
+    compileOnly('com.electronwill.night-config:core:3.8.3')
+    compileOnly('com.electronwill.night-config:toml:3.8.3')
+    compileOnly('com.ibm.async:asyncutil:0.1.0')
+    compileOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
+    compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}")
+    add('c2meCompileBundle', "maven.modrinth:c2me-fabric:${c2me_fabric_version}")
+    compileOnly(c2meCompileJars)
+    compileOnly("maven.modrinth:voxy:${voxy_fabric_version}")
+    compileOnly("maven.modrinth:architectury-api:${architectury_fabric_version}")
+
+    testImplementation(platform('org.junit:junit-bom:5.11.3'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testImplementation('com.electronwill.night-config:core:3.8.3')
+    testImplementation('com.electronwill.night-config:toml:3.8.3')
+    testImplementation('org.ow2.asm:asm:9.9.1')
+    testImplementation('org.ow2.asm:asm-tree:9.9.1')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+sourceSets.test {
+    java.srcDir('src/harnessCommon/java')
+    compileClasspath += sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.runtimeClasspath
+}
+
+configurations {
+    testCompileOnly.extendsFrom(compileOnly)
+    testAnnotationProcessor.extendsFrom(annotationProcessor)
+}
+
+configurations {
+    commonJava {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    commonResources {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    commonJava(sourceSets.main.java.sourceDirectories.singleFile)
+    commonResources(sourceSets.main.resources.sourceDirectories.singleFile)
+}
+
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes.attribute(loaderAttribute, 'common')
+    }
+}
+sourceSets.configureEach {
+    [compileClasspathConfigurationName, runtimeClasspathConfigurationName].each { variant ->
+        configurations.named(variant) {
+            attributes.attribute(loaderAttribute, 'common')
+        }
+    }
+}
