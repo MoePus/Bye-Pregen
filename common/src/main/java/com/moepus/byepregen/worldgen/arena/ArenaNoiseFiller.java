@@ -132,6 +132,9 @@ public final class ArenaNoiseFiller {
             this.minBlockY = request.minCellY() * this.cellHeight;
             int blockHeight = request.cellCountY() * this.cellHeight;
             validateLayout(this.cellWidth, this.cellHeight, this.minBlockY, blockHeight);
+            if (this.materialEvaluator.supportsColumnDensity()) {
+                this.materialEvaluator.configureColumnRange(this.minBlockY, blockHeight);
+            }
             this.inverseCellWidth = 1.0D / this.cellWidth;
         }
 
@@ -187,6 +190,9 @@ public final class ArenaNoiseFiller {
             this.arenaNoiseChunk.byepregen$beginArenaColumn(blockZ);
             this.useDensityColumn = this.materialEvaluator.supportsColumnDensity()
                     && this.arenaNoiseChunk.byepregen$prepareArenaDensityColumn(blockX, blockZ);
+            if (this.useDensityColumn) {
+                this.materialEvaluator.prepareColumn(blockX, blockZ);
+            }
             if (!this.hasNoiseBasedAquifer) {
                 this.fillColumnCells(blockX, blockZ);
                 return;

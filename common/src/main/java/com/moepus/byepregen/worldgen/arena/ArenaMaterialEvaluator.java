@@ -11,6 +11,9 @@ final class ArenaMaterialEvaluator {
     private final MaterialRules materialRules;
     private final Aquifer aquifer;
     private final DensityFunction beardifier;
+    private ColumnContextProvider beardifierContexts;
+    private double[] beardifierColumn;
+    private int beardifierMinY;
 
     private ArenaMaterialEvaluator(
             NoiseChunk.BlockStateFiller rootRule,
@@ -47,11 +50,20 @@ final class ArenaMaterialEvaluator {
         return this.materialRules != null && this.materialRules.supportsColumnDensity();
     }
 
+    void configureColumnRange(int minY, int height) {
+        this.beardifierMinY = minY;
+        this.beardifierColumn = new double[height];
+        this.beardifierContexts = new ColumnContextProvider();
+    }
+
+    void prepareColumn(int blockX, int blockZ) {
+        this.beardifierContexts.prepare(blockX, blockZ, this.beardifierMinY);
+        this.beardifier.fillArray(this.beardifierColumn, this.beardifierContexts);
+    }
+
     BlockState calculateWithColumnDensity(DensityFunction.FunctionContext context, double density) {
-        if (!this.supportsColumnDensity()) {
-            throw new IllegalStateException("Material rules do not expose the vanilla aquifer rule");
-        }
-        double finalDensity = density + this.beardifier.compute(context);
+        int beardifierIndex = context.blockY() - this.beardifierMinY;
+        double finalDensity = density + this.beardifierColumn[beardifierIndex];
         BlockState state = this.aquifer.computeSubstance(context, finalDensity);
         if (state != null) {
             return state;
@@ -83,5 +95,36 @@ final class ArenaMaterialEvaluator {
             NoiseChunk.BlockStateFiller[] values,
             boolean supportsColumnDensity
     ) {
+    }
+
+    private static final class ColumnContextProvider implements
+            DensityFunction.ContextProvider, DensityFunction.FunctionContext {
+        private int blockX;
+        private int blockY;
+        private int blockZ;
+        private int minY;
+
+        private void prepare(int blockX, int blockZ, int minY) {
+            this.blockX = blockX;
+            this.blockZ = blockZ;
+            this.minY = minY;
+        }
+
+        @Override
+        public DensityFunction.FunctionContext forIndex(int index) {
+            this.blockY = this.minY + index;
+            return this;
+        }
+
+        @Override
+        public void fillAllDirectly(double[] values, DensityFunction function) {
+            for (int i = 0; i < values.length; ++i) {
+                values[i] = function.compute(this.forIndex(i));
+            }
+        }
+
+        @Override public int blockX() { return this.blockX; }
+        @Override public int blockY() { return this.blockY; }
+        @Override public int blockZ() { return this.blockZ; }
     }
 }
