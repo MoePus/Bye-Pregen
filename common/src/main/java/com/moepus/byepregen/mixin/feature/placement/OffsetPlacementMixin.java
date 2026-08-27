@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.feature.placement;
 import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.levelgen.placement.OffsetPlacement;
 import org.spongepowered.asm.mixin.Final;
@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 @MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(OffsetPlacement.class)
-public abstract class OffsetPlacementMixin implements FastPlacementModifier {
+public abstract class OffsetPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow @Final private IntProvider x;
     @Shadow @Final private IntProvider y;
     @Shadow @Final private IntProvider z;

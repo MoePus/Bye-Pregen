@@ -26,7 +26,7 @@ public final class FastPlacementContext {
     private RandomSource random;
     private Feature feature;
     private List<PlacementModifier> modifiers;
-    private PredicateMemoizedDiskPlacement diskPlacement;
+    private FastFeaturePlacement terminal;
     private boolean placed;
 
     private FastPlacementContext() { }
@@ -51,21 +51,21 @@ public final class FastPlacementContext {
         context.random = null;
         context.feature = null;
         context.modifiers = null;
-        context.diskPlacement = null;
+        context.terminal = null;
         context.placed = false;
         ArrayDeque<FastPlacementContext> pool = POOL.get();
         if (pool.size() < MAX_POOLED_CONTEXTS) pool.addFirst(context);
     }
 
-    public boolean place(BlockPos origin, FeaturePlan plan) {
+    public boolean place(BlockPos origin, CompiledFeaturePlan plan) {
         if (this.modifiers.isEmpty()) {
             this.trackPlacement();
             return this.feature.place(this.placementContext.getLevel(), this.placementContext.generator(), this.random, origin);
         }
-        this.diskPlacement = plan.open(this);
+        this.terminal = plan.open(this);
         this.push(origin.getX(), origin.getY(), origin.getZ(), 0);
         while (!this.pending.isEmpty()) this.advance();
-        return this.diskPlacement == null ? this.placed : this.diskPlacement.placed();
+        return this.placed;
     }
 
     private void advance() {
@@ -104,11 +104,11 @@ public final class FastPlacementContext {
             int x = this.emitted.getInt(offset);
             int y = this.emitted.getInt(offset + 1);
             int z = this.emitted.getInt(offset + 2);
-            if (this.diskPlacement == null) {
+            if (this.terminal == null) {
                 this.placed |= this.feature.place(this.placementContext.getLevel(),
                         this.placementContext.generator(), this.random, new BlockPos(x, y, z));
             } else {
-                this.diskPlacement.placeOrigin(x, y, z);
+                this.placed |= this.terminal.placeOrigin(x, y, z);
             }
             this.trackPlacement();
         }

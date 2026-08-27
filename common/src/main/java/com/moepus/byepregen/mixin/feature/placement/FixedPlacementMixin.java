@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.feature.placement;
 import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -15,10 +15,15 @@ import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = FixedPlacement.class, remap = false)
-public abstract class FixedPlacementMixin implements FastPlacementModifier {
+public abstract class FixedPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private List<BlockPos> positions;
+
+    @Override
+    public boolean byepregen$mayProduceMultipleOrigins() {
+        return this.positions.size() > 1;
+    }
 
     @Override
     public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {

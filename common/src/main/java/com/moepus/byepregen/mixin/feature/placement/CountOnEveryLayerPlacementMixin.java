@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.feature.placement;
 import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.block.Blocks;
@@ -18,10 +18,15 @@ import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = CountOnEveryLayerPlacement.class, remap = false)
-public abstract class CountOnEveryLayerPlacementMixin implements FastPlacementModifier {
+public abstract class CountOnEveryLayerPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private IntProvider count;
+
+    @Override
+    public boolean byepregen$mayProduceMultipleOrigins() {
+        return true;
+    }
 
     @Override
     public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {

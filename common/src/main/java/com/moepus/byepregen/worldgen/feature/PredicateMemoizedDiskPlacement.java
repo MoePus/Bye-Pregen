@@ -4,9 +4,8 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.feature.DiskFeature;
 
-public final class PredicateMemoizedDiskPlacement {
+public final class PredicateMemoizedDiskPlacement implements FastFeaturePlacement {
     private final FastDiskPlacement placement;
-    private boolean placed;
 
     private PredicateMemoizedDiskPlacement(
             FastPlacementContext context,
@@ -32,10 +31,10 @@ public final class PredicateMemoizedDiskPlacement {
             DiskFeature config,
             FastRuleBasedBlockStateProvider stateProvider,
             Vec3i[] dependencies,
-            boolean repeatingPlacement
+            boolean mayProduceMultipleOrigins
     ) {
         WorldGenLevel level = context.placementContext().getLevel();
-        if (!repeatingPlacement || !(level instanceof WorldGenRegionSectionCache sectionCache)) {
+        if (!mayProduceMultipleOrigins || !(level instanceof WorldGenRegionSectionCache sectionCache)) {
             return null;
         }
         return new PredicateMemoizedDiskPlacement(
@@ -47,12 +46,9 @@ public final class PredicateMemoizedDiskPlacement {
         );
     }
 
-    public void placeOrigin(int originX, int originY, int originZ) {
-        this.placed |= this.placement.placeOrigin(originX, originY, originZ);
-    }
-
-    public boolean placed() {
-        return this.placed;
+    @Override
+    public boolean placeOrigin(int originX, int originY, int originZ) {
+        return this.placement.placeOrigin(originX, originY, originZ);
     }
 
 }

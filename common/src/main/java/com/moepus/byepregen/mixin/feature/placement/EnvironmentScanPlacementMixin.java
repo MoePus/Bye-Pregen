@@ -3,7 +3,7 @@ package com.moepus.byepregen.mixin.feature.placement;
 import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.WorldGenLevel;
@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 @MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = EnvironmentScanPlacement.class, remap = false)
-public abstract class EnvironmentScanPlacementMixin implements FastPlacementModifier {
+public abstract class EnvironmentScanPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private Direction directionOfSearch;

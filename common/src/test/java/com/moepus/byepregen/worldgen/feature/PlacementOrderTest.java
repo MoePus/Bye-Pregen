@@ -113,7 +113,7 @@ final class PlacementOrderTest {
         FastPlacementContext fast = FastPlacementContext.acquire(
                 context, RandomSource.create(seed), feature, placement);
         try {
-            assertTrue(fast.place(new BlockPos(0, 0, 0), FeaturePlan.create(feature, placement)));
+            assertTrue(fast.place(new BlockPos(0, 0, 0), FeaturePlanCompiler.compile(feature, placement)));
         } finally {
             FastPlacementContext.release(fast);
         }
