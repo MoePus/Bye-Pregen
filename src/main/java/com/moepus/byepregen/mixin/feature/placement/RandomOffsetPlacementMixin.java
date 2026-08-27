@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(value = RandomOffsetPlacement.class, remap = false)
+@Mixin(RandomOffsetPlacement.class)
 public abstract class RandomOffsetPlacementMixin implements FastPlacementModifier {
     @Shadow
     @Final

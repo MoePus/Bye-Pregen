@@ -3,14 +3,6 @@ def pureJavaTestAliases = [
                 className: 'com.moepus.byepregen.test.SurfaceBiomeCacheTest',
                 description: 'Checks flat-palette certificates against vanilla BiomeManager sampling.',
         ],
-        testSurfaceRuleAnalyzer: [
-                className: 'com.moepus.byepregen.worldgen.surface.SurfaceRuleAnalyzerTest',
-                description: 'Checks Surface source-order IDs, canonical values, and opaque barriers.',
-        ],
-        testSurfaceBindingLayout: [
-                className: 'com.moepus.byepregen.worldgen.surface.SurfaceBindingLayoutTest',
-                description: 'Checks Surface binding order, failure stop, and eager/lazy recipes.',
-        ],
         testArenaHeightmapUpdate: [
                 className: 'com.moepus.byepregen.worldgen.arena.ArenaHeightmapUpdateTest',
                 description: 'Checks Arena heightmap update decisions at the current-top boundary.',
@@ -63,7 +55,7 @@ def verifyMixinRegistry = tasks.register('verifyMixinRegistry', Test) {
 
 def verifyOverwriteContracts = tasks.register('verifyOverwriteContracts', Test) {
     group = 'verification'
-    description = 'Checks the explicit 44-method overwrite ABI contract.'
+    description = 'Checks the explicit overwrite ABI contract.'
     useJUnitPlatform()
     filter {
         includeTestsMatching('com.moepus.byepregen.OverwriteContractTest')

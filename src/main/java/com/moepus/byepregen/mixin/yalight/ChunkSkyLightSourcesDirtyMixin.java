@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = ChunkSkyLightSources.class, remap = false)
+@Mixin(ChunkSkyLightSources.class)
 public abstract class ChunkSkyLightSourcesDirtyMixin implements YASkySourceDirtyAccess {
     @Unique
     private static final int byepregen$wordShift = 6;

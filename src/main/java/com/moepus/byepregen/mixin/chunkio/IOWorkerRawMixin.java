@@ -23,11 +23,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 @MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
-@Mixin(value = IOWorker.class, remap = false)
+@Mixin(IOWorker.class)
 public abstract class IOWorkerRawMixin implements RawIoWorker {
     @Unique
-    private static final String byepregen$C2ME_STORAGE_INTERFACE =
+    private static final String byepregen$C2MEF_STORAGE_INTERFACE =
             "com.ishland.c2me.rewrites.chunkio.common.C2MEStorageVanillaInterface";
+    @Unique
+    private static final String byepregen$FAST_CHUNK_GEN_STORAGE_INTERFACE =
+            "com.misanthropy.fastchunkgen.rewrites.chunkio.common.C2MEStorageVanillaInterface";
 
     @Shadow
     @Final
@@ -50,7 +53,9 @@ public abstract class IOWorkerRawMixin implements RawIoWorker {
 
     @Unique
     private boolean byepregen$isC2MEStorageInterface() {
-        return byepregen$C2ME_STORAGE_INTERFACE.equals(((Object) this).getClass().getName());
+        String className = ((Object) this).getClass().getName();
+        return byepregen$C2MEF_STORAGE_INTERFACE.equals(className)
+                || byepregen$FAST_CHUNK_GEN_STORAGE_INTERFACE.equals(className);
     }
 
     @Unique

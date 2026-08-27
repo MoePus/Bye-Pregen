@@ -6,29 +6,30 @@ import com.moepus.byepregen.worldgen.arena.InterpolatedMarkerAccess;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.Shadow;
 
-/** Propagates marker provenance through vanilla's default MarkerOrMarked.mapAll. */
+/** Propagates marker provenance while the vanilla Marker record rebuilds itself. */
 @MixinGate(feature = MixinFeature.DFC)
-@Mixin(value = DensityFunctions.MarkerOrMarked.class, priority = 500)
-public interface DensityMarkerMapTokenMixin {
-    @ModifyArg(
-            method = "mapAll",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/levelgen/DensityFunction$Visitor;apply("
-                            + "Lnet/minecraft/world/level/levelgen/DensityFunction;)"
-                            + "Lnet/minecraft/world/level/levelgen/DensityFunction;"
-            ),
-            index = 0
-    )
-    private DensityFunction byepregen$copyInterpolationToken(DensityFunction mapped) {
+@Mixin(value = DensityFunctions.Marker.class, priority = 500)
+public abstract class DensityMarkerMapTokenMixin implements DensityFunctions.MarkerOrMarked {
+    @Shadow public abstract DensityFunctions.Marker.Type type();
+    @Shadow public abstract DensityFunction wrapped();
+
+    @Override
+    public DensityFunction mapAll(DensityFunction.Visitor visitor) {
+        DensityFunction mappedWrapped = this.wrapped().mapAll(visitor);
+        DensityFunction mapped = switch (this.type()) {
+            case Interpolated -> DensityFunctions.interpolated(mappedWrapped);
+            case FlatCache -> DensityFunctions.flatCache(mappedWrapped);
+            case Cache2D -> DensityFunctions.cache2d(mappedWrapped);
+            case CacheOnce -> DensityFunctions.cacheOnce(mappedWrapped);
+            case CacheAllInCell -> DensityFunctions.cacheAllInCell(mappedWrapped);
+        };
         if ((Object) this instanceof InterpolatedMarkerAccess source
                 && mapped instanceof InterpolatedMarkerAccess target) {
             Object token = source.byepregen$getInterpolationToken();
             if (token != null) target.byepregen$setInterpolationToken(token);
         }
-        return mapped;
+        return visitor.apply(mapped);
     }
 }

@@ -11,7 +11,7 @@ import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(value = LeavesBlock.class,remap = false, priority = 500)
+@Mixin(value = LeavesBlock.class, priority = 500)
 public abstract class LeavesBlockWorldgenTickMixin {
     @InjectLite(method = "updateShape", at = @At("HEAD"), cancel = true, cancelOnNonNull = true)
     private BlockState byepregen$skipStableWorldgenLeafTick(

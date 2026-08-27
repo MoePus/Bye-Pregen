@@ -14,12 +14,14 @@ import com.moepus.byepregen.dfc.ast.AstNodes.MaxShortNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Memoized2DNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MinShortNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MulNode;
+import com.moepus.byepregen.dfc.ast.AstNodes.NoiseNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.RangeChoiceNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.SplineNode;
 import com.moepus.byepregen.dfc.codegen.ColumnClassBuilder;
 import com.moepus.byepregen.dfc.codegen.ColumnClassDefiner;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
+import com.moepus.byepregen.dfc.runtime.NoiseHolderRuntimeAbi;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -27,8 +29,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.core.Holder;
 import net.minecraft.util.CubicSpline;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.DensityFunctions;
+import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -81,6 +86,25 @@ final class ColumnBytecodeAuditTest {
             context.clear();
         }
         assertTrue(java.util.Arrays.equals(new double[]{-1.0D, 0.0D, 1.0D}, output));
+    }
+
+    @Test
+    void noiseCallUsesResolvedRuntimeAbi() {
+        DensityFunction.NoiseHolder holder = new DensityFunction.NoiseHolder(
+                Holder.direct(new NormalNoise.NoiseParameters(0, 1.0D))
+        );
+        AstNode graph = new NoiseNode(
+                new CoordinateNode(Axis.X),
+                new CoordinateNode(Axis.Y),
+                new CoordinateNode(Axis.Z),
+                holder
+        );
+        ClassNode generated = read(new ColumnClassBuilder(0).build(graph).classBytes());
+        MethodNode noise = find(generated, "point", "NoiseNode");
+
+        assertNotNull(noise);
+        assertTrue(calls(noise, DensityFunction.NoiseHolder.class,
+                NoiseHolderRuntimeAbi.valueMethodName()));
     }
 
     @Test

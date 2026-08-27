@@ -6,15 +6,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 final class LightWorldReader {
     private static final int MAX_DISCOVERY_DEPTH = 6;
-    private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo(
-            "light-golden-diff", Level.OVERWORLD, "chunk"
-    );
-    private static final RegionChunkReader READER = new RegionChunkReader(REGION_INFO);
+    private static final RegionChunkReader READER = new RegionChunkReader();
 
     private LightWorldReader() {
     }

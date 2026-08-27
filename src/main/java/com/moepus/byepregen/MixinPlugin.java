@@ -2,7 +2,7 @@ package com.moepus.byepregen;
 
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
-import com.moepus.byepregen.integration.neoforge.NeoForgeConfigPath;
+import com.moepus.byepregen.integration.forge.ForgeConfigPath;
 import java.util.List;
 import java.util.Set;
 
@@ -20,7 +20,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        ConfigManager.initialize(NeoForgeConfigPath.resolve());
+        ConfigManager.initialize(ForgeConfigPath.resolve());
     }
 
     @Override

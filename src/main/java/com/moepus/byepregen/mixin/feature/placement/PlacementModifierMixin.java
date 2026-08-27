@@ -4,6 +4,6 @@ import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(value = PlacementModifier.class, remap = false)
+@Mixin(PlacementModifier.class)
 public abstract class PlacementModifierMixin implements FastPlacementModifier {
 }

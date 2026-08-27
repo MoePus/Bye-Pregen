@@ -11,6 +11,7 @@ import com.moepus.byepregen.dfc.ast.AstNodes.*;
 import com.moepus.byepregen.dfc.codegen.BindingRegistry.FieldRef;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnMath;
+import com.moepus.byepregen.dfc.runtime.NoiseHolderRuntimeAbi;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -27,6 +28,7 @@ final class PointMethodEmitter {
     private static final String CONTEXT = Type.getInternalName(ColumnEvaluationContext.class);
     private static final String COLUMN_MATH = Type.getInternalName(ColumnMath.class);
     private static final String NOISE_HOLDER = Type.getInternalName(DensityFunction.NoiseHolder.class);
+    private static final String NOISE_VALUE_METHOD = NoiseHolderRuntimeAbi.valueMethodName();
     private static final String DENSITY_FUNCTION = Type.getInternalName(DensityFunction.class);
 
     private final String owner;
@@ -154,7 +156,7 @@ final class PointMethodEmitter {
         this.call(method, node.inputX());
         this.call(method, node.inputY());
         this.call(method, node.inputZ());
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, NOISE_HOLDER, "getValue", "(DDD)D", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, NOISE_HOLDER, NOISE_VALUE_METHOD, "(DDD)D", false);
     }
 
     private void emitWeird(MethodVisitor method, WeirdScaledNode node) {
@@ -170,7 +172,7 @@ final class PointMethodEmitter {
         emitCoordinateDividedBy(method, 1, 7);
         emitCoordinateDividedBy(method, 2, 7);
         emitCoordinateDividedBy(method, 3, 7);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, NOISE_HOLDER, "getValue", "(DDD)D", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, NOISE_HOLDER, NOISE_VALUE_METHOD, "(DDD)D", false);
         invokeUnaryMath(method, "abs");
         method.visitVarInsn(Opcodes.DLOAD, 7);
         method.visitInsn(Opcodes.DMUL);

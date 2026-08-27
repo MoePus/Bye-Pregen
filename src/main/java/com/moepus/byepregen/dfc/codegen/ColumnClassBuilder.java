@@ -41,7 +41,7 @@ public final class ColumnClassBuilder {
                 this.className, this.writer, this.bindings);
         this.points = new PointMethodEmitter(context);
         this.columns = new ColumnMethodEmitter(context, this.points);
-        this.writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
+        this.writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
                 this.className, null, "java/lang/Object", new String[]{EVALUATOR});
     }
 

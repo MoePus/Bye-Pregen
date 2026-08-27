@@ -9,9 +9,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.storage.RegionFile;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 public final class LightRestartDiskVerifier {
     private static final int LIGHT_BYTES = 2048;
@@ -19,8 +17,6 @@ public final class LightRestartDiskVerifier {
             new NibbleExpectation(nibbleIndex(8, 0, 8), 0, "boundary roof bottom");
     private static final NibbleExpectation BOUNDARY_ROOF_TOP =
             new NibbleExpectation(nibbleIndex(8, 1, 8), 15, "boundary roof top");
-    private static final RegionStorageInfo REGION_INFO =
-            new RegionStorageInfo("light-restart-disk", Level.OVERWORLD, "chunk");
 
     private LightRestartDiskVerifier() {
     }
@@ -140,12 +136,12 @@ public final class LightRestartDiskVerifier {
         if (!Files.isRegularFile(regionPath)) {
             throw new IOException("Missing region file: " + regionPath);
         }
-        try (RegionFile region = new RegionFile(REGION_INFO, regionPath, regionDir, false);
+        try (RegionFile region = new RegionFile(regionPath, regionDir, false);
              DataInputStream input = region.getChunkDataInputStream(pos)) {
             if (input == null) {
                 throw new IOException("Missing chunk " + pos + " in " + regionPath);
             }
-            return NbtIo.read(input, NbtAccounter.unlimitedHeap());
+            return NbtIo.read(input, NbtAccounter.UNLIMITED);
         }
     }
 

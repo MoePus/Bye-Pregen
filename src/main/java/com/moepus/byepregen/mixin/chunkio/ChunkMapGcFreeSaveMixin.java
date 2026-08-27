@@ -5,14 +5,13 @@ import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.chunksave.serialize.GcFreeChunkSerializer;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.chunksave.storage.RawChunkStorage;
-import com.moepus.byepregen.mixin.accessor.chunksave.ChunkStorageAccessor;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.chunk.status.ChunkType;
+import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus.ChunkType;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,10 +20,15 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.slf4j.Logger;
 
 @MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
-@Mixin(value = ChunkMap.class, remap = false)
+@Mixin(ChunkMap.class)
 public abstract class ChunkMapGcFreeSaveMixin {
+    @Shadow
+    @Final
+    private static Logger LOGGER;
+
     @Shadow
     @Final
     ServerLevel level;
@@ -61,7 +65,7 @@ public abstract class ChunkMapGcFreeSaveMixin {
         chunk.setUnsaved(false);
         ChunkPos pos = chunk.getPos();
         try {
-            ChunkStatus status = chunk.getPersistedStatus();
+            ChunkStatus status = chunk.getStatus();
             if (!this.byepregen$shouldSaveChunk(chunk, pos, status)) {
                 return false;
             }
@@ -71,7 +75,7 @@ public abstract class ChunkMapGcFreeSaveMixin {
             this.markPosition(pos, status.getChunkType());
             return true;
         } catch (Exception exception) {
-            this.level.getServer().reportChunkSaveFailure(exception, this.byepregen$storageInfo(), pos);
+            LOGGER.error("Failed to save chunk {},{}", pos.x, pos.z, exception);
             return false;
         }
     }
@@ -106,11 +110,7 @@ public abstract class ChunkMapGcFreeSaveMixin {
 
     @Unique
     private Void byepregen$reportSaveFailure(ChunkPos pos, Throwable throwable) {
-        this.level.getServer().reportChunkSaveFailure(throwable, this.byepregen$storageInfo(), pos);
+        LOGGER.error("Failed to save chunk {},{}", pos.x, pos.z, throwable);
         return null;
-    }
-
-    private net.minecraft.world.level.chunk.storage.RegionStorageInfo byepregen$storageInfo() {
-        return ((ChunkStorageAccessor) (Object) this).byepregen$storageInfo();
     }
 }

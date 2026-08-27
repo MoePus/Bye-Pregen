@@ -30,7 +30,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(feature = MixinFeature.ARENA)
-@Mixin(value = ChunkAccess.class, remap = false)
+@Mixin(ChunkAccess.class)
 public abstract class ChunkAccessArenaMixin {
     @Redirect(
             method = "<init>",
@@ -84,7 +84,7 @@ public abstract class ChunkAccessArenaMixin {
             return true;
         }
         if (heightAccessor instanceof Level level && level.isClientSide()) {
-            return config.worldgen().arena().runtime().client();
+            return false;
         }
         return config.worldgen().arena().runtime().server();
     }

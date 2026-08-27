@@ -18,10 +18,10 @@ final class MixinFeatureEvaluatorTest {
         Config config = disabledConfig();
 
         assertFalse(enabled(MixinFeature.ARENA, config));
+        assertFalse(enabled(MixinFeature.ARENA_OR_DFC, config));
         assertFalse(enabled(MixinFeature.DFC, config));
         assertFalse(enabled(MixinFeature.GC_FREE_CHUNK_SAVE, config));
         assertFalse(enabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, config));
-        assertFalse(enabled(MixinFeature.SURFACE_RULE_COMPILER, config));
         assertFalse(enabled(MixinFeature.YA_LIGHT, config));
     }
 
@@ -36,6 +36,18 @@ final class MixinFeatureEvaluatorTest {
     }
 
     @Test
+    void cellCacheBypassRequiresArenaOrDfc() {
+        assertTrue(enabled(MixinFeature.ARENA_OR_DFC, new Config()));
+        Config noCompiler = new ConfigTestBuilder().densityColumnCompiler(false).build();
+        assertTrue(enabled(MixinFeature.ARENA_OR_DFC, noCompiler));
+        Config disabled = new ConfigTestBuilder().arena(false).build();
+        assertFalse(enabled(MixinFeature.ARENA_OR_DFC, disabled));
+
+        MixinFeatureEvaluator withConfluence = evaluator(false, Set.of("confluence"));
+        assertTrue(withConfluence.isEnabled(MixinFeature.ARENA_OR_DFC, new Config()));
+    }
+
+    @Test
     void arenaPreservesConfluencePolicy() {
         assertTrue(enabled(MixinFeature.ARENA, new Config()));
         MixinFeatureEvaluator evaluator = evaluator(false, Set.of("confluence"));
@@ -46,17 +58,22 @@ final class MixinFeatureEvaluatorTest {
     void arenaRuntimeFlagsExpressMixinSpecificPolicies() {
         Config defaults = new Config();
         assertTrue(ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK.isEnabled(defaults));
-        assertFalse(ConfigFlag.CLIENT_ARENA.isEnabled(defaults));
 
         Config serverRuntime = new ConfigTestBuilder().serverRuntimeArena(true).build();
         assertFalse(ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK.isEnabled(serverRuntime));
-        Config clientRuntime = new ConfigTestBuilder().clientArena(true).build();
-        assertTrue(ConfigFlag.CLIENT_ARENA.isEnabled(clientRuntime));
+    }
+
+    @Test
+    void gcFreeChunkSavingDefaultsOff() {
+        Config defaults = new Config();
+
+        assertFalse(enabled(MixinFeature.GC_FREE_CHUNK_SAVE, defaults));
+        assertFalse(enabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, defaults));
     }
 
     @Test
     void rawChunkIoYieldsToC2meSerializer() {
-        Config config = new Config();
+        Config config = new ConfigTestBuilder().gcFreeWorldgen(true).build();
 
         assertTrue(enabledWithClass(MixinFeature.GC_FREE_RAW_CHUNK_IO, config, false));
         assertFalse(enabledWithClass(MixinFeature.GC_FREE_RAW_CHUNK_IO, config, true));
@@ -65,6 +82,7 @@ final class MixinFeatureEvaluatorTest {
 
     @Test
     void rawChunkIoFailsClosedWhenClassLookupFails() {
+        Config config = new ConfigTestBuilder().gcFreeWorldgen(true).build();
         MixinFeatureEvaluator evaluator = new MixinFeatureEvaluator(
                 ignored -> false,
                 ignored -> {
@@ -72,8 +90,8 @@ final class MixinFeatureEvaluatorTest {
                 }
         );
 
-        assertFalse(evaluator.isEnabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, new Config()));
-        assertTrue(evaluator.isEnabled(MixinFeature.GC_FREE_CHUNK_SAVE, new Config()));
+        assertFalse(evaluator.isEnabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, config));
+        assertTrue(evaluator.isEnabled(MixinFeature.GC_FREE_CHUNK_SAVE, config));
     }
 
     @Test
@@ -103,7 +121,6 @@ final class MixinFeatureEvaluatorTest {
         return new ConfigTestBuilder()
                 .arena(false)
                 .gcFreeWorldgen(false)
-                .surfaceRuleCompiler(false)
                 .yaLight(false)
                 .build();
     }

@@ -11,10 +11,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.ArrayList;
 
-// Lithium 1.21.1 ships an alloc.chunk_ticking mixin that redirects the same call, but does not
-// register that mixin in either of its mixin configs. Recheck this if a later Lithium enables it.
-@MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING, conflictingMods = "servercore")
-@Mixin(value = ServerChunkCache.class, remap = false, priority = 900)
+// Harium 2.0 registers the equivalent Lithium alloc.chunk_ticking mixin on 1.20.1.
+@MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING, conflictingMods = {"harium", "servercore"})
+@Mixin(value = ServerChunkCache.class, priority = 900)
 public abstract class ServerChunkCacheTickListMixin {
     @Unique
     private final ArrayList<Object> byepregen$cachedTickingChunks = new ArrayList<>();
@@ -34,7 +33,8 @@ public abstract class ServerChunkCacheTickListMixin {
             method = "tickChunks",
             at = @At(
                     value = "INVOKE",
-                    target = "Lcom/google/common/collect/Lists;newArrayListWithCapacity(I)Ljava/util/ArrayList;"
+                    target = "Lcom/google/common/collect/Lists;newArrayListWithCapacity(I)Ljava/util/ArrayList;",
+                    remap = false
             ),
             require = 1,
             allow = 1

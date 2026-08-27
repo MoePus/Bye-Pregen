@@ -35,7 +35,7 @@ final class SurfaceBiomeCertificateBuilder {
     private int buildColumn(short[] values, int x, int z) {
         int uniformCount = 0;
         for (int cubeY = 0; cubeY <= this.quartHeight; cubeY++) {
-            int lowerY = Math.clamp(cubeY - 1, 0, this.quartHeight - 1);
+            int lowerY = clamp(cubeY - 1, 0, this.quartHeight - 1);
             int firstIndex = this.flatIndex(x, lowerY, z);
             Holder<Biome> first = this.flatBiomes[firstIndex];
             int index = this.certificateIndex(x, cubeY, z);
@@ -50,8 +50,8 @@ final class SurfaceBiomeCertificateBuilder {
     }
 
     private boolean allCornersMatch(Holder<Biome> first, int x, int z, int cubeY) {
-        int lowerY = Math.clamp(cubeY - 1, 0, this.quartHeight - 1);
-        int upperY = Math.clamp(cubeY, 0, this.quartHeight - 1);
+        int lowerY = clamp(cubeY - 1, 0, this.quartHeight - 1);
+        int upperY = clamp(cubeY, 0, this.quartHeight - 1);
         for (int cornerX = x; cornerX <= x + 1; cornerX++) {
             for (int cornerZ = z; cornerZ <= z + 1; cornerZ++) {
                 if (first != this.biomeAt(cornerX, lowerY, cornerZ)
@@ -73,6 +73,10 @@ final class SurfaceBiomeCertificateBuilder {
 
     private int certificateIndex(int x, int y, int z) {
         return ((x * SurfaceBiomeLookup.INTERIOR_QUART_CUBES + z) * (this.quartHeight + 1)) + y;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 }
 

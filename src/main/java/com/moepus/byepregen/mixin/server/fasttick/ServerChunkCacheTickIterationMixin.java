@@ -3,9 +3,11 @@ package com.moepus.byepregen.mixin.server.fasttick;
 import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.server.tick.ChunkTickPermutationIterator;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerChunkCache;
-import net.minecraft.util.RandomSource;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -15,8 +17,12 @@ import java.util.Iterator;
 import java.util.List;
 
 @MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING)
-@Mixin(value = ServerChunkCache.class, remap = false)
+@Mixin(ServerChunkCache.class)
 public abstract class ServerChunkCacheTickIterationMixin {
+    @Shadow
+    @Final
+    private ServerLevel level;
+
     @Unique
     private final ChunkTickPermutationIterator byepregen$chunkTickPermutation =
             new ChunkTickPermutationIterator();
@@ -26,7 +32,7 @@ public abstract class ServerChunkCacheTickIterationMixin {
             slice = @Slice(
                     from = @At(
                             value = "INVOKE",
-                            target = "Lnet/minecraft/Util;shuffle(Ljava/util/List;Lnet/minecraft/util/RandomSource;)V"
+                            target = "Ljava/util/Collections;shuffle(Ljava/util/List;)V"
                     ),
                     to = @At(
                             value = "INVOKE",
@@ -35,15 +41,14 @@ public abstract class ServerChunkCacheTickIterationMixin {
             ),
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/Util;shuffle(Ljava/util/List;Lnet/minecraft/util/RandomSource;)V"
+                    target = "Ljava/util/Collections;shuffle(Ljava/util/List;)V"
             ),
             require = 1,
             allow = 1
     )
     private void byepregen$prepareChunkTickPermutation(
-            List<?> chunks,
-            RandomSource random) {
-        this.byepregen$chunkTickPermutation.reset(chunks, random);
+            List<?> chunks) {
+        this.byepregen$chunkTickPermutation.reset(chunks, this.level.getRandom());
     }
 
     @Redirect(
@@ -51,7 +56,7 @@ public abstract class ServerChunkCacheTickIterationMixin {
             slice = @Slice(
                     from = @At(
                             value = "INVOKE",
-                            target = "Lnet/minecraft/Util;shuffle(Ljava/util/List;Lnet/minecraft/util/RandomSource;)V"
+                            target = "Ljava/util/Collections;shuffle(Ljava/util/List;)V"
                     ),
                     to = @At(
                             value = "INVOKE",

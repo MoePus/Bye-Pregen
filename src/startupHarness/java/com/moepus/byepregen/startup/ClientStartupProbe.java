@@ -2,13 +2,10 @@ package com.moepus.byepregen.startup;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
 import org.slf4j.Logger;
 
-@Mod(value = ClientStartupProbe.MOD_ID, dist = Dist.CLIENT)
 public final class ClientStartupProbe {
     static final String MOD_ID = "byepregen_startup_harness";
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -19,10 +16,13 @@ public final class ClientStartupProbe {
     private boolean finished;
 
     public ClientStartupProbe() {
-        NeoForge.EVENT_BUS.addListener(this::onClientTick);
+        MinecraftForge.EVENT_BUS.addListener(this::onClientTick);
     }
 
-    private void onClientTick(ClientTickEvent.Post event) {
+    private void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         if (this.finished) {
             return;
         }

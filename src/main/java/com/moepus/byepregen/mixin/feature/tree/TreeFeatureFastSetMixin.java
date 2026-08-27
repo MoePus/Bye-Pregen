@@ -6,16 +6,17 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(value = net.minecraft.world.level.levelgen.feature.TreeFeature.class, remap = false)
+@Mixin(net.minecraft.world.level.levelgen.feature.TreeFeature.class)
 public abstract class TreeFeatureFastSetMixin {
     @Redirect(
             method = "place",
             at = @At(
                     value = "INVOKE",
-                    target = "Lcom/google/common/collect/Sets;newHashSet()Ljava/util/HashSet;"
+                    target = "Lcom/google/common/collect/Sets;newHashSet()Ljava/util/HashSet;",
+                    remap = false
             )
     )
-    private static <E> HashSet<E> byepregen$placeSet() {
+    private <E> HashSet<E> byepregen$placeSet() {
         return new FastObjectHashSet<>();
     }
 
@@ -23,7 +24,8 @@ public abstract class TreeFeatureFastSetMixin {
             method = "updateLeaves",
             at = @At(
                     value = "INVOKE",
-                    target = "Lcom/google/common/collect/Sets;newHashSet()Ljava/util/HashSet;"
+                    target = "Lcom/google/common/collect/Sets;newHashSet()Ljava/util/HashSet;",
+                    remap = false
             )
     )
     private static <E> HashSet<E> byepregen$updateLeavesSet() {

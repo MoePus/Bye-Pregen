@@ -4,7 +4,7 @@ import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
 import net.minecraft.world.level.chunk.GlobalPalette;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(value = GlobalPalette.class, remap = false)
+@Mixin(GlobalPalette.class)
 public abstract class GlobalPaletteMixin implements PaletteRawIdAccess {
     @Override
     public int byepregen$rawIdForLocalId(int localId) {

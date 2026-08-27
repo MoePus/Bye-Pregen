@@ -30,8 +30,8 @@ import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import org.slf4j.Logger;
 
 final class ChunkNbtParity {
@@ -50,7 +50,7 @@ final class ChunkNbtParity {
     }
 
     static void register() {
-        NeoForge.EVENT_BUS.addListener(ChunkNbtParity::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(ChunkNbtParity::onServerStarted);
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
@@ -80,7 +80,8 @@ final class ChunkNbtParity {
     private static void enrich(ServerLevel level, LevelChunk chunk) {
         int baseX = chunk.getPos().getMinBlockX() + 1;
         int baseZ = chunk.getPos().getMinBlockZ() + 1;
-        int y = Math.clamp(level.getSeaLevel(), level.getMinBuildHeight() + 16, level.getMaxBuildHeight() - 16);
+        int y = Math.max(level.getMinBuildHeight() + 16,
+                Math.min(level.getMaxBuildHeight() - 16, level.getSeaLevel()));
         BlockPos chest = new BlockPos(baseX, y, baseZ);
         BlockPos water = chest.east();
         level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
@@ -101,7 +102,8 @@ final class ChunkNbtParity {
                 level.registryAccess().registryOrThrow(Registries.BIOME),
                 null
         );
-        int y = Math.clamp(level.getSeaLevel(), level.getMinBuildHeight() + 16, level.getMaxBuildHeight() - 16);
+        int y = Math.max(level.getMinBuildHeight() + 16,
+                Math.min(level.getMaxBuildHeight() - 16, level.getSeaLevel()));
         BlockPos block = new BlockPos(pos.getMinBlockX() + 1, y, pos.getMinBlockZ() + 1);
         chunk.setBlockState(block, Blocks.STONE.defaultBlockState(), false);
         chunk.markPosForPostprocessing(block.above());

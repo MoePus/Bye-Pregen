@@ -9,7 +9,7 @@ import net.minecraft.core.QuartPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.mixinlite.injector.MethodScope;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING)
-@Mixin(value = ServerLevel.class, remap = false)
+@Mixin(ServerLevel.class)
 public abstract class ServerLevelWeatherTickMixin {
     @Unique
     private LevelChunk byepregen$currentTickChunk;
@@ -40,7 +40,7 @@ public abstract class ServerLevelWeatherTickMixin {
     }
 
     @Redirect(
-            method = "tickPrecipitation",
+            method = "tickChunk",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/server/level/ServerLevel;getHeightmapPos(Lnet/minecraft/world/level/levelgen/Heightmap$Types;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/core/BlockPos;"
@@ -61,7 +61,7 @@ public abstract class ServerLevelWeatherTickMixin {
     }
 
     @Redirect(
-            method = "tickPrecipitation",
+            method = "tickChunk",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/server/level/ServerLevel;getBiome(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/core/Holder;"

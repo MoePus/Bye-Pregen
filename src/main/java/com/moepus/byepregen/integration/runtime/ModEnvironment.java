@@ -2,8 +2,7 @@ package com.moepus.byepregen.integration.runtime;
 
 import java.io.IOException;
 import java.util.Objects;
-import net.neoforged.fml.loading.LoadingModList;
-import net.neoforged.fml.loading.moddiscovery.ModFileInfo;
+import net.minecraftforge.fml.loading.LoadingModList;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.service.MixinService;
 
@@ -13,14 +12,7 @@ public final class ModEnvironment {
 
     public static boolean isModLoaded(String modId) {
         Objects.requireNonNull(modId, "modId");
-        LoadingModList modList = LoadingModList.get();
-        if (modList.getModFileById(modId) != null) {
-            return true;
-        }
-        return modList.getPlugins().stream()
-                .filter(ModFileInfo.class::isInstance)
-                .map(ModFileInfo.class::cast)
-                .anyMatch(file -> file.getMods().stream().anyMatch(mod -> mod.getModId().equals(modId)));
+        return LoadingModList.get().getModFileById(modId) != null;
     }
 
     public static boolean isClassAvailable(String className) {

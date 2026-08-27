@@ -11,8 +11,7 @@ public enum ConfigFlag {
     FAST_CHUNK_TICKING(config -> config.server().fastChunkTicking().enabled()),
     MATERIALIZE_ARENA_LEVEL_CHUNK(
             config -> !config.worldgen().arena().runtime().server()
-    ),
-    CLIENT_ARENA(config -> config.worldgen().arena().runtime().client());
+    );
 
     private final Predicate<Config> enabled;
 

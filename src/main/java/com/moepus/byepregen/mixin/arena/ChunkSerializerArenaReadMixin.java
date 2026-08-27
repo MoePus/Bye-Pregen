@@ -16,9 +16,8 @@ import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainer;
-import net.minecraft.world.level.chunk.status.ChunkType;
+import net.minecraft.world.level.chunk.ChunkStatus.ChunkType;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -30,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 
 @MixinGate(feature = MixinFeature.ARENA)
-@Mixin(value = ChunkSerializer.class, remap = false)
+@Mixin(ChunkSerializer.class)
 public abstract class ChunkSerializerArenaReadMixin {
     @Mutable
     @Shadow
@@ -55,7 +54,7 @@ public abstract class ChunkSerializerArenaReadMixin {
                     to = @At(
                             value = "INVOKE",
                             target = "Lnet/minecraft/world/level/chunk/LevelChunkSection;<init>(Lnet/minecraft/world/level/chunk/PalettedContainer;Lnet/minecraft/world/level/chunk/PalettedContainerRO;)V",
-                            remap = false
+                            remap = true
                     )
             ),
             require = 1
@@ -66,7 +65,6 @@ public abstract class ChunkSerializerArenaReadMixin {
             Object input,
             ServerLevel level,
             PoiManager poiManager,
-            RegionStorageInfo storageInfo,
             ChunkPos chunkPos,
             CompoundTag chunkTag
     ) {

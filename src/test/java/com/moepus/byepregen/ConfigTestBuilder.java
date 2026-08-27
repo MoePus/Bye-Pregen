@@ -9,8 +9,6 @@ final class ConfigTestBuilder {
     private boolean arena = true;
     private boolean densityColumnCompiler = true;
     private boolean serverRuntimeArena;
-    private boolean clientArena;
-    private boolean surfaceRuleCompiler = true;
     private boolean surfaceBiomeCache = true;
     private boolean fastChunkTicking;
     private boolean gcFreeWorldgen = true;
@@ -42,16 +40,6 @@ final class ConfigTestBuilder {
         return this;
     }
 
-    ConfigTestBuilder clientArena(boolean value) {
-        this.clientArena = value;
-        return this;
-    }
-
-    ConfigTestBuilder surfaceRuleCompiler(boolean value) {
-        this.surfaceRuleCompiler = value;
-        return this;
-    }
-
     ConfigTestBuilder surfaceBiomeCache(boolean value) {
         this.surfaceBiomeCache = value;
         return this;
@@ -71,8 +59,8 @@ final class ConfigTestBuilder {
         Config.Worldgen worldgen = new Config.Worldgen(
                 new Config.PlacedFeatures(this.placedFeatures, this.memoizedDiskPlan),
                 new Config.Arena(this.arena, this.densityColumnCompiler,
-                        new Config.ArenaRuntime(this.serverRuntimeArena, this.clientArena)),
-                new Config.Surface(this.surfaceRuleCompiler, this.surfaceBiomeCache)
+                        new Config.ArenaRuntime(this.serverRuntimeArena)),
+                new Config.Surface(this.surfaceBiomeCache)
         );
         return Config.builder()
                 .debug(new Config.Debug(this.disableWorldgenFeatures))

@@ -1,6 +1,5 @@
 package com.moepus.byepregen.mixin.dfc;
 
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
@@ -28,6 +27,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.slf4j.Logger;
@@ -73,7 +73,7 @@ public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvid
         }
     }
 
-    @ModifyExpressionValue(
+    @Redirect(
             method = "<init>",
             at = @At(
                     value = "INVOKE",
@@ -82,7 +82,11 @@ public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvid
                             + "Lnet/minecraft/world/level/levelgen/DensityFunction;"
             )
     )
-    private DensityFunction byepregen$captureWrappedFinalDensity(DensityFunction wrapped) {
+    private DensityFunction byepregen$captureWrappedFinalDensity(
+            DensityFunction source,
+            DensityFunction.Visitor visitor
+    ) {
+        DensityFunction wrapped = source.mapAll(visitor);
         if (!byepregen$VERIFY_COLUMN) return wrapped;
         if (wrapped instanceof DensityFunctions.MarkerOrMarked marker
                 && marker.type() == DensityFunctions.Marker.Type.CacheAllInCell) {

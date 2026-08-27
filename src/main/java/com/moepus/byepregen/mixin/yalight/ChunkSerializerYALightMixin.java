@@ -18,7 +18,6 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -88,7 +87,6 @@ public abstract class ChunkSerializerYALightMixin {
             int type,
             ServerLevel level,
             PoiManager poiManager,
-            RegionStorageInfo regionStorageInfo,
             ChunkPos chunkPos,
             CompoundTag chunkTag
     ) {
@@ -115,7 +113,6 @@ public abstract class ChunkSerializerYALightMixin {
             int type,
             ServerLevel level,
             PoiManager poiManager,
-            RegionStorageInfo regionStorageInfo,
             ChunkPos chunkPos,
             CompoundTag chunkTag
     ) {
@@ -133,7 +130,6 @@ public abstract class ChunkSerializerYALightMixin {
     private static void byepregen$installYALightData(
             ServerLevel level,
             PoiManager poiManager,
-            RegionStorageInfo regionStorageInfo,
             ChunkPos chunkPos,
             CompoundTag chunkTag,
             CallbackInfoReturnable<ProtoChunk> cir,

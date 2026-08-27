@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AllOfPredicate", remap = false)
+@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AllOfPredicate")
 public abstract class AllOfPredicateMixin extends CombiningPredicate implements FastCombiningPredicate {
     @Unique
     private BlockPredicate[] byepregen$predicates;

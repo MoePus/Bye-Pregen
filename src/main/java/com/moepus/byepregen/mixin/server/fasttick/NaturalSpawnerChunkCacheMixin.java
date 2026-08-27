@@ -6,13 +6,13 @@ import com.moepus.byepregen.mixin.accessor.server.tick.ServerChunkCacheTickAcces
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 @MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING)
-@Mixin(value = NaturalSpawner.class, remap = false)
+@Mixin(NaturalSpawner.class)
 public abstract class NaturalSpawnerChunkCacheMixin {
     @InjectLite(method = "spawnForChunk", at = @At("HEAD"))
     private static void byepregen$seedSpawnChunkCache(ServerLevel level, LevelChunk chunk) {

@@ -1,8 +1,20 @@
+buildscript {
+    repositories {
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+    }
+}
+
 plugins {
     id 'java-library'
     id 'idea'
-    id 'net.neoforged.moddev' version '2.0.141'
+    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
+
+apply plugin: 'org.spongepowered.mixin'
 
 version = mod_version
 group = mod_group_id
@@ -11,22 +23,22 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 sourceSets {
     test {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
-    surfaceTest {
-        java.setSrcDirs(['src/surfaceTest/java', 'src/harnessCommon/java'])
-        resources.setSrcDirs(['src/surfaceTest/resources'])
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
-    }
     benchmark {
         java.setSrcDirs(['src/benchmark/java'])
         resources.setSrcDirs(['src/benchmark/resources'])
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    startupHarness {
+        java.setSrcDirs(['src/startupHarness/java', 'src/harnessCommon/java'])
+        resources.setSrcDirs(['src/startupHarness/resources'])
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
@@ -37,143 +49,224 @@ sourceSets {
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
 }
+
 sourceSets.test.compileClasspath += sourceSets.worldgenHarness.output
 sourceSets.test.runtimeClasspath += sourceSets.worldgenHarness.output
 
 configurations {
     benchmarkCompileOnly.extendsFrom compileOnly
     benchmarkAnnotationProcessor.extendsFrom annotationProcessor
-    surfaceTestCompileOnly.extendsFrom compileOnly
-    surfaceTestAnnotationProcessor.extendsFrom annotationProcessor
+    startupHarnessImplementation.extendsFrom implementation
+    startupHarnessCompileOnly.extendsFrom compileOnly
+    startupHarnessAnnotationProcessor.extendsFrom annotationProcessor
+    worldgenHarnessImplementation.extendsFrom implementation
     worldgenHarnessCompileOnly.extendsFrom compileOnly
     worldgenHarnessAnnotationProcessor.extendsFrom annotationProcessor
     testCompileOnly.extendsFrom compileOnly
     testAnnotationProcessor.extendsFrom annotationProcessor
+    c2mefRuntime {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+    fastChunkGenRuntime {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+    hariumRuntime {
+        canBeConsumed = false
+        canBeResolved = true
+    }
 }
 
-def runJavaVersion = providers.gradleProperty('byepregenRunJavaVersion')
-        .map(Integer::parseInt)
-        .orElse(21)
-def runJavaLauncher = javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
-}
-ext.byepregenRunJavaLauncher = runJavaLauncher
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+    copyIdeResources = true
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
-apply from: 'gradle/byepregen-dependencies.gradle'
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'info'
+            mods {
+                byepregen {
+                    source sourceSets.main
+                }
+            }
+        }
+        client {
+            property 'forge.enabledGameTestNamespaces', mod_id
+        }
+        server {
+            property 'forge.enabledGameTestNamespaces', mod_id
+            args '--nogui'
+        }
+        c2mefServer {
+            parent minecraft.runs.server
+            workingDirectory project.file('run/compat/c2mef')
+        }
+        fastChunkGenServer {
+            parent minecraft.runs.server
+            workingDirectory project.file('run/compat/fastchunkgen')
+        }
+        c2mefHariumServer {
+            parent minecraft.runs.server
+            workingDirectory project.file('run/compat/c2mef-harium')
+        }
+        fastChunkGenHariumServer {
+            parent minecraft.runs.server
+            workingDirectory project.file('run/compat/fastchunkgen-harium')
+        }
+    }
+}
+
+afterEvaluate {
+    [minecraft.runs.server, minecraft.runs.client].each { parentRun ->
+        minecraft.runs
+                .findAll { run -> run != parentRun && run.main == null && run.parents.contains(parentRun) }
+                .each { run -> run.merge(parentRun, false) }
+    }
+}
+
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
+}
+
+tasks.named('compileJava', JavaCompile).configure {
+    outputs.file(layout.buildDirectory.file("tmp/compileJava/${mod_id}.refmap.json"))
+}
+
+jarJar.enable()
+
+repositories {
+    flatDir { dirs 'libs' }
+    maven { url = 'https://moepus.github.io/MixinLite/' }
+    mavenCentral()
+    maven { url = 'https://cursemaven.com' }
+    maven { url = 'https://api.modrinth.com/maven' }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    compileOnly fg.deobf("curse.maven:tectonic-686836:7197834")
+    compileOnly fg.deobf('curse.maven:architectury-api-419699:5137938')
+    worldgenHarnessImplementation fg.deobf('maven.modrinth:chunky:4FTDk9wv')
+    c2mefRuntime fg.deobf('curse.maven:concurrent-chunk-management-engine-for-forge-the-1484205:7746800')
+    fastChunkGenRuntime fg.deobf('local:fastchunkgen-0.21-all:0.21')
+    hariumRuntime fg.deobf('curse.maven:harium-1413106:8694838')
+
+    implementation(jarJar('org.mixinlite:mixinlite:0.2.0')) {
+        jarJar.ranged(it, '[0.2.0,)')
+    }
+    implementation 'io.github.llamalad7:mixinextras-common:0.5.4'
+    implementation(jarJar('io.github.llamalad7:mixinextras-forge:0.5.4')) {
+        jarJar.ranged(it, '[0.5.4,)')
+    }
+    annotationProcessor 'org.mixinlite:mixinlite:0.2.0'
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    def replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version          : forge_version,
+            forge_version_range    : forge_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
+    ]
+    inputs.properties replaceProperties
+    filesMatching('META-INF/mods.toml') {
+        expand replaceProperties
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    exclude 'com/moepus/byepregen/test/**'
+    exclude 'com/moepus/byepregen/bootstrap/TestWorldGenBootstrap.class'
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+    finalizedBy 'reobfJar'
+}
+
+tasks.named('jarJar', Jar).configure {
+    finalizedBy 'reobfJarJar'
+}
+
 apply from: 'gradle/byepregen-test-config.gradle'
 apply from: 'gradle/byepregen-server-fixtures.gradle'
 apply from: 'gradle/byepregen-worldgen-run-support.gradle'
-def surfaceDumpClassesDirectory = providers.systemProperty('byepregen.surfaceDumpClasses')
-def densityColumnDumpDirectory = providers.systemProperty('byepregen.dfc.dumpDir')
-afterEvaluate {
-    tasks.named('runTestWorldGen', JavaExec) {
-        javaLauncher.set(runJavaLauncher)
-    }
-}
-tasks.withType(JavaExec).matching { it.name != 'runTestWorldGen' }.configureEach {
-    javaLauncher.convention(javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(runJavaVersion.get())
-    })
-}
-tasks.withType(JavaExec).configureEach {
-    if (densityColumnDumpDirectory.present) {
-        systemProperty 'byepregen.dfc.dumpDir', densityColumnDumpDirectory.get()
-    }
-    if (surfaceDumpClassesDirectory.present) {
-        systemProperty 'byepregen.surfaceDumpClasses', surfaceDumpClassesDirectory.get()
-    }
-}
-
-neoForge {
-    version = project.neo_version
-
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
-    accessTransformers.from('src/main/resources/META-INF/accesstransformer.cfg')
-
-    mods {
-        "${mod_id}" {
-            sourceSet(sourceSets.main)
-        }
-        byepregen_worldgen_harness {
-            sourceSet(sourceSets.worldgenHarness)
-        }
-    }
-
-    runs {
-        client {
-            client()
-            loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
-            jvmArgument '-Xmx16G'
-
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        server {
-            server()
-            loadedMods.set([neoForge.mods.named(project.mod_id).get()] as Set)
-            programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            logLevel = org.slf4j.event.Level.DEBUG
-        }
-    }
-
-}
-
 apply from: 'gradle/byepregen-startup-verification.gradle'
-apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
+apply from: 'gradle/byepregen-production-verification.gradle'
 apply from: 'gradle/byepregen-worldgen-smoke.gradle'
 apply from: 'gradle/byepregen-light-verification.gradle'
-
-tasks.named('jar', Jar) {
-    exclude 'com/moepus/byepregen/test/**'
-    exclude 'com/moepus/byepregen/bootstrap/TestWorldGenBootstrap.class'
-}
-
 apply from: 'gradle/byepregen-unit-verification.gradle'
+
+def compatRuns = [
+        C2mefServer           : [configurations.c2mefRuntime],
+        FastChunkGenServer    : [configurations.fastChunkGenRuntime],
+        C2mefHariumServer     : [configurations.c2mefRuntime, configurations.hariumRuntime],
+        FastChunkGenHariumServer: [configurations.fastChunkGenRuntime, configurations.hariumRuntime],
+]
+compatRuns.each { suffix, runtimeConfigurations ->
+    tasks.matching { it.name == "run${suffix}" }.configureEach {
+        File runDirectory = file(minecraft.runs
+                .getByName(suffix[0].toLowerCase() + suffix.substring(1))
+                .workingDirectory)
+        doFirst {
+            delete(runDirectory)
+            prepareDisposableServer(directory: runDirectory)
+            byepregenInstallRuntimeMods(runDirectory, runtimeConfigurations)
+        }
+    }
+}
 
 def runtimeCheck = tasks.register('runtimeCheck') {
     group = 'verification'
-    description = 'Runs packaged Surface, fast tick, and radius-16 worldgen smoke checks.'
-    dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen', 'testFastTickRuntime')
+    description = 'Runs radius-16 worldgen, Arena/NBT differential, and FastChunkGen/Harium fast tick checks.'
+    dependsOn('runTestWorldGen', 'testArenaPaletteDifferential', 'testChunkNbtParity',
+            'testFastTickRuntime', 'testC2mefRuntime')
+}
+
+def lightCheck = tasks.register('lightCheck') {
+    group = 'verification'
+    description = 'Runs YA golden, deterministic fuzz, FastChunkGen, and C2MEF restart persistence checks.'
+    dependsOn('runLightGoldenDiff', 'runLightFuzzDiff',
+            'testYALightFastChunkGenRestart', 'testYALightC2mefRestart')
 }
 
 tasks.register('ciCheck') {
     group = 'verification'
-    description = 'Runs production, startup, and runtime verification for continuous integration.'
-    dependsOn(tasks.named('check'), tasks.named('startupCheck'), runtimeCheck)
-}
-
-var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
-    var replaceProperties = [minecraft_version      : minecraft_version,
-                             minecraft_version_range: minecraft_version_range,
-                             neo_version            : neo_version,
-                             neo_version_range      : neo_version_range,
-                             loader_version_range   : loader_version_range,
-                             mod_id                 : mod_id,
-                             mod_name               : mod_name,
-                             mod_license            : mod_license,
-                             mod_version            : mod_version,
-                             mod_authors            : mod_authors,
-                             mod_description        : mod_description]
-    inputs.properties replaceProperties
-    expand replaceProperties
-    from "src/main/templates"
-    into "build/generated/sources/modMetadata"
-}
-
-sourceSets.main.resources.srcDir generateModMetadata
-neoForge.ideSyncTask generateModMetadata
-
-idea {
-    module {
-        downloadSources = true
-        downloadJavadoc = true
-    }
+    description = 'Runs all Forge 1.20.1 verification gates.'
+    dependsOn(tasks.named('check'), tasks.named('startupCheck'), runtimeCheck, lightCheck,
+            tasks.named('benchmarkSurfaceBiomeCache'))
 }

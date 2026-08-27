@@ -43,10 +43,7 @@ ext.byepregenWorldgenTestConfig = { Map options ->
                             'server-runtime'         : serverRuntimeArenaPalette,
                     ],
                     surface          : [
-                            'rule-compiler': options.containsKey('surfaceScalar')
-                                    ? options.surfaceScalar
-                                    : true,
-                            'biome-cache'  : surfaceBiomeCache,
+                            'biome-cache': surfaceBiomeCache,
                     ],
             ],
             server        : [
@@ -91,51 +88,47 @@ ext.byepregenConfigureWorldgenResultTask = { String taskName, File dir ->
 }
 
 ext.byepregenConfigureWorldgenRun = { run, Map options ->
-    run.server()
-    run.sourceSet.set(sourceSets.worldgenHarness)
-    run.loadedMods.set([
-            neoForge.mods.named(project.mod_id).get(),
-            neoForge.mods.named('byepregen_worldgen_harness').get(),
-    ] as Set)
-    run.gameDirectory = options.dir
-    run.programArgument('--nogui')
-    run.systemProperty('byepregen.testWorldGen', 'true')
-    run.systemProperty(
+    run.parent(minecraft.runs.server)
+    run.workingDirectory(options.dir)
+    run.mods {
+        byepregen_worldgen_harness {
+            source sourceSets.worldgenHarness
+        }
+    }
+    run.args('--nogui')
+    run.property('byepregen.testWorldGen', 'true')
+    run.property(
             'byepregen.testWorldGen.runResult',
             byepregenWorldgenResult(options.dir).absolutePath
     )
-    run.systemProperty(
-            'byepregen.surfaceOutputDifferential',
-            options.surfaceOutputDifferential ?: 'false'
-    )
-    run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
-    run.systemProperty('byepregen.verifyDfcColumn', options.verifyDfcColumn ?: 'false')
-    run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
-    run.logLevel = org.slf4j.event.Level.INFO
-    run.jvmArgument("-Djava.io.tmpdir=${byepregenSlashPath(file("${options.dir}/tmp"))}")
+    run.property('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
+    run.property('byepregen.verifyDfcColumn', options.verifyDfcColumn ?: 'false')
+    run.property('forge.enabledGameTestNamespaces', project.mod_id)
+    run.property('forge.logging.console.level', 'info')
+    run.jvmArg("-Djava.io.tmpdir=${byepregenSlashPath(file("${options.dir}/tmp"))}")
 
     if (options.radius != null) {
-        run.systemProperty('byepregen.testWorldGen.radius', options.radius)
+        run.property('byepregen.testWorldGen.radius', options.radius)
     }
     if (options.mode != null) {
-        run.systemProperty('byepregen.testWorldGen.mode', options.mode)
+        run.property('byepregen.testWorldGen.mode', options.mode)
     }
     if (options.yaSchedulerWakeOnAdd != null) {
-        run.systemProperty('byepregen.yaLightSchedulerWakeOnAdd', options.yaSchedulerWakeOnAdd)
+        run.property('byepregen.yaLightSchedulerWakeOnAdd', options.yaSchedulerWakeOnAdd)
     }
     if (options.jfrFile != null) {
-        run.jvmArgument(
+        run.jvmArg(
                 "-XX:FlightRecorderOptions=stackdepth=128,repository=${byepregenSlashPath(options.jfrRepository)}"
         )
-        run.jvmArgument(
+        run.jvmArg(
                 "-XX:StartFlightRecording=filename=${byepregenSlashPath(options.jfrFile)}," +
                         "settings=${jfrSettings},dumponexit=true"
         )
     }
     if (options.compilationLog != null) {
-        run.jvmArgument('-XX:+UnlockDiagnosticVMOptions')
-        run.jvmArgument('-XX:+LogCompilation')
-        run.jvmArgument("-XX:LogFile=${byepregenSlashPath(options.compilationLog)}")
+        run.jvmArg('-XX:+UnlockDiagnosticVMOptions')
+        run.jvmArg('-XX:+LogCompilation')
+        run.jvmArg("-XX:LogFile=${byepregenSlashPath(options.compilationLog)}")
     }
 }
 

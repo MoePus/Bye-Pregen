@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @MixinGate(config = ConfigFlag.PLACED_FEATURES)
-@Mixin(value = PlacedFeature.class, remap = false)
+@Mixin(PlacedFeature.class)
 public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     @Unique
     private volatile FeaturePlan byepregen$featurePlan;
@@ -51,7 +51,7 @@ public abstract class PlacedFeatureMixin implements FastPlacedFeature {
      * @reason Avoid stream, lambda, iterator, MutableBoolean, and intermediate BlockPos allocation in feature placement.
      */
     @Overwrite
-    public boolean placeWithContext(PlacementContext context, RandomSource random, BlockPos pos) {
+    private boolean placeWithContext(PlacementContext context, RandomSource random, BlockPos pos) {
         return this.byepregen$place(context, random, pos);
     }
 

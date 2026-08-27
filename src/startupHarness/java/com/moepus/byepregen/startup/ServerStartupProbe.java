@@ -3,13 +3,10 @@ package com.moepus.byepregen.startup;
 import com.moepus.byepregen.harness.HarnessServerLifecycle;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import org.slf4j.Logger;
 
-@Mod(value = ServerStartupProbe.MOD_ID, dist = Dist.DEDICATED_SERVER)
 public final class ServerStartupProbe {
     static final String MOD_ID = "byepregen_startup_harness";
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -21,7 +18,7 @@ public final class ServerStartupProbe {
             );
 
     public ServerStartupProbe() {
-        NeoForge.EVENT_BUS.addListener(this::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStarted);
     }
 
     private void onServerStarted(ServerStartedEvent event) {

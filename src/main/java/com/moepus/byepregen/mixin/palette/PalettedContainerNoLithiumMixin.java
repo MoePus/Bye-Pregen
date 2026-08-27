@@ -5,8 +5,8 @@ import net.minecraft.world.level.chunk.PalettedContainer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
-@MixinGate(conflictingMods = "lithium")
-@Mixin(value = PalettedContainer.class, remap = false)
+@MixinGate(conflictingMods = {"harium", "lithium"})
+@Mixin(PalettedContainer.class)
 public class PalettedContainerNoLithiumMixin {
     /**
      * @author ishland

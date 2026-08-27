@@ -13,15 +13,8 @@ import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.storage.RegionFile;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 public final class RegionChunkReader {
-    private final RegionStorageInfo storageInfo;
-
-    public RegionChunkReader(RegionStorageInfo storageInfo) {
-        this.storageInfo = storageInfo;
-    }
-
     public static Map<String, Path> discover(Path worldDirectory, int maxDepth) throws IOException {
         Map<String, Path> regions = new HashMap<>();
         try (Stream<Path> paths = Files.walk(worldDirectory, maxDepth)) {
@@ -54,9 +47,7 @@ public final class RegionChunkReader {
             return;
         }
         RegionCoordinates region = RegionCoordinates.parse(regionPath.getFileName().toString());
-        try (RegionFile file = new RegionFile(
-                this.storageInfo, regionPath, regionPath.getParent(), false
-        )) {
+        try (RegionFile file = new RegionFile(regionPath, regionPath.getParent(), false)) {
             this.readChunks(file, new ReadRequest(region, bounds, consumer));
         }
     }
@@ -78,7 +69,7 @@ public final class RegionChunkReader {
             return;
         }
         try (input) {
-            CompoundTag chunk = NbtIo.read(input, NbtAccounter.unlimitedHeap());
+            CompoundTag chunk = NbtIo.read(input, NbtAccounter.UNLIMITED);
             consumer.accept(key, chunk);
         }
     }

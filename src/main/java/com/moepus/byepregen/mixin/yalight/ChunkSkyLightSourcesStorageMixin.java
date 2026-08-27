@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = ChunkSkyLightSources.class, remap = false)
+@Mixin(ChunkSkyLightSources.class)
 public abstract class ChunkSkyLightSourcesStorageMixin {
     @Unique
     private static final SimpleBitStorage byepregen$dummyHeightmap = new SimpleBitStorage(1, 1);

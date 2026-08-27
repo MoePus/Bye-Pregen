@@ -1,6 +1,5 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.worldgen.surface.SurfaceScalarMetrics;
 import com.mojang.logging.LogUtils;
 import java.time.Duration;
 import net.minecraft.server.MinecraftServer;
@@ -96,20 +95,8 @@ final class ChunkyGenerationRun {
                 wallSeconds,
                 cpuSeconds
         );
-        logSurfaceScalarMetrics();
         this.controller.succeedAndStop(this.server,
                 "world=" + event.world() + "\ndensityColumn=" + densityColumnMetrics
-        );
-    }
-
-    private static void logSurfaceScalarMetrics() {
-        SurfaceScalarMetrics.Snapshot metrics = SurfaceScalarMetrics.snapshot();
-        LOGGER.info(
-                "Surface scalar metrics: compiled={} rejected={} bindings={} bindFailures={} "
-                        + "outputComparisons={} outputMismatches={} classBytes={} regions={}",
-                metrics.compiled(), metrics.rejected(), metrics.bindings(), metrics.bindFailures(),
-                metrics.outputComparisons(), metrics.outputMismatches(), metrics.latestClassBytes(),
-                metrics.latestRegions()
         );
     }
 

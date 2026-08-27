@@ -23,8 +23,9 @@ public interface CompoundTagAccessor {
             TagType<?> type,
             String name,
             DataInput input,
+            int depth,
             NbtAccounter accounter
-    ) throws IOException {
+    ) {
         throw new AssertionError();
     }
 }

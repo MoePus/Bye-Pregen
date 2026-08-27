@@ -25,12 +25,17 @@ final class ConfigLoaderTest {
         assertTrue(config.worldgen().arena().enabled());
         assertTrue(config.worldgen().arena().densityColumnCompiler());
         assertTrue(config.worldgen().placedFeatures().memoizedDiskPlan());
+        assertFalse(config.chunkSaving().gcFreeWorldgen());
         assertTrue(output.contains("[worldgen.arena]"));
-        assertEquals(13, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
-        assertEquals(13, output.lines().map(String::strip)
+        assertEquals(11, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
+        assertEquals(11, output.lines().map(String::strip)
                 .filter(line -> line.equals("# Default: True") || line.equals("# Default: False"))
                 .count());
         assertTrue(output.contains("# Default: True"));
+        assertTrue(output.lines().map(String::strip)
+                .anyMatch(line -> line.equals("# Serializes eligible chunks directly to compressed NBT bytes instead of building")));
+        assertTrue(output.contains("# Compatibility on Minecraft 1.20.1 is very limited."));
+        assertTrue(output.contains("# when C2ME or one of its ports is installed."));
         assertTrue(output.contains("# Compiles final-density graphs"));
         assertTrue(output.contains("# All options in this file are read at startup and require a game restart."));
         assertTrue(output.contains("Performance patches for Minecraft's vanilla block-light and sky-light engines."));
@@ -52,6 +57,8 @@ final class ConfigLoaderTest {
                 client = "true"
 
                 [worldgen.surface]
+                rule-compiler = true
+
                 biome-cache = false
                 """, StandardCharsets.UTF_8);
 
@@ -59,14 +66,14 @@ final class ConfigLoaderTest {
         String firstOutput = Files.readString(path, StandardCharsets.UTF_8);
 
         assertFalse(config.worldgen().arena().enabled());
-        assertTrue(config.worldgen().arena().runtime().client());
         assertFalse(config.worldgen().surface().biomeCache());
         assertFalse(firstOutput.contains("custom comment"));
         assertFalse(firstOutput.contains("unknown ="));
         assertTrue(firstOutput.contains("[lighting.ya]"));
         assertTrue(firstOutput.contains("enabled = \"False\""));
         assertTrue(firstOutput.contains("density-column-compiler = \"True\""));
-        assertTrue(firstOutput.contains("client = \"True\""));
+        assertFalse(firstOutput.contains("client ="));
+        assertFalse(firstOutput.contains("rule-compiler"));
         assertTrue(firstOutput.contains("biome-cache = \"False\""));
 
         new ConfigLoader(path).load();

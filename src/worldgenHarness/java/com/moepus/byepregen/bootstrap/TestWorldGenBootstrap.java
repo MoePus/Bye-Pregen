@@ -1,7 +1,7 @@
 package com.moepus.byepregen.bootstrap;
 
 import com.moepus.byepregen.test.TestWorldGen;
-import net.neoforged.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod;
 
 @Mod(TestWorldGenBootstrap.MOD_ID)
 public final class TestWorldGenBootstrap {

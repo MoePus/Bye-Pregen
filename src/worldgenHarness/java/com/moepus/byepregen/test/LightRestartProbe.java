@@ -1,8 +1,8 @@
 package com.moepus.byepregen.test;
 
-import com.ishland.c2me.notickvd.common.NoTickSystem;
 import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
+import com.moepus.byepregen.yalight.access.YAPendingTaskAccess;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -16,17 +16,16 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.lighting.LevelLightEngine;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import org.slf4j.Logger;
 
 final class LightRestartProbe {
@@ -53,14 +52,13 @@ final class LightRestartProbe {
         if (!REGISTERED.compareAndSet(false, true)) {
             return;
         }
-        NeoForge.EVENT_BUS.addListener(LightRestartProbe::onServerAboutToStart);
-        NeoForge.EVENT_BUS.addListener(LightRestartProbe::onServerStarted);
-        NeoForge.EVENT_BUS.addListener(LightRestartProbe::onServerTickPost);
+        MinecraftForge.EVENT_BUS.addListener(LightRestartProbe::onServerAboutToStart);
+        MinecraftForge.EVENT_BUS.addListener(LightRestartProbe::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(LightRestartProbe::onServerTick);
     }
 
     private static void onServerAboutToStart(ServerAboutToStartEvent event) {
-        event.getServer().getWorldData().getGameRules()
-                .getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, null);
+        LOGGER.info("Starting light restart harness before the overworld is available");
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
@@ -78,7 +76,10 @@ final class LightRestartProbe {
         }
     }
 
-    private static void onServerTickPost(ServerTickEvent.Post event) {
+    private static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         Run run = active;
         if (run == null || run.server != event.getServer()) {
             return;
@@ -134,7 +135,7 @@ final class LightRestartProbe {
         private final MinecraftServer server;
         private final ServerLevel level;
         private final Phase phase;
-        private final NoTickSystem noTick;
+        private final RestartChunkLoadController chunkLoader;
         private final Path baseline;
         private final long deadline = System.nanoTime() + TIMEOUT_NANOS;
         private Stage stage = Stage.WAIT_LOAD;
@@ -147,9 +148,7 @@ final class LightRestartProbe {
             this.level = level;
             this.phase = phase;
             this.baseline = Path.of(property("baseline", "light-restart.baseline"));
-            this.noTick = new NoTickSystem(level.getChunkSource().chunkMap);
-            this.noTick.setNoTickViewDistance(LOAD_RADIUS);
-            this.noTick.addPlayerSource(CENTER);
+            this.chunkLoader = RestartChunkLoadController.create(level, CENTER, LOAD_RADIUS);
             LOGGER.info("Started YA light restart probe phase={} baseline={}", phase, this.baseline);
         }
 
@@ -176,9 +175,7 @@ final class LightRestartProbe {
         }
 
         private void driveNoTick() {
-            this.noTick.beforeTicketTicks();
-            this.noTick.afterTicketTicks();
-            this.noTick.tick();
+            this.chunkLoader.tick();
             ++this.ticks;
         }
 
@@ -226,7 +223,8 @@ final class LightRestartProbe {
             List<CompletableFuture<?>> futures = new ArrayList<>();
             for (int z = -LOAD_RADIUS; z <= LOAD_RADIUS; ++z) {
                 for (int x = -LOAD_RADIUS; x <= LOAD_RADIUS; ++x) {
-                    futures.add(this.level.getChunkSource().getLightEngine().waitForPendingTasks(x, z));
+                    futures.add(((YAPendingTaskAccess) this.level.getChunkSource().getLightEngine())
+                            .byepregen$waitForPendingTasks(x, z));
                 }
             }
             return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
@@ -282,7 +280,7 @@ final class LightRestartProbe {
         private void complete(String result) {
             this.stage = Stage.COMPLETE;
             active = null;
-            this.noTick.close();
+            this.chunkLoader.close();
             this.server.executeIfPossible(() -> stop(this.server, result));
         }
     }

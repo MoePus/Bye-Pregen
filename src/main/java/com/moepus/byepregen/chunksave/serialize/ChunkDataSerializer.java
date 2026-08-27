@@ -2,6 +2,7 @@ package com.moepus.byepregen.chunksave.serialize;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
+import com.moepus.byepregen.integration.tectonic.TectonicCompat;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.SharedConstants;
@@ -9,7 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 
 public final class ChunkDataSerializer {
     private static final byte[] DATA_VERSION = NbtWriter.asciiName("DataVersion");
@@ -34,19 +35,20 @@ public final class ChunkDataSerializer {
         writer.putInt(Z_POS, pos.z);
         writer.putLong(LAST_UPDATE, level.getGameTime());
         writer.putLong(INHABITED_TIME, chunk.getInhabitedTime());
-        writer.putString(STATUS, statusName(chunk.getPersistedStatus()));
+        writer.putString(STATUS, statusName(chunk.getStatus()));
         ChunkInlineDataWriter.write(writer, chunk);
         ChunkSectionDataWriter.write(writer, level, chunk, pos, sectionContext);
         if (chunk.isLightCorrect()) {
             writer.putBoolean(IS_LIGHT_ON, true);
         }
         ChunkBlockEntityDataWriter.write(writer, level, chunk);
-        ChunkTypeExtrasWriter.write(writer, level, chunk, pos);
+        ChunkTypeExtrasWriter.write(writer, chunk);
         ChunkTickPostProcessWriter.writeTicks(writer, level, chunk);
         ChunkTickPostProcessWriter.writePostProcessing(writer, chunk.getPostProcessing());
         ChunkTickPostProcessWriter.writeHeightmaps(writer, chunk);
-        ChunkAttachmentWriter.write(writer, level, chunk);
+        ChunkCapabilityWriter.write(writer, chunk);
         ChunkStructureDataWriter.write(writer, level, pos, chunk);
+        TectonicCompat.writeChunkData(writer);
     }
 
     private static byte[] statusName(ChunkStatus status) {

@@ -5,7 +5,7 @@ import net.minecraft.world.level.chunk.CarvingMask;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(value = CarvingMask.class, remap = false)
+@Mixin(CarvingMask.class)
 public interface CarvingMaskAccessor {
     @Accessor("minY")
     int byepregen$getMinY();

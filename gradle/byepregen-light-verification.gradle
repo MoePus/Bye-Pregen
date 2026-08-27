@@ -5,7 +5,6 @@ def lightGoldenConfig = [
         sourceDir        : file("${lightGoldenRoot}/source"),
         vanillaDir       : file("${lightGoldenRoot}/vanilla"),
         yaDir            : file("${lightGoldenRoot}/ya"),
-        luxDir           : file("${lightGoldenRoot}/lux"),
         radius           : byepregenProp('byepregenLightGoldenRadius', '64'),
         sourceBuffer     : byepregenProp('byepregenLightGoldenSourceBuffer', '192'),
         gcFree           : byepregenProp('byepregenLightGoldenGcFree', 'true'),
@@ -43,9 +42,6 @@ lightGoldenConfig.relightVanillaJfrEnabled = byepregenProp(
 lightGoldenConfig.relightYAJfrEnabled = byepregenProp(
         'byepregenLightGoldenRelightYAJfr', 'false'
 ).toBoolean()
-lightGoldenConfig.relightLuxJfrEnabled = byepregenProp(
-        'byepregenLightGoldenRelightLuxJfr', 'false'
-).toBoolean()
 lightGoldenConfig.relightVanillaJfr = file("${lightGoldenConfig.rootDir}/jfr/${byepregenProp(
         'byepregenLightGoldenRelightVanillaJfrName',
         "byepregen-light-golden-vanilla-relight-radius${byepregenSanitizeRunName(lightGoldenConfig.radius)}.jfr"
@@ -54,34 +50,58 @@ lightGoldenConfig.relightYAJfr = file("${lightGoldenConfig.rootDir}/jfr/${byepre
         'byepregenLightGoldenRelightYAJfrName',
         "byepregen-light-golden-ya-relight-radius${byepregenSanitizeRunName(lightGoldenConfig.radius)}.jfr"
 )}")
-lightGoldenConfig.relightLuxJfr = file("${lightGoldenConfig.rootDir}/jfr/${byepregenProp(
-        'byepregenLightGoldenRelightLuxJfrName',
-        "byepregen-light-golden-lux-relight-radius${byepregenSanitizeRunName(lightGoldenConfig.radius)}.jfr"
-)}")
-
-def scalableLuxRuntime = configurations.detachedConfiguration(
-        dependencies.create('curse.maven:scalablelux-1055925:6952385')
-)
-scalableLuxRuntime.transitive = false
-
 def lightFuzzRoot = file('run/light-fuzz')
 def lightRestartStandard = [
         id        : 'Standard',
+        suite     : 'FastChunkGen',
         root      : file('run/light-restart'),
         gcFree    : 'false',
         prepareRun: 'runLightRestartPrepare',
         verifyRun : 'runLightRestartVerify',
         secondRun : 'runLightRestartVerifyAgain',
+        runtimeMods: [configurations.fastChunkGenRuntime],
+        rawSerializerRegistry: 'com.misanthropy.fastchunkgen.base.common.registry.SerializerAccess',
 ]
 def lightRestartRaw = [
         id        : 'Raw',
+        suite     : 'FastChunkGen',
         root      : file('run/light-restart-raw'),
         gcFree    : 'true',
         prepareRun: 'runLightRestartRawPrepare',
         verifyRun : 'runLightRestartRawVerify',
         secondRun : 'runLightRestartRawVerifyAgain',
+        runtimeMods: [configurations.fastChunkGenRuntime],
+        rawSerializerRegistry: 'com.misanthropy.fastchunkgen.base.common.registry.SerializerAccess',
 ]
-def lightRestartConfigs = [lightRestartStandard, lightRestartRaw]
+def lightRestartC2mefStandard = [
+        id        : 'C2mefStandard',
+        suite     : 'C2MEF',
+        root      : file('run/light-restart-c2mef'),
+        gcFree    : 'false',
+        prepareRun: 'runLightRestartC2mefPrepare',
+        verifyRun : 'runLightRestartC2mefVerify',
+        secondRun : 'runLightRestartC2mefVerifyAgain',
+        runtimeMods: [configurations.c2mefRuntime],
+        rawSerializerRegistry: 'com.ishland.c2me.base.common.registry.SerializerAccess',
+]
+def lightRestartC2mefRaw = [
+        id        : 'C2mefRaw',
+        suite     : 'C2MEF',
+        root      : file('run/light-restart-c2mef-raw'),
+        gcFree    : 'true',
+        prepareGcFree: 'false',
+        prepareRun: 'runLightRestartC2mefRawPrepare',
+        verifyRun : 'runLightRestartC2mefRawVerify',
+        secondRun : 'runLightRestartC2mefRawVerifyAgain',
+        runtimeMods: [configurations.c2mefRuntime],
+        rawSerializerRegistry: 'com.ishland.c2me.base.common.registry.SerializerAccess',
+]
+def lightRestartConfigs = [
+        lightRestartStandard,
+        lightRestartRaw,
+        lightRestartC2mefStandard,
+        lightRestartC2mefRaw,
+]
 lightRestartConfigs.each { config ->
     config.result = file("${config.root}/light-restart.result")
     config.baseline = file("${config.root}/light-restart.baseline")
@@ -109,16 +129,16 @@ lightFuzzConfig.sourceRadius = byepregenProp(
 )
 def configureLightFuzzRun = { run, File dir ->
     byepregenConfigureWorldgenRun(run, [dir: dir, mode: 'light_fuzz'])
-    run.systemProperty('byepregen.testWorldGen.lightFuzzSeed', lightFuzzConfig.seed)
-    run.systemProperty('byepregen.testWorldGen.lightFuzzVariant', lightFuzzConfig.variant)
-    run.systemProperty('byepregen.testWorldGen.lightFuzzProbes', lightFuzzConfig.probes)
+    run.property('byepregen.testWorldGen.lightFuzzSeed', lightFuzzConfig.seed)
+    run.property('byepregen.testWorldGen.lightFuzzVariant', lightFuzzConfig.variant)
+    run.property('byepregen.testWorldGen.lightFuzzProbes', lightFuzzConfig.probes)
 }
 
 def configureLightRestartRun = { run, Map config, String phase ->
     byepregenConfigureWorldgenRun(run, [dir: config.root, mode: 'light_restart'])
-    run.systemProperty('byepregen.testWorldGen.phase', phase)
-    run.systemProperty('byepregen.testWorldGen.result', config.result.absolutePath)
-    run.systemProperty('byepregen.testWorldGen.baseline', config.baseline.absolutePath)
+    run.property('byepregen.testWorldGen.phase', phase)
+    run.property('byepregen.testWorldGen.result', config.result.absolutePath)
+    run.property('byepregen.testWorldGen.baseline', config.baseline.absolutePath)
 }
 
 def configureLightRelightRun = { run, Map options ->
@@ -178,7 +198,7 @@ def prepareRelightRunTask = { String taskName, Map options ->
     byepregenConfigureWorldgenResultTask(taskName, options.dir)
 }
 
-neoForge {
+minecraft {
     runs {
         lightRestartPrepare {
             configureLightRestartRun(delegate, lightRestartStandard, 'prepare')
@@ -197,6 +217,24 @@ neoForge {
         }
         lightRestartRawVerifyAgain {
             configureLightRestartRun(delegate, lightRestartRaw, 'verify')
+        }
+        lightRestartC2mefPrepare {
+            configureLightRestartRun(delegate, lightRestartC2mefStandard, 'prepare')
+        }
+        lightRestartC2mefVerify {
+            configureLightRestartRun(delegate, lightRestartC2mefStandard, 'verify')
+        }
+        lightRestartC2mefVerifyAgain {
+            configureLightRestartRun(delegate, lightRestartC2mefStandard, 'verify')
+        }
+        lightRestartC2mefRawPrepare {
+            configureLightRestartRun(delegate, lightRestartC2mefRaw, 'prepare')
+        }
+        lightRestartC2mefRawVerify {
+            configureLightRestartRun(delegate, lightRestartC2mefRaw, 'verify')
+        }
+        lightRestartC2mefRawVerifyAgain {
+            configureLightRestartRun(delegate, lightRestartC2mefRaw, 'verify')
         }
         lightGoldenSource {
             byepregenConfigureWorldgenRun(
@@ -231,13 +269,6 @@ neoForge {
                     jfrFile             : lightGoldenConfig.relightYAJfr,
             ])
         }
-        lightGoldenRelightLux {
-            configureLightRelightRun(delegate, [
-                    dir       : lightGoldenConfig.luxDir,
-                    jfrEnabled: lightGoldenConfig.relightLuxJfrEnabled,
-                    jfrFile   : lightGoldenConfig.relightLuxJfr,
-            ])
-        }
         lightFuzzSource {
             byepregenConfigureWorldgenRun(
                     delegate,
@@ -253,28 +284,33 @@ neoForge {
     }
 }
 
-def assertLightRestartResult = { Map config, String expected ->
+def assertLightRestartResult = { Map config, String expected, boolean rawExpected ->
     String result = byepregenReadRequiredResult(config.result, 'Light restart probe').trim()
     byepregenAssertNoTestConfigFile(config.root)
     if (result != expected) {
         throw new GradleException("Light restart probe failed: ${result}")
     }
-    if (config.gcFree.toBoolean()) {
+    if (rawExpected) {
         File log = file("${config.root}/logs/latest.log")
         String text = log.isFile() ? log.getText('UTF-8') : ''
-        if (!text.contains('Registered ByePregen GC-free worldgen chunk serializer with C2ME')
-                || !text.contains('CAN_USE_RAW_SAVE=true')) {
-            throw new GradleException("C2ME raw serializer was not exercised: ${log}")
+        if (!text.contains('Registered ByePregen GC-free serializer with '
+                + config.rawSerializerRegistry)
+                || !text.contains('CAN_USE_RAW_SAVE=true')
+                || !text.contains('ByePregen GC-free compatibility serializer wrote raw chunk data')) {
+            throw new GradleException("${config.suite} raw serializer was not exercised: ${log}")
         }
     }
 }
 
 def configureLightRestartServerTask = { Map options ->
     Map config = options.config
+    String gcFree = options.prepare && config.prepareGcFree != null
+            ? config.prepareGcFree
+            : config.gcFree
     Map testOptions = [
             dir         : config.root,
             yaLight     : 'true',
-            gcFree      : config.gcFree,
+            gcFree      : gcFree,
             clearWorld  : options.prepare,
             flatWorld   : true,
             arenaPalette: 'false',
@@ -292,9 +328,10 @@ def configureLightRestartServerTask = { Map options ->
                 delete(config.result)
             }
             byepregenPrepareWorldgenRunDir(testOptions)
+            byepregenInstallRuntimeMods(config.root, config.runtimeMods)
         }
         doLast {
-            assertLightRestartResult(config, options.prepare ? 'PREPARED' : 'PASS')
+            assertLightRestartResult(config, options.prepare ? 'PREPARED' : 'PASS', gcFree.toBoolean())
         }
     }
 }
@@ -337,23 +374,47 @@ lightRestartConfigs.each { config ->
 tasks.matching { it.name == lightRestartRaw.prepareRun }.configureEach {
     mustRunAfter(lightRestartStandard.finalDiskTask)
 }
+tasks.matching { it.name == lightRestartC2mefStandard.prepareRun }.configureEach {
+    mustRunAfter(lightRestartRaw.finalDiskTask)
+}
+tasks.matching { it.name == lightRestartC2mefRaw.prepareRun }.configureEach {
+    mustRunAfter(lightRestartC2mefStandard.finalDiskTask)
+}
 
-tasks.register('testYALightC2MERestartStandard') {
+tasks.register('testYALightFastChunkGenRestartStandard') {
     group = 'verification'
-    description = 'Runs two C2ME no-tick restarts through standard chunk serialization.'
+    description = 'Runs two FastChunkGen restarts through standard chunk serialization.'
     dependsOn(lightRestartStandard.finalDiskTask)
 }
 
-tasks.register('testYALightC2MERestartRaw') {
+tasks.register('testYALightFastChunkGenRestartRaw') {
     group = 'verification'
-    description = 'Runs two C2ME no-tick restarts through ByePregen raw chunk serialization.'
+    description = 'Runs two FastChunkGen restarts through ByePregen raw chunk serialization.'
     dependsOn(lightRestartRaw.finalDiskTask)
 }
 
-tasks.register('testYALightC2MERestart') {
+tasks.register('testYALightFastChunkGenRestart') {
     group = 'verification'
-    description = 'Runs the YA+C2ME standard/raw skylight restart matrix.'
-    dependsOn('testYALightC2MERestartStandard', 'testYALightC2MERestartRaw')
+    description = 'Runs the YA+FastChunkGen standard/raw skylight restart matrix.'
+    dependsOn('testYALightFastChunkGenRestartStandard', 'testYALightFastChunkGenRestartRaw')
+}
+
+tasks.register('testYALightC2mefRestartStandard') {
+    group = 'verification'
+    description = 'Runs two C2MEF restarts through standard chunk serialization.'
+    dependsOn(lightRestartC2mefStandard.finalDiskTask)
+}
+
+tasks.register('testYALightC2mefRestartRaw') {
+    group = 'verification'
+    description = 'Runs two C2MEF restarts through ByePregen raw chunk serialization.'
+    dependsOn(lightRestartC2mefRaw.finalDiskTask)
+}
+
+tasks.register('testYALightC2mefRestart') {
+    group = 'verification'
+    description = 'Runs the YA+C2MEF standard/raw skylight restart matrix.'
+    dependsOn('testYALightC2mefRestartStandard', 'testYALightC2mefRestartRaw')
 }
 
 [
@@ -401,14 +462,12 @@ tasks.register('prepareLightGoldenRelight', JavaExec) {
     mainClass.set('com.moepus.byepregen.test.LightGoldenPrepareRelight')
     args file("${lightGoldenConfig.sourceDir}/world").absolutePath,
             file("${lightGoldenConfig.vanillaDir}/world").absolutePath,
-            file("${lightGoldenConfig.yaDir}/world").absolutePath,
-            file("${lightGoldenConfig.luxDir}/world").absolutePath
+            file("${lightGoldenConfig.yaDir}/world").absolutePath
     systemProperty 'byepregen.lightGolden.prepareRadius', lightGoldenConfig.relightRadius
     doFirst {
         [
                 [dir: lightGoldenConfig.vanillaDir, yaLight: 'false', arenaPalette: lightGoldenConfig.vanillaArena],
                 [dir: lightGoldenConfig.yaDir, yaLight: 'true', arenaPalette: lightGoldenConfig.yaArena],
-                [dir: lightGoldenConfig.luxDir, yaLight: 'false', arenaPalette: lightGoldenConfig.vanillaArena],
         ].each { options ->
             byepregenPrepareWorldgenRunDir(options + [gcFree: lightGoldenConfig.gcFree, clearWorld: false])
         }
@@ -432,17 +491,6 @@ prepareRelightRunTask('runLightGoldenRelightYA', [
         jfrEnabled  : lightGoldenConfig.relightYAJfrEnabled,
         jfrFile     : lightGoldenConfig.relightYAJfr,
 ])
-prepareRelightRunTask('runLightGoldenRelightLux', [
-        reason      : 'Uses the prepared ScalableLux relight world without deleting it',
-        mustRunAfter: 'runLightGoldenRelightYA',
-        dir         : lightGoldenConfig.luxDir,
-        yaLight     : 'false',
-        arenaPalette: lightGoldenConfig.vanillaArena,
-        jfrEnabled  : lightGoldenConfig.relightLuxJfrEnabled,
-        jfrFile     : lightGoldenConfig.relightLuxJfr,
-        modFiles    : scalableLuxRuntime,
-])
-
 tasks.register('diffLightGolden', JavaExec) {
     group = 'verification'
     description = 'Compares saved BlockLight/SkyLight section data between two generated worlds.'
@@ -480,6 +528,7 @@ byepregenPrepareRunTask('runLightFuzzSource', [
                 gcFree                    : lightGoldenConfig.gcFree,
                 clearWorld                : true,
                 flatWorld                 : lightFuzzConfig.variant != 'blackout',
+                densityColumnCompiler     : 'false',
                 serverRuntimeArenaPalette : 'false',
         ],
 ])

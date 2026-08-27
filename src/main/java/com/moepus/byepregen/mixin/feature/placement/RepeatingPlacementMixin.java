@@ -8,7 +8,7 @@ import net.minecraft.world.level.levelgen.placement.RepeatingPlacement;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(value = RepeatingPlacement.class, remap = false)
+@Mixin(RepeatingPlacement.class)
 public abstract class RepeatingPlacementMixin implements FastPlacementModifier {
     @Shadow
     protected abstract int count(RandomSource random, BlockPos pos);

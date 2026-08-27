@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.nbt;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.mixin.accessor.nbt.CompoundTagAccessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.nbt.CompoundTag;
@@ -17,6 +18,7 @@ import java.util.Map;
  * @reason Use faster collection
  * @author Maity
  */
+@MixinGate(conflictingMods = {"harium", "lithium"})
 @Mixin(CompoundTag.class)
 public abstract class CompoundTagFastRuntimeMixin {
     @Shadow

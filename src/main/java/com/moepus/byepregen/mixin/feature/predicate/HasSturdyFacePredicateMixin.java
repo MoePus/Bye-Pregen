@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.blockpredicates.HasSturdyFacePredicate;
 import org.spongepowered.asm.mixin.*;
 
-@Mixin(value = HasSturdyFacePredicate.class, remap = false)
+@Mixin(HasSturdyFacePredicate.class)
 public abstract class HasSturdyFacePredicateMixin implements FastDiskBlockPredicate {
     @Shadow
     @Final

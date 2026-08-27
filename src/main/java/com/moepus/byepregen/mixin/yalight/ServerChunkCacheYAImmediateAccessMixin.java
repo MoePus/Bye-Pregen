@@ -2,6 +2,7 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
+import com.moepus.byepregen.integration.forge.ChunkHolderCompat;
 import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ChunkHolder;
@@ -9,14 +10,14 @@ import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = ServerChunkCache.class, priority = 1050, remap = false)
+@Mixin(value = ServerChunkCache.class, priority = 1050)
 public abstract class ServerChunkCacheYAImmediateAccessMixin implements YAImmediateChunkAccess {
     @Shadow
     @Final
@@ -48,7 +49,7 @@ public abstract class ServerChunkCacheYAImmediateAccessMixin implements YAImmedi
         long chunkPos = ChunkPos.asLong(chunkX, chunkZ);
         if (Thread.currentThread() != this.mainThread) {
             ChunkHolder holder = this.getVisibleChunkIfPresent(chunkPos);
-            return holder == null ? null : holder.getLatestChunk();
+            return holder == null ? null : ChunkHolderCompat.getLatest(holder);
         }
 
         LevelChunk cached = this.byepregen$getCachedFullChunk(chunkPos);
@@ -59,10 +60,7 @@ public abstract class ServerChunkCacheYAImmediateAccessMixin implements YAImmedi
         if (holder == null) {
             return null;
         }
-        if (holder.currentlyLoading != null) {
-            return holder.currentlyLoading;
-        }
-        ChunkAccess chunk = holder.getChunkIfPresent(ChunkStatus.FULL);
+        ChunkAccess chunk = ChunkHolderCompat.getIfPresent(holder, ChunkStatus.FULL);
         if (chunk instanceof LevelChunk levelChunk) {
             this.storeInCache(chunkPos, levelChunk, ChunkStatus.FULL);
         }

@@ -5,9 +5,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.storage.RegionFile;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -23,7 +21,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public final class LightGoldenPrepareRelight {
-    private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo("light-golden-prepare-relight", Level.OVERWORLD, "chunk");
     static final String CHUNK_LIST_FILE = "byepregen-light-golden-chunks.txt";
     private static final double RELIGHT_RADIUS = Double.parseDouble(System.getProperty(
             "byepregen.lightGolden.prepareRadius",
@@ -120,7 +117,7 @@ public final class LightGoldenPrepareRelight {
         RegionCoords region = RegionCoords.parse(regionPath.getFileName().toString());
         int chunks = 0;
         int relightChunks = 0;
-        try (RegionFile regionFile = new RegionFile(REGION_INFO, regionPath, regionPath.getParent(), false)) {
+        try (RegionFile regionFile = new RegionFile(regionPath, regionPath.getParent(), false)) {
             for (int localZ = 0; localZ < 32; ++localZ) {
                 for (int localX = 0; localX < 32; ++localX) {
                     ChunkPos pos = new ChunkPos(region.x * 32 + localX, region.z * 32 + localZ);
@@ -129,7 +126,7 @@ public final class LightGoldenPrepareRelight {
                         if (input == null) {
                             continue;
                         }
-                        chunkTag = NbtIo.read(input, NbtAccounter.unlimitedHeap());
+                        chunkTag = NbtIo.read(input, NbtAccounter.UNLIMITED);
                     }
                     stripChunkLight(chunkTag);
                     try (DataOutputStream output = regionFile.getChunkDataOutputStream(pos)) {

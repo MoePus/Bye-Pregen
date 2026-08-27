@@ -52,3 +52,13 @@ ext.prepareDisposableServer = { Map<String, ?> options ->
         writeJsonFile(file("${directory}/config/chunky/config.json"), options.chunkyConfig as Map<String, ?>)
     }
 }
+
+ext.byepregenInstallRuntimeMods = { File directory, List runtimeConfigurations ->
+    File mods = file("${directory}/mods")
+    delete(mods)
+    mods.mkdirs()
+    copy {
+        from runtimeConfigurations
+        into mods
+    }
+}

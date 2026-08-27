@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(value = RuleBasedBlockStateProvider.class, remap = false)
+@Mixin(RuleBasedBlockStateProvider.class)
 public abstract class RuleBasedBlockStateProviderMixin implements FastRuleBasedBlockStateProvider {
     @Unique
     private RuleBasedBlockStateProvider.Rule[] byepregen$rules;

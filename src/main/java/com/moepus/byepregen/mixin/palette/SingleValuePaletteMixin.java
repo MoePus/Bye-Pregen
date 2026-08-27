@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(value = SingleValuePalette.class, remap = false)
+@Mixin(SingleValuePalette.class)
 public abstract class SingleValuePaletteMixin<T> implements PaletteRawIdAccess {
     @Shadow
     @Final

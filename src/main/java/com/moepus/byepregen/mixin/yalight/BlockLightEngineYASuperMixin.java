@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = BlockLightEngine.class, remap = false)
+@Mixin(BlockLightEngine.class)
 public abstract class BlockLightEngineYASuperMixin {
     @Unique
     private static final BlockPos.MutableBlockPos byepregen$dummyMutablePos = new BlockPos.MutableBlockPos();

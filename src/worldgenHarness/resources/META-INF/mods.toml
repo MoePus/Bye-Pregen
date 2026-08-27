@@ -1,0 +1,23 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "MIT"
+
+[[mods]]
+modId = "byepregen_worldgen_harness"
+version = "1"
+displayName = "ByePregen Worldgen Harness"
+description = '''Test-only world generation and light verification harness.'''
+
+[[dependencies.byepregen_worldgen_harness]]
+modId = "byepregen"
+mandatory = true
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "SERVER"
+
+[[dependencies.byepregen_worldgen_harness]]
+modId = "chunky"
+mandatory = true
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "SERVER"

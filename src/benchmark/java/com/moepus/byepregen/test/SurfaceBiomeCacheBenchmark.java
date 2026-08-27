@@ -111,7 +111,7 @@ public final class SurfaceBiomeCacheBenchmark {
     }
 
     private static long allocatedBytes() {
-        return ALLOCATION_BEAN.getThreadAllocatedBytes(Thread.currentThread().threadId());
+        return ALLOCATION_BEAN.getThreadAllocatedBytes(Thread.currentThread().getId());
     }
 
     private enum Mode {

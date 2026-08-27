@@ -5,10 +5,12 @@ import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
 import net.minecraft.core.IdMap;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
 
 @MixinGate(requiredMods = "lithium")
-@Mixin(targets = "net.caffeinemc.mods.lithium.common.world.chunk.LithiumHashPalette", remap = false)
+@Pseudo
+@Mixin(targets = "me.jellysquid.mods.lithium.common.world.chunk.LithiumHashPalette", remap = false)
 public abstract class LithiumHashPaletteMixin<T> implements PaletteRawIdAccess {
     @Shadow
     @Final

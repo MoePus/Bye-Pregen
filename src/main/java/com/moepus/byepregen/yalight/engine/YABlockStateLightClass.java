@@ -5,6 +5,9 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.extensions.IForgeBlock;
+
+import java.lang.reflect.Method;
 
 public final class YABlockStateLightClass {
     public static final int CLEAR = 0;
@@ -16,6 +19,18 @@ public final class YABlockStateLightClass {
     private static final int BITS_PER_VALUE = 2;
     private static final int VALUE_MASK = 3;
     private static final int[] PACKED = buildPackedTable();
+    private static final ClassValue<Boolean> DYNAMIC_LIGHT_BLOCKS = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            try {
+                Method method = type.getMethod(
+                        "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class);
+                return method.getDeclaringClass() != IForgeBlock.class;
+            } catch (ReflectiveOperationException | LinkageError exception) {
+                return true;
+            }
+        }
+    };
 
     private YABlockStateLightClass() {
     }
@@ -83,6 +98,8 @@ public final class YABlockStateLightClass {
     }
 
     private static boolean needsStateLightColor(BlockState state) {
-        return state.hasDynamicLightEmission() || state.getLightEmission() != 0 || state.emissiveRendering(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        return DYNAMIC_LIGHT_BLOCKS.get(state.getBlock().getClass())
+                || state.getLightEmission() != 0
+                || state.emissiveRendering(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 }

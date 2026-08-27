@@ -7,12 +7,12 @@ import javax.annotation.Nullable;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
-@Mixin(value = WorldGenRegion.class, remap = false)
+@Mixin(WorldGenRegion.class)
 public abstract class WorldGenRegionSectionCacheMixin implements WorldGenRegionSectionCache {
     @Unique
     private long byepregen$chunkKey;

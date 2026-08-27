@@ -1,5 +1,7 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.yalight.access.YAPendingTaskAccess;
+
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
 import com.mojang.logging.LogUtils;
 import java.util.ArrayList;
@@ -12,7 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.slf4j.Logger;
 
 final class LightFuzzRun {
@@ -234,7 +236,8 @@ final class LightFuzzRun {
         CompletableFuture<?>[] futures = new CompletableFuture<?>[this.chunks.size()];
         for (int i = 0; i < this.chunks.size(); ++i) {
             ChunkPos chunk = this.chunks.get(i);
-            futures[i] = this.level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x, chunk.z);
+            futures[i] = ((YAPendingTaskAccess) this.level.getChunkSource().getLightEngine())
+                    .byepregen$waitForPendingTasks(chunk.x, chunk.z);
         }
         this.beginPendingLight(stageName, CompletableFuture.allOf(futures));
     }

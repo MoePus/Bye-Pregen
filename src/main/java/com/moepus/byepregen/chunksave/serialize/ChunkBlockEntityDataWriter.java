@@ -17,7 +17,7 @@ final class ChunkBlockEntityDataWriter {
         long listStart = writer.startList(BLOCK_ENTITIES, Tag.TAG_COMPOUND);
         int count = 0;
         for (BlockPos pos : blockEntityPositions(chunk)) {
-            Tag tag = blockEntityNbtForSaving(level, chunk, pos);
+            Tag tag = blockEntityNbtForSaving(chunk, pos);
             if (tag != null) {
                 writer.putTagEntry(tag);
                 ++count;
@@ -33,10 +33,10 @@ final class ChunkBlockEntityDataWriter {
         return chunk.getBlockEntitiesPos();
     }
 
-    private static Tag blockEntityNbtForSaving(ServerLevel level, ChunkAccess chunk, BlockPos pos) {
+    private static Tag blockEntityNbtForSaving(ChunkAccess chunk, BlockPos pos) {
         if (GcFreeChunkSerializer.hasC2MEAsyncSerializationManager()) {
-            return C2MEAsyncSerializationCompat.blockEntityNbtForSaving(level, chunk, pos);
+            return C2MEAsyncSerializationCompat.blockEntityNbtForSaving(chunk, pos);
         }
-        return chunk.getBlockEntityNbtForSaving(pos, level.registryAccess());
+        return chunk.getBlockEntityNbtForSaving(pos);
     }
 }

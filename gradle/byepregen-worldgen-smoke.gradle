@@ -10,11 +10,6 @@ def worldGenConfig = [
         gcFree : byepregenProp('byepregenTestWorldGenGcFree', 'true'),
         yaLight: byepregenProp('byepregenTestWorldGenYALight', 'true'),
         surfaceBiomeCache: byepregenProp('byepregenTestSurfaceBiomeCache', 'true'),
-        surfaceScalar: byepregenProp('byepregenTestSurfaceScalar', 'true'),
-        surfaceOutputDifferential: providers.gradleProperty('byepregenTestSurfaceOutputDifferential')
-                .orElse(providers.gradleProperty('byepregenTestSurfaceDifferential'))
-                .orElse('false')
-                .get(),
         noFeatures: byepregenProp('byepregenTestWorldGenNoFeatures', 'false'),
         densityColumnCompiler: byepregenProp('byepregenTestDensityColumnCompiler', 'true'),
         enableMemoizedDiskPlan: byepregenProp('byepregenTestEnableMemoizedDiskPlan', 'true'),
@@ -34,16 +29,14 @@ def chunkNbtParityRoot = file('run/chunk-nbt-parity')
 def chunkNbtParityResult = file("${chunkNbtParityRoot}/chunk-nbt-parity.result")
 def fastTickRuntimeRoot = file('run/fast-tick-runtime')
 def fastTickRuntimeResult = file("${fastTickRuntimeRoot}/fast-tick-runtime.result")
-def fastTickExpectedConflict = [
-        'c2me-opts-allocs.mixins.json:predicates.mixinoffsetpredicate',
-        'com.moepus.byepregen.mixin.feature.predicate.statetestingpredicatemixin',
-]
+def c2mefRuntimeRoot = file('run/c2mef-runtime')
+def c2mefHariumRuntimeRoot = file('run/c2mef-harium-runtime')
 def validateFastTickRuntime = { File root, File result ->
     String outcome = byepregenReadRequiredResult(result, 'Fast tick runtime')
     def requiredResultParts = [
-            'PASS\n', 'c2me=true', 'lithium=true', 'servercore=false',
+            'PASS\n', 'fastchunkgen=true', 'harium=true', 'servercore=false',
             'iterationMixin=true', 'weatherScope=true', 'cacheSeeding=true',
-            'fallbackList=true', 'radius=16',
+            'hariumTickList=true', 'radius=16',
     ]
     if (!requiredResultParts.every { outcome.contains(it) }) {
         throw new GradleException("Fast tick runtime failed:\n${outcome}")
@@ -54,24 +47,16 @@ def validateFastTickRuntime = { File root, File result ->
         throw new GradleException("Fast tick runtime produced no latest.log: ${log}")
     }
     def logLines = log.readLines('UTF-8')
-    def expectedConflicts = logLines.findAll { line ->
-        String lower = line.toLowerCase(Locale.ROOT)
-        fastTickExpectedConflict.every { lower.contains(it) }
-    }
-    if (expectedConflicts.size() != 1) {
-        throw new GradleException("Fast tick runtime expected exactly one known overwrite conflict, found "
-                + expectedConflicts.size())
-    }
     def failures = logLines.findAll { line ->
         String lower = line.toLowerCase(Locale.ROOT)
         boolean byepregenLine = lower.contains('byepregen') || lower.contains('bye pregen')
         boolean failureMarker = [
-                'mixin apply', 'target', 'not found', 'failed injection', 'critical injection',
+                'mixin apply', 'target class', 'target method', 'not found',
+                'failed injection', 'critical injection',
                 'invalid mixin', 'error loading class', 'unregistered mixin', 'gate drift',
                 'skipped overwrite', 'overwrite conflict', 'byepregen_fast_tick_runtime_fail',
         ].any { lower.contains(it) }
-        boolean expectedConflict = fastTickExpectedConflict.every { lower.contains(it) }
-        byepregenLine && failureMarker && !expectedConflict
+        byepregenLine && failureMarker
     }
     if (!failures.isEmpty()) {
         throw new GradleException("Fast tick runtime log contains ByePregen mixin failures:\n"
@@ -80,10 +65,8 @@ def validateFastTickRuntime = { File root, File result ->
     logger.lifecycle("Fast tick runtime passed:\n${outcome.trim()}")
 }
 def defaultWorldGenLabel = "gc${worldGenConfig.gcFree}" +
-        "-scalar${worldGenConfig.surfaceScalar}" +
         "-cache${worldGenConfig.surfaceBiomeCache}" +
         "-noFeatures${worldGenConfig.noFeatures}" +
-        "-outputDiff${worldGenConfig.surfaceOutputDifferential}" +
         "-biomeProfile${worldGenConfig.surfaceBiomeProfile}"
 worldGenConfig.label = byepregenProp('byepregenTestWorldGenLabel', defaultWorldGenLabel)
 worldGenConfig.jfr = file(
@@ -110,7 +93,7 @@ def writeSingleBiomeWorldPreset = { File runDir, String biome ->
     File pack = file("${runDir}/world/datapacks/byepregen-single-biome")
     writeJsonFile(file("${pack}/pack.mcmeta"), [
             pack: [
-                    pack_format: 48,
+                    pack_format: 15,
                     description: "ByePregen fixed-biome worldgen profile for ${biome}",
             ],
     ])
@@ -144,28 +127,34 @@ def writeSingleBiomeWorldPreset = { File runDir, String biome ->
     ])
 }
 
-neoForge {
+minecraft {
     runs {
         arenaPaletteDifferential {
             byepregenConfigureWorldgenRun(delegate, [
                     dir : arenaPaletteRoot,
                     mode: 'arena_palette',
             ])
-            systemProperty 'byepregen.arenaPaletteDifferentialResult', arenaPaletteResult.absolutePath
+            property 'byepregen.arenaPaletteDifferentialResult', arenaPaletteResult.absolutePath
         }
         chunkNbtParity {
             byepregenConfigureWorldgenRun(delegate, [
                     dir : chunkNbtParityRoot,
                     mode: 'chunk_nbt_parity',
             ])
-            systemProperty 'byepregen.chunkNbtParityResult', chunkNbtParityResult.absolutePath
+            property 'byepregen.chunkNbtParityResult', chunkNbtParityResult.absolutePath
         }
         fastTickRuntime {
             byepregenConfigureWorldgenRun(delegate, [
                     dir   : fastTickRuntimeRoot,
                     radius: '16',
             ])
-            systemProperty 'byepregen.fastTickRuntimeResult', fastTickRuntimeResult.absolutePath
+            property 'byepregen.fastTickRuntimeResult', fastTickRuntimeResult.absolutePath
+        }
+        c2mefRuntime {
+            byepregenConfigureWorldgenRun(delegate, [dir: c2mefRuntimeRoot, radius: '16'])
+        }
+        c2mefHariumRuntime {
+            byepregenConfigureWorldgenRun(delegate, [dir: c2mefHariumRuntimeRoot, radius: '16'])
         }
         testWorldGen {
             byepregenConfigureWorldgenRun(delegate, [
@@ -174,8 +163,6 @@ neoForge {
                     jfrFile      : worldGenConfig.jfr,
                     jfrRepository: worldGenConfig.jfrRepository,
                     surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
-                    surfaceScalar: worldGenConfig.surfaceScalar,
-                    surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
                     verifyDfcColumn: worldGenConfig.verifyDfcColumn,
                     enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
@@ -253,11 +240,15 @@ tasks.matching { it.name == 'runFastTickRuntime' }.configureEach {
     ]
     byepregenUseWorldgenTestConfig(delegate, testOptions)
     group = 'verification'
-    description = 'Runs radius-16 worldgen with fast tick and weather mixins under C2ME and Lithium.'
+    description = 'Runs radius-16 worldgen with fast tick and weather mixins under FastChunkGen and Harium.'
     notCompatibleWithConfigurationCache('Validates a result produced by a disposable test server')
     doFirst {
         delete(fastTickRuntimeResult)
         byepregenPrepareWorldgenRunDir(testOptions)
+        byepregenInstallRuntimeMods(
+                fastTickRuntimeRoot,
+                [configurations.fastChunkGenRuntime, configurations.hariumRuntime]
+        )
     }
     doLast {
         validateFastTickRuntime(fastTickRuntimeRoot, fastTickRuntimeResult)
@@ -266,18 +257,70 @@ tasks.matching { it.name == 'runFastTickRuntime' }.configureEach {
 
 tasks.register('testFastTickRuntime') {
     group = 'verification'
-    description = 'Verifies fast tick and weather mixins in the current C2ME/Lithium runtime.'
+    description = 'Verifies fast tick and weather mixins in the FastChunkGen/Harium runtime.'
     dependsOn('runFastTickRuntime')
 }
 
 byepregenConfigureWorldgenResultTask('runFastTickRuntime', fastTickRuntimeRoot)
+
+def configureC2mefRuntimeTask = { String taskName, File root, List runtimeConfigurations ->
+    tasks.matching { it.name == taskName }.configureEach {
+        Map testOptions = [
+                dir         : root,
+                arenaPalette: 'true',
+                yaLight     : 'false',
+                gcFree      : 'true',
+                fastTick    : 'true',
+                c2meDfc     : 'false',
+                seed        : "byepregen-${taskName}",
+                clearWorld  : true,
+        ]
+        byepregenUseWorldgenTestConfig(delegate, testOptions)
+        group = 'verification'
+        description = 'Runs radius-16 worldgen and raw saves with the C2ME Forge port.'
+        notCompatibleWithConfigurationCache('Validates a disposable C2MEF server')
+        doFirst {
+            delete(byepregenWorldgenResult(root))
+            byepregenPrepareWorldgenRunDir(testOptions)
+            byepregenInstallRuntimeMods(root, runtimeConfigurations)
+        }
+        doLast {
+            byepregenValidateWorldgenResult(root)
+            File log = file("${root}/logs/latest.log")
+            String logText = log.isFile() ? log.getText('UTF-8') : ''
+            List requiredLogParts = [
+                    'Registered ByePregen GC-free serializer with com.ishland.c2me.base.common.registry.SerializerAccess',
+                    'CAN_USE_RAW_SAVE=true',
+                    'ByePregen GC-free compatibility serializer wrote raw chunk data',
+            ]
+            if (!requiredLogParts.every { logText.contains(it) }) {
+                throw new GradleException("C2MEF raw-save compatibility was not exercised: ${log}")
+            }
+        }
+    }
+}
+
+configureC2mefRuntimeTask('runC2mefRuntime', c2mefRuntimeRoot, [configurations.c2mefRuntime])
+configureC2mefRuntimeTask(
+        'runC2mefHariumRuntime',
+        c2mefHariumRuntimeRoot,
+        [configurations.c2mefRuntime, configurations.hariumRuntime]
+)
+tasks.matching { it.name == 'runC2mefHariumRuntime' }.configureEach {
+    mustRunAfter('runC2mefRuntime')
+}
+
+tasks.register('testC2mefRuntime') {
+    group = 'verification'
+    description = 'Checks C2MEF alone and together with Harium.'
+    dependsOn('runC2mefRuntime', 'runC2mefHariumRuntime')
+}
 
 tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
     Map testOptions = [
             dir                       : worldGenConfig.dir,
             yaLight                   : worldGenConfig.yaLight,
             gcFree                    : worldGenConfig.gcFree,
-            surfaceScalar             : worldGenConfig.surfaceScalar,
             surfaceBiomeCache         : worldGenConfig.surfaceBiomeCache,
             seed                      : worldGenConfig.seed,
             noFeatures                : worldGenConfig.noFeatures,

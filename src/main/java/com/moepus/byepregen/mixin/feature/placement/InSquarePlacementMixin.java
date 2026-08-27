@@ -5,7 +5,7 @@ import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.placement.InSquarePlacement;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(value = InSquarePlacement.class, remap = false)
+@Mixin(InSquarePlacement.class)
 public abstract class InSquarePlacementMixin implements FastPlacementModifier {
     @Override
     public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {

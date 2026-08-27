@@ -4,10 +4,10 @@ import com.mojang.logging.LogUtils;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.GameRules;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import org.slf4j.Logger;
 
 final class WorldgenHarnessDriver {
@@ -25,19 +25,18 @@ final class WorldgenHarnessDriver {
         if (!REGISTERED.compareAndSet(false, true)) {
             return;
         }
-        NeoForge.EVENT_BUS.addListener(WorldgenHarnessDriver::onServerAboutToStart);
-        NeoForge.EVENT_BUS.addListener(WorldgenHarnessDriver::onServerStarted);
-        NeoForge.EVENT_BUS.addListener(WorldgenHarnessDriver::onServerTickPost);
+        MinecraftForge.EVENT_BUS.addListener(WorldgenHarnessDriver::onServerAboutToStart);
+        MinecraftForge.EVENT_BUS.addListener(WorldgenHarnessDriver::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(WorldgenHarnessDriver::onServerTick);
         LOGGER.info("Registered ByePregen worldgen harness driver");
     }
 
     private static void onServerAboutToStart(ServerAboutToStartEvent event) {
         GameRules gameRules = event.getServer().getWorldData().getGameRules();
-        gameRules.getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, null);
         if ("light_fuzz".equals(MODE)) {
             gameRules.getRule(GameRules.RULE_RANDOMTICKING).set(0, null);
         }
-        LOGGER.info("Disabled spawn chunk preloading for ByePregen worldgen harness");
+        LOGGER.info("Configured ByePregen worldgen harness game rules");
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
@@ -58,7 +57,10 @@ final class WorldgenHarnessDriver {
         }
     }
 
-    private static void onServerTickPost(ServerTickEvent.Post event) {
+    private static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         LightFuzzRun run = lightFuzzRun;
         if (run != null && run.owns(event.getServer())) {
             run.tick();

@@ -3,58 +3,33 @@ def serverStartupRoot = file("${startupRoot}/server")
 def clientStartupRoot = file("${startupRoot}/client")
 def serverStartupResult = file("${serverStartupRoot}/startup.result")
 def clientStartupResult = file("${clientStartupRoot}/startup.result")
-def expectedOverwriteConflictParts = [
-        'c2me-opts-allocs.mixins.json:predicates.mixinoffsetpredicate',
-        'com.moepus.byepregen.mixin.feature.predicate.statetestingpredicatemixin',
-]
 
-sourceSets {
-    startupHarness {
-        java.setSrcDirs(['src/startupHarness/java', 'src/harnessCommon/java'])
-        resources.setSrcDirs(['src/startupHarness/resources'])
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
-    }
-}
-
-configurations {
-    startupHarnessCompileOnly.extendsFrom compileOnly
-    startupHarnessAnnotationProcessor.extendsFrom annotationProcessor
-}
-
-neoForge {
-    mods {
-        byepregen_startup_harness {
-            sourceSet(sourceSets.startupHarness)
-        }
-    }
+minecraft {
     runs {
         startupServer {
-            server()
-            byepregenUseTestConfig(delegate)
-            sourceSet.set(sourceSets.startupHarness)
-            loadedMods.set([
-                    neoForge.mods.named(project.mod_id).get(),
-                    neoForge.mods.named('byepregen_startup_harness').get(),
-            ] as Set)
-            gameDirectory = serverStartupRoot
-            programArgument '--nogui'
-            systemProperty 'byepregen.startupResult', serverStartupResult.absolutePath
-            systemProperty 'neoforge.enabledGameTestNamespaces', ''
-            logLevel = org.slf4j.event.Level.INFO
+            parent(minecraft.runs.server)
+            workingDirectory(serverStartupRoot)
+            mods {
+                byepregen_startup_harness {
+                    source sourceSets.startupHarness
+                }
+            }
+            args '--nogui'
+            property 'byepregen.startupResult', serverStartupResult.absolutePath
+            property 'forge.enabledGameTestNamespaces', ''
+            property 'forge.logging.console.level', 'info'
         }
         startupClient {
-            client()
-            byepregenUseTestConfig(delegate)
-            sourceSet.set(sourceSets.startupHarness)
-            loadedMods.set([
-                    neoForge.mods.named(project.mod_id).get(),
-                    neoForge.mods.named('byepregen_startup_harness').get(),
-            ] as Set)
-            gameDirectory = clientStartupRoot
-            systemProperty 'byepregen.startupResult', clientStartupResult.absolutePath
-            systemProperty 'neoforge.enabledGameTestNamespaces', ''
-            logLevel = org.slf4j.event.Level.INFO
+            parent(minecraft.runs.client)
+            workingDirectory(clientStartupRoot)
+            mods {
+                byepregen_startup_harness {
+                    source sourceSets.startupHarness
+                }
+            }
+            property 'byepregen.startupResult', clientStartupResult.absolutePath
+            property 'forge.enabledGameTestNamespaces', ''
+            property 'forge.logging.console.level', 'info'
         }
     }
 }
@@ -67,24 +42,16 @@ def validateStartup = { String side, File root, File result ->
         throw new GradleException("${side} startup produced no latest.log: ${log}")
     }
     def logLines = log.readLines('UTF-8')
-    def expectedConflicts = logLines.findAll { line ->
-        String lower = line.toLowerCase(Locale.ROOT)
-        expectedOverwriteConflictParts.every { lower.contains(it) }
-    }
-    if (expectedConflicts.size() != 1) {
-        throw new GradleException("${side} startup expected exactly one known overwrite conflict, found "
-                + "${expectedConflicts.size()}")
-    }
     def failures = logLines.findAll { line ->
         String lower = line.toLowerCase(Locale.ROOT)
         boolean byepregenLine = lower.contains('byepregen') || lower.contains('bye pregen')
         boolean failureMarker = [
-                'mixin apply', 'target', 'not found', 'failed injection', 'critical injection',
+                'mixin apply', 'target class', 'target method', 'not found',
+                'failed injection', 'critical injection',
                 'invalid mixin', 'error loading class', 'unregistered mixin', 'gate drift',
                 'skipped overwrite', 'overwrite conflict', 'byepregen_startup_fail',
         ].any { lower.contains(it) }
-        boolean expectedConflict = expectedOverwriteConflictParts.every { lower.contains(it) }
-        byepregenLine && failureMarker && !expectedConflict
+        byepregenLine && failureMarker
     }
     if (!failures.isEmpty()) {
         throw new GradleException("${side} startup log contains ByePregen mixin failures:\n"
@@ -96,6 +63,7 @@ def validateStartup = { String side, File root, File result ->
 tasks.matching { it.name == 'runStartupServer' }.configureEach {
     group = 'verification'
     description = 'Starts an ordinary dedicated server with ByePregen and exits after ServerStartedEvent.'
+    byepregenUseTestConfig(delegate)
     notCompatibleWithConfigurationCache('Prepares and validates a disposable startup server')
     doFirst {
         delete(serverStartupRoot)
@@ -118,6 +86,7 @@ tasks.matching { it.name == 'runStartupServer' }.configureEach {
 tasks.matching { it.name == 'runStartupClient' }.configureEach {
     group = 'verification'
     description = 'Starts an ordinary client with ByePregen and exits after the first stable client tick.'
+    byepregenUseTestConfig(delegate)
     notCompatibleWithConfigurationCache('Prepares and validates a disposable startup client')
     doFirst {
         delete(clientStartupRoot)

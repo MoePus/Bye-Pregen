@@ -2,7 +2,6 @@ package com.moepus.byepregen.palette.arena.codec;
 
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.VarInt;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 
@@ -48,7 +47,7 @@ public final class NetworkWriter {
     }
 
     private static int uniformSerializedSize(int rawId) {
-        return 1 + VarInt.getByteSize(rawId) + VarInt.getByteSize(0);
+        return 1 + varIntSize(rawId) + varIntSize(0);
     }
 
     private static int serializedBits(int paletteSize) {
@@ -87,7 +86,7 @@ public final class NetworkWriter {
         int bits = serializedBits(paletteSize);
         int packedLength = bits == 0 ? 0 : SerializationScratch.packedLength(bits);
         return 1 + paletteSerializedSize(scratch, bits, useGlobalPalette(bits), paletteSize)
-                + VarInt.getByteSize(packedLength)
+                + varIntSize(packedLength)
                 + packedLength * Long.BYTES;
     }
 
@@ -117,13 +116,22 @@ public final class NetworkWriter {
             return 0;
         }
         if (bits == 0) {
-            return VarInt.getByteSize(scratch.paletteRawId(0));
+            return varIntSize(scratch.paletteRawId(0));
         }
 
-        int size = VarInt.getByteSize(paletteSize);
+        int size = varIntSize(paletteSize);
         for (int i = 0; i < paletteSize; ++i) {
-            size += VarInt.getByteSize(scratch.paletteRawId(i));
+            size += varIntSize(scratch.paletteRawId(i));
         }
         return size;
+    }
+
+    private static int varIntSize(int value) {
+        int bytes = 1;
+        while ((value & -128) != 0) {
+            value >>>= 7;
+            ++bytes;
+        }
+        return bytes;
     }
 }

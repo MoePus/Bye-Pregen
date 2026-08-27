@@ -10,6 +10,7 @@ import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.spongepowered.asm.mixin.injection.At;
@@ -71,6 +72,7 @@ public abstract class ClientPacketListenerYALightMixin {
     )
     private void byepregen$clearYALightData(ClientPacketListener instance, ClientboundForgetLevelChunkPacket packet) {
         LevelLightEngine lightEngine = this.level.getChunkSource().getLightEngine();
-        ((YALightEngineHolder)lightEngine).byepregen$getYALightEngine().clearChunk(packet.pos());
+        ((YALightEngineHolder)lightEngine).byepregen$getYALightEngine()
+                .clearChunk(new ChunkPos(packet.getX(), packet.getZ()));
     }
 }

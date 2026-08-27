@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
-@Mixin(value = LevelChunk.class, remap = false)
+@Mixin(LevelChunk.class)
 public abstract class LevelChunkWorldgenStateMixin implements WorldgenChunkState {
     @Unique
     private boolean byepregen$freshWorldgenChunk;

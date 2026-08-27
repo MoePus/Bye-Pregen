@@ -9,7 +9,7 @@ import net.minecraft.world.level.levelgen.placement.PlacementFilter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(value = PlacementFilter.class, remap = false)
+@Mixin(PlacementFilter.class)
 public abstract class PlacementFilterMixin implements FastPlacementModifier {
     @Shadow
     protected abstract boolean shouldPlace(PlacementContext context, RandomSource random, BlockPos pos);

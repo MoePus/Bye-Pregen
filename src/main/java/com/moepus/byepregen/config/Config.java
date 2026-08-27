@@ -170,45 +170,36 @@ public final class Config {
         }
     }
 
-    public record ArenaRuntime(BooleanSetting serverSetting, BooleanSetting clientSetting) {
+    public record ArenaRuntime(BooleanSetting serverSetting) {
         public ArenaRuntime {
             Objects.requireNonNull(serverSetting, "serverSetting");
-            Objects.requireNonNull(clientSetting, "clientSetting");
         }
 
-        public ArenaRuntime(boolean server, boolean client) {
-            this(BooleanSetting.explicit(server), BooleanSetting.explicit(client));
+        public ArenaRuntime(boolean server) {
+            this(BooleanSetting.explicit(server));
         }
 
         public ArenaRuntime() {
-            this(BooleanSetting.DEFAULT, BooleanSetting.DEFAULT);
+            this(BooleanSetting.DEFAULT);
         }
 
         public boolean server() {
             return this.serverSetting.resolve(false);
         }
 
-        public boolean client() {
-            return this.clientSetting.resolve(false);
-        }
     }
 
-    public record Surface(BooleanSetting ruleCompilerSetting, BooleanSetting biomeCacheSetting) {
+    public record Surface(BooleanSetting biomeCacheSetting) {
         public Surface {
-            Objects.requireNonNull(ruleCompilerSetting, "ruleCompilerSetting");
             Objects.requireNonNull(biomeCacheSetting, "biomeCacheSetting");
         }
 
-        public Surface(boolean ruleCompiler, boolean biomeCache) {
-            this(BooleanSetting.explicit(ruleCompiler), BooleanSetting.explicit(biomeCache));
+        public Surface(boolean biomeCache) {
+            this(BooleanSetting.explicit(biomeCache));
         }
 
         public Surface() {
-            this(BooleanSetting.DEFAULT, BooleanSetting.DEFAULT);
-        }
-
-        public boolean ruleCompiler() {
-            return this.ruleCompilerSetting.resolve(true);
+            this(BooleanSetting.DEFAULT);
         }
 
         public boolean biomeCache() {
@@ -259,7 +250,7 @@ public final class Config {
         }
 
         public boolean gcFreeWorldgen() {
-            return this.gcFreeWorldgenSetting.resolve(true);
+            return this.gcFreeWorldgenSetting.resolve(false);
         }
 
         public boolean retainBuffer() {

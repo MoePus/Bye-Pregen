@@ -6,7 +6,7 @@ import net.minecraft.server.level.ChunkMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(value = ChunkMap.class, remap = false)
+@Mixin(ChunkMap.class)
 public interface ChunkMapUnloadAccessor {
     @Accessor("pendingUnloads")
     Long2ObjectLinkedOpenHashMap<ChunkHolder> byepregen$getPendingUnloads();

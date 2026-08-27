@@ -71,7 +71,7 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
             return this.delegate.getNoiseBiome(x, y, z);
         }
 
-        int localY = Math.clamp(y - this.minQuartY, 0, this.quartHeight - 1);
+        int localY = clamp(y - this.minQuartY, 0, this.quartHeight - 1);
         return this.flatBiomes[this.flatIndex(localX, localY, localZ)];
     }
 
@@ -85,7 +85,7 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
         int cubeX = (localBlockX - MIN_INTERIOR_BLOCK) >> 2;
         int cubeZ = (localBlockZ - MIN_INTERIOR_BLOCK) >> 2;
         int baseQuartY = (pos.getY() - MIN_INTERIOR_BLOCK) >> 2;
-        int cubeY = Math.clamp(baseQuartY - this.minQuartY + 1, 0, this.quartHeight);
+        int cubeY = clamp(baseQuartY - this.minQuartY + 1, 0, this.quartHeight);
         int certificate = this.certificates.at(cubeX, cubeY, cubeZ);
         return certificate == SurfaceBiomeCertificates.NON_UNIFORM ? null : this.flatBiomes[certificate];
     }
@@ -162,6 +162,10 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
 
     private static boolean insideInterior(int coordinate) {
         return coordinate >= MIN_INTERIOR_BLOCK && coordinate <= MAX_INTERIOR_BLOCK;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     @FunctionalInterface

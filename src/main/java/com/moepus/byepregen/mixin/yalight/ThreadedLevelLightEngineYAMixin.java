@@ -28,12 +28,15 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(ThreadedLevelLightEngine.class)
@@ -127,10 +130,10 @@ public abstract class ThreadedLevelLightEngineYAMixin {
         long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
         ChunkAccess chunk = ((YAImmediateChunkAccess)this.byepregen$level().getChunkSource())
                 .byepregen$getAnyChunkNow(chunkX, chunkZ);
-        if (chunk == null || !chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
+        if (chunk == null || !chunk.getStatus().isOrAfter(ChunkStatus.LIGHT)) {
             return;
         }
-        if (chunk.getPersistedStatus() != ChunkStatus.FULL) {
+        if (chunk.getStatus() != ChunkStatus.FULL) {
             this.byepregen$enqueueTask(chunkKey, type, task, false);
             return;
         }
@@ -188,15 +191,22 @@ public abstract class ThreadedLevelLightEngineYAMixin {
      * @author MoePus
      * @reason Route accepted light tasks through YA's top-level scheduler.
      */
-    @Overwrite
-    public void addTask(
+    @Inject(
+            method = "addTask(IILjava/util/function/IntSupplier;"
+                    + "Lnet/minecraft/server/level/ThreadedLevelLightEngine$TaskType;Ljava/lang/Runnable;)V",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void byepregen$routeTask(
             int chunkX,
             int chunkZ,
             IntSupplier queueLevelSupplier,
             ThreadedLevelLightEngine.TaskType type,
-            Runnable task
+            Runnable task,
+            CallbackInfo ci
     ) {
         this.byepregen$enqueueTask(ChunkPos.asLong(chunkX, chunkZ), type, task, false);
+        ci.cancel();
     }
 
     /**
@@ -350,26 +360,10 @@ public abstract class ThreadedLevelLightEngineYAMixin {
                 engine.setEdgeCheckReady(chunk, true);
                 chunk.setLightCorrect(true);
             }
+            ((ChunkMapLightAccessor)this.chunkMap).byepregen$releaseLightTicket(chunkPos);
             future.complete(chunk);
         };
         this.byepregen$addChunkLightPass(chunkPos, prepare, complete);
-        return future;
-    }
-
-    /**
-     * @author MoePus
-     * @reason Complete pending-task barriers through YA's scheduler instead of vanilla lightTasks.
-     */
-    @Overwrite
-    public CompletableFuture<?> waitForPendingTasks(int x, int z) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        var mainThreadExecutor = ((ChunkMapLightAccessor)this.chunkMap).byepregen$getMainThreadExecutor();
-        this.byepregen$enqueueTask(
-                ChunkPos.asLong(x, z),
-                ThreadedLevelLightEngine.TaskType.POST_UPDATE,
-                () -> mainThreadExecutor.execute(() -> future.complete(null)),
-                false
-        );
         return future;
     }
 

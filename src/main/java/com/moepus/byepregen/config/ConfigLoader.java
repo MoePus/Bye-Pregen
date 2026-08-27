@@ -113,11 +113,8 @@ public final class ConfigLoader {
                         source.apply(ConfigOption.ARENA_ENABLED),
                         source.apply(ConfigOption.DENSITY_COLUMN_COMPILER),
                         new Config.ArenaRuntime(
-                                source.apply(ConfigOption.SERVER_RUNTIME_ARENA),
-                                source.apply(ConfigOption.CLIENT_ARENA))),
-                new Config.Surface(
-                        source.apply(ConfigOption.SURFACE_RULE_COMPILER),
-                        source.apply(ConfigOption.SURFACE_BIOME_CACHE))
+                                source.apply(ConfigOption.SERVER_RUNTIME_ARENA))),
+                new Config.Surface(source.apply(ConfigOption.SURFACE_BIOME_CACHE))
         );
     }
 
@@ -194,15 +191,9 @@ public final class ConfigLoader {
         option(arena, "server-runtime", value.arena().runtime().serverSetting(),
                 "Default: False\nKeeps Arena block storage after chunks finish generation instead of converting\n"
                         + "it to vanilla storage. Server mods that directly access vanilla palettes may malfunction.");
-        option(arena, "client", value.arena().runtime().clientSetting(),
-                "Default: False\nStores client chunk block states in Arena's page-based palettes. This may reduce\n"
-                        + "palette overhead, but renderers that directly access vanilla palettes may malfunction.");
 
         CommentedConfig surface = table(worldgen, "surface",
                 "Optimizations used while applying topsoil, beaches, bedrock, and other surface layers.");
-        option(surface, "rule-compiler", value.surface().ruleCompilerSetting(),
-                "Default: True\nCompiles surface-rule trees into specialized JVM code, reducing rule dispatch\n"
-                        + "while surface blocks are selected. The first use adds compilation work and generated code.");
         option(surface, "biome-cache", value.surface().biomeCacheSetting(),
                 "Default: True\nCaches each chunk's quart-biome grid and skips repeated biome zoom lookups in\n"
                         + "uniform areas. Uses additional temporary memory while the chunk surface is generated.");
@@ -220,8 +211,10 @@ public final class ConfigLoader {
     private static void addChunkSaving(CommentedConfig root, Config.ChunkSaving value) {
         CommentedConfig saving = table(root, "chunk-saving", "Chunk serialization and storage options.");
         option(saving, "gc-free-worldgen", value.gcFreeWorldgenSetting(),
-                "Default: True\nSerializes eligible chunks directly to compressed NBT bytes instead of building\n"
-                        + "an intermediate NBT object tree. Mods that inspect chunk NBT during saving may be affected.");
+                "Default: False\nSerializes eligible chunks directly to compressed NBT bytes instead of building\n"
+                        + "an intermediate NBT object tree. Mods that inspect chunk NBT during saving may be affected.\n"
+                        + "Compatibility on Minecraft 1.20.1 is very limited. Enabling this option is not recommended\n"
+                        + "when C2ME or one of its ports is installed.");
         option(saving, "retain-buffer", value.retainBufferSetting(),
                 "Default: True\nReuses one NBT writer and compressor per saving worker thread, releasing buffers\n"
                         + "larger than 512 KiB. Reduces allocation churn but retains memory on each worker thread.");

@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
         feature = MixinFeature.ARENA,
         config = ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK
 )
-@Mixin(value = LevelChunk.class, remap = false)
+@Mixin(LevelChunk.class)
 public abstract class LevelChunkArenaMixin {
     @InjectLite(
             method = "<init>(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ProtoChunk;Lnet/minecraft/world/level/chunk/LevelChunk$PostLoadProcessor;)V",

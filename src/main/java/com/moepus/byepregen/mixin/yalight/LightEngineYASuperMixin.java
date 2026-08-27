@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = LightEngine.class, remap = false)
+@Mixin(LightEngine.class)
 public abstract class LightEngineYASuperMixin {
     @Unique
     private static final LongOpenHashSet byepregen$dummyNodeSet = new LongOpenHashSet();
@@ -30,7 +30,11 @@ public abstract class LightEngineYASuperMixin {
 
     @Redirect(
             method = "<init>",
-            at = @At(value = "NEW", target = "(IF)Lit/unimi/dsi/fastutil/longs/LongOpenHashSet;")
+            at = @At(
+                    value = "NEW",
+                    target = "(IF)Lit/unimi/dsi/fastutil/longs/LongOpenHashSet;",
+                    remap = false
+            )
     )
     private LongOpenHashSet byepregen$skipNodeSet(int expected, float loadFactor) {
         return this.byepregen$isYAEngine() ? byepregen$dummyNodeSet : new LongOpenHashSet(expected, loadFactor);
@@ -41,7 +45,8 @@ public abstract class LightEngineYASuperMixin {
             at = @At(
                     value = "NEW",
                     target = "()Lit/unimi/dsi/fastutil/longs/LongArrayFIFOQueue;",
-                    ordinal = 0
+                    ordinal = 0,
+                    remap = false
             )
     )
     private LongArrayFIFOQueue byepregen$skipDecreaseQueue() {
@@ -53,7 +58,8 @@ public abstract class LightEngineYASuperMixin {
             at = @At(
                     value = "NEW",
                     target = "()Lit/unimi/dsi/fastutil/longs/LongArrayFIFOQueue;",
-                    ordinal = 1
+                    ordinal = 1,
+                    remap = false
             )
     )
     private LongArrayFIFOQueue byepregen$skipIncreaseQueue() {

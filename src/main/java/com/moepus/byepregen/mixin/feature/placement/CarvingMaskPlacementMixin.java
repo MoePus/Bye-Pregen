@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(value = CarvingMaskPlacement.class, remap = false)
+@Mixin(CarvingMaskPlacement.class)
 public abstract class CarvingMaskPlacementMixin implements FastPlacementModifier {
     @Shadow
     @Final

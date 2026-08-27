@@ -1,5 +1,6 @@
 package com.moepus.byepregen.mixin.nbt;
 
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.mixin.accessor.nbt.CompoundTagAccessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -15,6 +16,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.Map;
 
+@MixinGate(conflictingMods = {"harium", "lithium"})
 @Mixin(targets = "net.minecraft.nbt.CompoundTag$1")
 public abstract class CompoundTagLoadSizingMixin {
     private static final long COMPOUND_OVERHEAD_BYTES = 48L;
@@ -28,8 +30,11 @@ public abstract class CompoundTagLoadSizingMixin {
      * @reason Avoid eager hash-map backing arrays for tiny NBT compounds while keeping larger compounds on fast hash maps.
      */
     @Overwrite
-    private static CompoundTag loadCompound(DataInput input, NbtAccounter accounter) throws IOException {
+    public CompoundTag load(DataInput input, int depth, NbtAccounter accounter) throws IOException {
         accounter.accountBytes(COMPOUND_OVERHEAD_BYTES);
+        if (depth > 512) {
+            throw new RuntimeException("Tried to read NBT tag with too high complexity, depth > 512");
+        }
         String k0 = null;
         String k1 = null;
         String k2 = null;
@@ -58,7 +63,7 @@ public abstract class CompoundTagLoadSizingMixin {
             String name = accounter.readUTF(input.readUTF());
             accounter.accountBytes(TAG_VALUE_REF_BYTES);
             Tag tag = CompoundTagAccessor.byepregen$readNamedTagData(
-                    TagTypes.getType(type), name, input, accounter
+                    TagTypes.getType(type), name, input, depth + 1, accounter
             );
 
             if (overflow != null) {

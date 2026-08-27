@@ -38,7 +38,6 @@ final class MixinRegistryTest {
     private static final String UNIQUE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Unique;";
     private static final String METHOD_SCOPE_DESCRIPTOR = "Lorg/mixinlite/injector/MethodScope;";
     private static final Set<String> INJECTION_DESCRIPTORS = Set.of(
-            "Lcom/llamalad7/mixinextras/injector/ModifyExpressionValue;",
             "Lorg/mixinlite/injector/InjectLite;",
             METHOD_SCOPE_DESCRIPTOR,
             "Lorg/spongepowered/asm/mixin/injection/Inject;",
@@ -49,22 +48,16 @@ final class MixinRegistryTest {
     );
     private static final EnumMap<MixinFeature, Integer> FEATURE_COUNTS = featureCounts();
     private static final Map<String, CompatGateContract> COMPAT_GATE_CONTRACTS = Map.of(
-            MIXIN_PREFIX + "arena.compat.fastnoise.FastNoiseOpenCLArenaMixin",
-            new CompatGateContract(MixinFeature.ARENA, "zfastnoise"),
-            MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin",
-            new CompatGateContract(MixinFeature.ARENA, "voxy"),
             MIXIN_PREFIX + "chunkio.compat.c2me.C2MEChunkSavingCompressionMixin",
-            new CompatGateContract(MixinFeature.NONE, "c2me_rewrites_chunkio"),
+            new CompatGateContract(MixinFeature.NONE, "c2me"),
+            MIXIN_PREFIX + "chunkio.compat.c2me.FastChunkGenChunkSavingCompressionMixin",
+            new CompatGateContract(MixinFeature.NONE, "fastchunkgen"),
             MIXIN_PREFIX + "chunksave.compat.architectury.ArchitecturyEventImplAccessor",
             new CompatGateContract(MixinFeature.GC_FREE_CHUNK_SAVE, "architectury"),
-            MIXIN_PREFIX + "chunksave.compat.c2me.C2MEHookCompatibilityMixin",
-            new CompatGateContract(MixinFeature.GC_FREE_CHUNK_SAVE, "c2me_base"),
+            MIXIN_PREFIX + "palette.compat.lithium.HariumHashPaletteMixin",
+            new CompatGateContract(MixinFeature.NONE, "harium"),
             MIXIN_PREFIX + "palette.compat.lithium.LithiumHashPaletteMixin",
-            new CompatGateContract(MixinFeature.NONE, "lithium"),
-            MIXIN_PREFIX + "postprocess.compat.c2me.C2MEServerBlockTickingMixin",
-            new CompatGateContract(MixinFeature.NONE, "c2me_rewrites_chunk_system"),
-            MIXIN_PREFIX + "server.tick.compat.sable.SableNaturalSpawnerMixin",
-            new CompatGateContract(MixinFeature.NONE, "sable")
+            new CompatGateContract(MixinFeature.NONE, "lithium")
     );
 
     @Test
@@ -94,8 +87,7 @@ final class MixinRegistryTest {
                 ConfigFlag.DISABLE_WORLDGEN_FEATURES, 1,
                 ConfigFlag.PLACED_FEATURES, 2,
                 ConfigFlag.FAST_CHUNK_TICKING, 5,
-                ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 1,
-                ConfigFlag.CLIENT_ARENA, 1
+                ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 1
         ), actual);
     }
 
@@ -138,14 +130,10 @@ final class MixinRegistryTest {
     void specializedMixinsKeepMetadataPolicies() throws Exception {
         AnnotationNode levelChunk = annotation(
                 readClass(MIXIN_PREFIX + "arena.LevelChunkArenaMixin"), GATE_DESCRIPTOR);
-        AnnotationNode voxy = annotation(
-                readClass(MIXIN_PREFIX + "arena.compat.voxy.VoxyWorldConversionFactoryMixin"),
-                GATE_DESCRIPTOR);
         AnnotationNode rawChunkStorage = annotation(
                 readClass(MIXIN_PREFIX + "chunkio.ChunkStorageRawMixin"), GATE_DESCRIPTOR);
 
         assertEquals(ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, annotationConfigFlag(levelChunk));
-        assertEquals(ConfigFlag.CLIENT_ARENA, annotationConfigFlag(voxy));
         assertEquals(MixinFeature.GC_FREE_RAW_CHUNK_IO, annotationFeature(rawChunkStorage));
     }
 
@@ -159,7 +147,7 @@ final class MixinRegistryTest {
                 MIXIN_PREFIX + "accessor.server.tick.ServerChunkCacheTickAccessor"), GATE_DESCRIPTOR);
 
         assertFastTickGate(iteration, List.of());
-        assertFastTickGate(listFallback, List.of("servercore"));
+        assertFastTickGate(listFallback, List.of("harium", "servercore"));
         assertFastTickGate(naturalSpawner, List.of());
         assertFastTickGate(weatherTick, List.of());
         assertFastTickGate(cacheAccessor, List.of());
@@ -240,9 +228,7 @@ final class MixinRegistryTest {
     }
 
     private static Config configEnabling(ConfigFlag flag) {
-        return flag == ConfigFlag.CLIENT_ARENA
-                ? new ConfigTestBuilder().clientArena(true).build()
-                : new Config();
+        return new Config();
     }
 
     private static AnnotationNode gate(String simpleName) throws IOException {
@@ -403,12 +389,12 @@ final class MixinRegistryTest {
 
     private static EnumMap<MixinFeature, Integer> featureCounts() {
         EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
-        counts.put(MixinFeature.ARENA, 13);
-        counts.put(MixinFeature.DFC, 4);
-        counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 4);
-        counts.put(MixinFeature.GC_FREE_RAW_CHUNK_IO, 6);
+        counts.put(MixinFeature.ARENA, 11);
+        counts.put(MixinFeature.ARENA_OR_DFC, 1);
+        counts.put(MixinFeature.DFC, 5);
+        counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 3);
+        counts.put(MixinFeature.GC_FREE_RAW_CHUNK_IO, 5);
         counts.put(MixinFeature.SURFACE_BIOME_CACHE, 2);
-        counts.put(MixinFeature.SURFACE_RULE_COMPILER, 16);
         counts.put(MixinFeature.YA_LIGHT, 19);
         return counts;
     }

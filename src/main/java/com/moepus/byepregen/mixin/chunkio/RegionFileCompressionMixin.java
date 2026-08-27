@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(value = RegionFile.class, remap = false)
+@Mixin(RegionFile.class)
 public abstract class RegionFileCompressionMixin {
     @Redirect(
             method = "getChunkDataOutputStream",

@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.NotPredicate", remap = false)
+@Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.NotPredicate")
 public abstract class NotPredicateMixin implements FastDiskBlockPredicate, FastNegatingPredicate {
     @Shadow
     @Final

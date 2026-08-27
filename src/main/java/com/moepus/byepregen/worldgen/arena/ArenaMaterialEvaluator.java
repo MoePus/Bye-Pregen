@@ -31,7 +31,8 @@ final class ArenaMaterialEvaluator {
             NoiseChunk.BlockStateFiller aquiferRule,
             DensityFunction beardifier
     ) {
-        if (rootRule instanceof MaterialRuleList(List<NoiseChunk.BlockStateFiller> materialRuleList)) {
+        if (rootRule instanceof MaterialRuleList list) {
+            List<NoiseChunk.BlockStateFiller> materialRuleList = list.materialRuleList();
             NoiseChunk.BlockStateFiller[] snapshot = materialRuleList
                     .toArray(NoiseChunk.BlockStateFiller[]::new);
             boolean supportsColumnDensity = snapshot.length > 0 && snapshot[0] == aquiferRule;

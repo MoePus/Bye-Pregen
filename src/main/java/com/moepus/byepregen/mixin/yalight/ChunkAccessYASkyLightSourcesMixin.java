@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = ChunkAccess.class, remap = false)
+@Mixin(ChunkAccess.class)
 public abstract class ChunkAccessYASkyLightSourcesMixin {
     @Redirect(
             method = "<init>",

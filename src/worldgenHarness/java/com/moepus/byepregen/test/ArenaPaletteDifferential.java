@@ -16,8 +16,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainer;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import org.slf4j.Logger;
 
 final class ArenaPaletteDifferential {
@@ -48,7 +48,7 @@ final class ArenaPaletteDifferential {
     }
 
     static void register() {
-        NeoForge.EVENT_BUS.addListener(ArenaPaletteDifferential::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(ArenaPaletteDifferential::onServerStarted);
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
@@ -79,7 +79,7 @@ final class ArenaPaletteDifferential {
 
     private static Pair createPair(int distinctStates) {
         PalettedContainer<BlockState> vanilla = new PalettedContainer<>(
-                Block.BLOCK_STATE_REGISTRY, STATES.getFirst(), PalettedContainer.Strategy.SECTION_STATES);
+                Block.BLOCK_STATE_REGISTRY, STATES.get(0), PalettedContainer.Strategy.SECTION_STATES);
         ArenaBlockStatePalettedContainer arena = new ArenaBlockStatePalettedContainer();
         for (int index = 0; index < SECTION_SIZE; ++index) {
             BlockState state = STATES.get(index % distinctStates);
@@ -126,7 +126,8 @@ final class ArenaPaletteDifferential {
         vanilla.write(vanillaBytes);
         arena.write(arenaBytes);
         assertEquals(arena.getSerializedSize(), arenaBytes.readableBytes(), "arena serialized size");
-        assertEquals(vanilla.getSerializedSize(), vanillaBytes.readableBytes(), "vanilla serialized size");
+        // Vanilla 1.20.1 overcounts the ZeroBitStorage long-array length by one byte.
+        assertEquals(vanillaBytes.readableBytes(), arenaBytes.readableBytes(), "network payload size");
 
         FriendlyByteBuf vanillaCopy = new FriendlyByteBuf(vanillaBytes.copy());
         FriendlyByteBuf arenaCopy = new FriendlyByteBuf(arenaBytes.copy());
@@ -134,7 +135,7 @@ final class ArenaPaletteDifferential {
             ArenaBlockStatePalettedContainer fromVanilla = new ArenaBlockStatePalettedContainer();
             fromVanilla.read(vanillaCopy);
             PalettedContainer<BlockState> fromArena = new PalettedContainer<>(
-                    Block.BLOCK_STATE_REGISTRY, STATES.getFirst(), PalettedContainer.Strategy.SECTION_STATES);
+                    Block.BLOCK_STATE_REGISTRY, STATES.get(0), PalettedContainer.Strategy.SECTION_STATES);
             fromArena.read(arenaCopy);
             assertContents(vanilla, fromVanilla, "vanilla to arena " + distinctStates);
             assertContents(fromArena, arena, "arena to vanilla " + distinctStates);

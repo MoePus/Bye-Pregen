@@ -11,6 +11,8 @@ final class MixinFeatureEvaluator {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Features");
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
+    private static final String FAST_CHUNK_GEN_SERIALIZER_ACCESS =
+            "com.misanthropy.fastchunkgen.base.common.registry.SerializerAccess";
 
     private final Predicate<String> modExists;
     private final Predicate<String> classExists;
@@ -37,14 +39,14 @@ final class MixinFeatureEvaluator {
             case NONE -> true;
             case ARENA -> config.worldgen().arena().enabled()
                     && !this.modExists.test("confluence");
+            case ARENA_OR_DFC -> this.isEnabled(MixinFeature.ARENA, config)
+                    || this.isEnabled(MixinFeature.DFC, config);
             case DFC -> config.worldgen().arena().enabled()
                     && config.worldgen().arena().densityColumnCompiler();
             case GC_FREE_CHUNK_SAVE -> config.chunkSaving().gcFreeWorldgen();
             case GC_FREE_RAW_CHUNK_IO -> this.rawChunkIoEnabled(config);
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
-            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
-            case YA_LIGHT -> config.lighting().ya().enabled()
-                    && !this.modExists.test(YALightCompatibility.SCALABLELUX_MOD_ID);
+            case YA_LIGHT -> config.lighting().ya().enabled();
         };
     }
 
@@ -53,7 +55,8 @@ final class MixinFeatureEvaluator {
             return false;
         }
         try {
-            return !this.classExists.test(C2ME_SERIALIZER_ACCESS);
+            return !this.classExists.test(C2ME_SERIALIZER_ACCESS)
+                    && !this.classExists.test(FAST_CHUNK_GEN_SERIALIZER_ACCESS);
         } catch (RuntimeException | LinkageError throwable) {
             LOGGER.warn("Disabling raw GC-free chunk I/O: cannot inspect C2ME serializer", throwable);
             return false;

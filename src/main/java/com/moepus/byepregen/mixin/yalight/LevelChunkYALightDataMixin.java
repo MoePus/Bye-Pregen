@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = LevelChunk.class, remap = false)
+@Mixin(LevelChunk.class)
 public abstract class LevelChunkYALightDataMixin {
     @InjectLite(
             method = "<init>(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ProtoChunk;Lnet/minecraft/world/level/chunk/LevelChunk$PostLoadProcessor;)V",

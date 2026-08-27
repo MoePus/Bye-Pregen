@@ -1,5 +1,7 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.yalight.access.YAPendingTaskAccess;
+
 import com.moepus.byepregen.mixin.accessor.server.chunk.ChunkMapUnloadAccessor;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -10,7 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 
 final class LightTorchReloadProbe {
     private static final TicketType<ChunkPos> TEST_TICKET =
@@ -129,7 +131,8 @@ final class LightTorchReloadProbe {
     }
 
     private CompletableFuture<?> wait(ChunkPos pos) {
-        return this.level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x, pos.z);
+        return ((YAPendingTaskAccess) this.level.getChunkSource().getLightEngine())
+                .byepregen$waitForPendingTasks(pos.x, pos.z);
     }
 
     private void load(ChunkPos pos) {

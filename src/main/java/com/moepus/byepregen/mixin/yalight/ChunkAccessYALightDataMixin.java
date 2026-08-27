@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = ChunkAccess.class, remap = false)
+@Mixin(ChunkAccess.class)
 public abstract class ChunkAccessYALightDataMixin implements YAChunkLightAccess {
     @Shadow
     @Final

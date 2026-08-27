@@ -1,0 +1,152 @@
+import java.util.zip.ZipFile
+import groovy.json.JsonSlurper
+
+tasks.register('benchmarkSurfaceBiomeCache', JavaExec) {
+    group = 'verification'
+    description = 'Microbenchmarks flat-palette certificate hit and miss paths.'
+    dependsOn(sourceSets.benchmark.classesTaskName)
+    classpath = sourceSets.benchmark.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.test.SurfaceBiomeCacheBenchmark')
+    systemProperty(
+            'byepregen.surfaceBiomeCacheBenchmarkMode',
+            providers.gradleProperty('byepregenSurfaceBiomeCacheBenchmarkMode').orElse('OFF').get()
+    )
+    systemProperty(
+            'byepregen.surfaceBiomeCacheBenchmarkPattern',
+            providers.gradleProperty('byepregenSurfaceBiomeCacheBenchmarkPattern').orElse('NON_UNIFORM').get()
+    )
+}
+
+def productionJar = tasks.named('jarJar', Jar).flatMap { it.archiveFile }
+def verificationSourceSets = [
+        [label: 'unit test', sourceSet: sourceSets.test],
+        [label: 'benchmark', sourceSet: sourceSets.benchmark],
+        [label: 'worldgen harness', sourceSet: sourceSets.worldgenHarness],
+        [label: 'startup harness', sourceSet: sourceSets.startupHarness],
+]
+def verificationOutputs = verificationSourceSets.collect { verification ->
+    [
+            label             : verification.label,
+            classDirectories  : verification.sourceSet.output.classesDirs.files,
+            resourceDirectory : verification.sourceSet.output.resourcesDir,
+    ]
+}
+def requiredEntries = [
+        'com/moepus/byepregen/Byepregen.class',
+        'com/moepus/byepregen/api/dfc/ColumnDensityFunctionRegistry.class',
+        'com/moepus/byepregen/mixin/surface/biome/SurfaceSystemBiomeCacheMixin.class',
+        'byepregen.mixins.json',
+        'byepregen.refmap.json',
+        'META-INF/accesstransformer.cfg',
+        'META-INF/jarjar/metadata.json',
+        'META-INF/mods.toml',
+        'pack.mcmeta',
+]
+def forbiddenPrefixes = [
+        'com/moepus/byepregen/mixin/climate/',
+        'com/moepus/byepregen/mixin/surface/SurfaceRules',
+        'com/moepus/byepregen/worldgen/surface/',
+        'com/moepus/byepregen/worldgen/biome/FastClimateRTree',
+        'com/moepus/byepregen/worldgen/biome/ClimateRTree',
+        'com/moepus/byepregen/worldgen/arena/ArenaOpenCL',
+        'com/moepus/byepregen/mixin/arena/compat/fastnoise/',
+        'com/moepus/byepregen/mixin/arena/compat/voxy/',
+        'com/moepus/byepregen/mixin/server/tick/compat/sable/',
+]
+def verificationModIds = [
+        'byepregen_worldgen_harness',
+        'byepregen_startup_harness',
+]
+def sharedResourceEntries = [
+        'META-INF/mods.toml',
+        'pack.mcmeta',
+] as Set
+def requiredNestedArtifacts = [
+        'org.mixinlite:mixinlite',
+        'io.github.llamalad7:mixinextras-forge',
+] as Set
+
+def verifyProductionJar = tasks.register('verifyProductionJar') {
+    group = 'verification'
+    description = 'Checks production contents and excludes deleted features and verification harnesses.'
+    dependsOn(tasks.named('reobfJarJar'), verificationSourceSets.collect { it.sourceSet.classesTaskName })
+    inputs.file(productionJar)
+    doLast {
+        File archive = productionJar.get().asFile
+        new ZipFile(archive).withCloseable { zip ->
+            requiredEntries.each { entry ->
+                if (zip.getEntry(entry) == null) {
+                    throw new GradleException("Production jar is missing ${entry}: ${archive}")
+                }
+            }
+            def forbidden = zip.entries().findAll { entry ->
+                forbiddenPrefixes.any { prefix -> entry.name.startsWith(prefix) }
+            }*.name
+            if (!forbidden.isEmpty()) {
+                throw new GradleException("Production jar contains deleted features: ${forbidden}")
+            }
+            if (zip.getEntry('META-INF/neoforge.mods.toml') != null) {
+                throw new GradleException("Production jar contains NeoForge metadata: ${archive}")
+            }
+            String metadata = zip.getInputStream(zip.getEntry('META-INF/mods.toml')).withCloseable {
+                it.getText('UTF-8')
+            }
+            def mixinConfig = new JsonSlurper().parseText(
+                    zip.getInputStream(zip.getEntry('byepregen.mixins.json')).withCloseable {
+                        it.getText('UTF-8')
+                    }
+            )
+            if (mixinConfig.refmap != 'byepregen.refmap.json') {
+                throw new GradleException("Production mixin config does not reference byepregen.refmap.json")
+            }
+            def jarJarMetadata = new JsonSlurper().parseText(
+                    zip.getInputStream(zip.getEntry('META-INF/jarjar/metadata.json')).withCloseable {
+                        it.getText('UTF-8')
+                    }
+            )
+            def nestedArtifacts = jarJarMetadata.jars.collect { nested ->
+                "${nested.identifier.group}:${nested.identifier.artifact}".toString()
+            } as Set
+            if (!nestedArtifacts.containsAll(requiredNestedArtifacts)) {
+                throw new GradleException("Production jar is missing nested dependencies: "
+                        + "${requiredNestedArtifacts - nestedArtifacts}")
+            }
+            verificationModIds.each { modId ->
+                if (metadata.contains(modId)) {
+                    throw new GradleException("Production metadata contains verification mod ${modId}")
+                }
+            }
+            verificationOutputs.each { verification ->
+                verification.classDirectories.each { classesDirectory ->
+                    if (!classesDirectory.isDirectory()) return
+                    classesDirectory.eachFileRecurse { verificationClass ->
+                        if (!verificationClass.isFile() || !verificationClass.name.endsWith('.class')) return
+                        String entry = classesDirectory.toPath().relativize(verificationClass.toPath())
+                                .toString().replace('\\', '/')
+                        if (zip.getEntry(entry) != null) {
+                            throw new GradleException(
+                                    "Production jar contains ${verification.label} class ${entry}: ${archive}"
+                            )
+                        }
+                    }
+                }
+                File resources = verification.resourceDirectory
+                if (resources == null || !resources.isDirectory()) return
+                resources.eachFileRecurse { verificationResource ->
+                    if (!verificationResource.isFile()) return
+                    String entry = resources.toPath().relativize(verificationResource.toPath())
+                            .toString().replace('\\', '/')
+                    if (!sharedResourceEntries.contains(entry) && zip.getEntry(entry) != null) {
+                        throw new GradleException(
+                                "Production jar contains ${verification.label} resource ${entry}: ${archive}"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn(verifyProductionJar)
+}

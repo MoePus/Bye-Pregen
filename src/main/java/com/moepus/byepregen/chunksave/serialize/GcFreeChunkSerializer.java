@@ -10,19 +10,16 @@ package com.moepus.byepregen.chunksave.serialize;
 import com.moepus.byepregen.chunksave.compat.ChunkSaveHookGate;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.integration.c2me.C2MEAsyncSerializationCompat;
-import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkType;
+import net.minecraft.world.level.chunk.ChunkStatus.ChunkType;
 import org.slf4j.Logger;
 
 public final class GcFreeChunkSerializer {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final String C2ME_ASYNC_SERIALIZATION_MANAGER =
-            "com.ishland.c2me.rewrites.chunksystem.common.async_chunkio.AsyncSerializationManager";
     private static final C2meAsyncAvailability C2ME_ASYNC_AVAILABILITY = detectC2meAsyncAvailability();
 
     private GcFreeChunkSerializer() {
@@ -62,7 +59,7 @@ public final class GcFreeChunkSerializer {
     }
 
     private static boolean isEligible(ChunkAccess chunk) {
-        ChunkType chunkType = chunk.getPersistedStatus().getChunkType();
+        ChunkType chunkType = chunk.getStatus().getChunkType();
         if (chunkType == ChunkType.PROTOCHUNK) {
             return true;
         }
@@ -92,7 +89,7 @@ public final class GcFreeChunkSerializer {
     private static C2meAsyncAvailability detectC2meAsyncAvailability() {
         try {
             return new C2meAsyncAvailability(
-                    ModEnvironment.isClassAvailable(C2ME_ASYNC_SERIALIZATION_MANAGER),
+                    C2MEAsyncSerializationCompat.available(),
                     false
             );
         } catch (RuntimeException | LinkageError throwable) {

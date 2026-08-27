@@ -65,7 +65,8 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
                     from = @At(
                             value = "INVOKE",
                             target = "Lcom/google/common/collect/ImmutableList;builder()"
-                                    + "Lcom/google/common/collect/ImmutableList$Builder;"
+                                    + "Lcom/google/common/collect/ImmutableList$Builder;",
+                            remap = false
                     ),
                     to = @At(
                             value = "INVOKE",
@@ -75,7 +76,8 @@ public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
             at = @At(
                     value = "INVOKE",
                     target = "Lcom/google/common/collect/ImmutableList$Builder;add(Ljava/lang/Object;)"
-                            + "Lcom/google/common/collect/ImmutableList$Builder;"
+                            + "Lcom/google/common/collect/ImmutableList$Builder;",
+                    remap = false
             ),
             index = 0,
             require = 0

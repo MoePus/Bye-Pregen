@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(config = ConfigFlag.PLACED_FEATURES)
-@Mixin(value = RandomPatchFeature.class, remap = false)
+@Mixin(RandomPatchFeature.class)
 public abstract class RandomPatchFeatureMixin {
     @Redirect(
             method = "place",

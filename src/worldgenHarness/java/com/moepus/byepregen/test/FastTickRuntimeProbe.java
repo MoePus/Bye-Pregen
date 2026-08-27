@@ -14,7 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.slf4j.Logger;
 
 final class FastTickRuntimeProbe {
@@ -32,15 +32,15 @@ final class FastTickRuntimeProbe {
         try {
             require(ConfigManager.getConfig().server().fastChunkTicking().enabled(),
                     "server.fast-chunk-ticking.enabled is false");
-            require(ModEnvironment.isModLoaded("c2me"), "C2ME is not loaded");
-            require(ModEnvironment.isModLoaded("lithium"), "Lithium is not loaded");
+            require(ModEnvironment.isModLoaded("fastchunkgen"), "FastChunkGen is not loaded");
+            require(ModEnvironment.isModLoaded("harium"), "Harium is not loaded");
             require(!ModEnvironment.isModLoaded("servercore"), "ServerCore is unexpectedly loaded");
             Field permutation = ServerChunkCache.class.getDeclaredField("byepregen$chunkTickPermutation");
             require(permutation.getType() == ChunkTickPermutationIterator.class,
                     "chunk tick permutation field has the wrong type");
-            Field tickingChunks = ServerChunkCache.class.getDeclaredField("byepregen$cachedTickingChunks");
+            Field tickingChunks = ServerChunkCache.class.getDeclaredField("cachedChunkList");
             require(tickingChunks.getType() == ArrayList.class,
-                    "tick list fallback field has the wrong type");
+                    "Harium tick list cache field has the wrong type");
             Field currentChunk = ServerLevel.class.getDeclaredField("byepregen$currentTickChunk");
             require(currentChunk.getType() == LevelChunk.class, "weather scope field has the wrong type");
             Method cacheSeed = ServerChunkCache.class.getDeclaredMethod(
@@ -50,8 +50,8 @@ final class FastTickRuntimeProbe {
                     "tickChunk MethodScope was not applied");
             require(hasMethodContaining(NaturalSpawner.class, "byepregen$seedSpawnChunkCache"),
                     "spawnForChunk cache seed injection was not applied");
-            verificationSummary = "c2me=true,lithium=true,servercore=false,iterationMixin=true,weatherScope=true,"
-                    + "cacheSeeding=true,fallbackList=true";
+            verificationSummary = "fastchunkgen=true,harium=true,servercore=false,iterationMixin=true,weatherScope=true,"
+                    + "cacheSeeding=true,hariumTickList=true";
             LOGGER.info("BYEPREGEN_FAST_TICK_RUNTIME_APPLIED {}", verificationSummary);
             return true;
         } catch (Throwable throwable) {

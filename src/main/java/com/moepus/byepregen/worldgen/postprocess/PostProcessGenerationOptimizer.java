@@ -1,6 +1,9 @@
 package com.moepus.byepregen.worldgen.postprocess;
 
 import it.unimi.dsi.fastutil.shorts.ShortList;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.LevelAccessor;
@@ -35,6 +38,14 @@ import net.minecraft.world.level.chunk.LevelChunk;
 public final class PostProcessGenerationOptimizer {
     private static final Direction[] UP_ONLY = {Direction.UP};
     private static final Direction[] UP_DOWN_ONLY = {Direction.UP, Direction.DOWN};
+    private static final Class<?>[] UPDATE_SHAPE_PARAMETER_TYPES = {
+            BlockState.class,
+            Direction.class,
+            BlockState.class,
+            LevelAccessor.class,
+            BlockPos.class,
+            BlockPos.class
+    };
     private static final ClassValue<Boolean> HAS_CUSTOM_UPDATE_SHAPE = new ClassValue<>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
@@ -54,36 +65,18 @@ public final class PostProcessGenerationOptimizer {
     public static BlockState updateFromNeighbourShapes(BlockState state, LevelAccessor level, BlockPos pos) {
         Block block = state.getBlock();
 
-        switch (block) {
-            case SnowLayerBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
-            }
-            case BushBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
-            }
-            case CarpetBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
-            }
-            case CactusBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
-            }
-            case SnowyDirtBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
-            }
-            case MagmaBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
-            }
-            case CocoaBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, state.getValue(CocoaBlock.FACING));
-            }
-            case CaveVinesBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
-            }
-            case CaveVinesPlantBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
-            }
-            default -> {
-            }
+        if (block instanceof SnowLayerBlock || block instanceof BushBlock
+                || block instanceof CarpetBlock || block instanceof CactusBlock) {
+            return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
+        }
+        if (block instanceof SnowyDirtBlock || block instanceof MagmaBlock) {
+            return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
+        }
+        if (block instanceof CocoaBlock) {
+            return updateFromNeighbourShape(state, level, pos, state.getValue(CocoaBlock.FACING));
+        }
+        if (block instanceof CaveVinesBlock || block instanceof CaveVinesPlantBlock) {
+            return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
         }
 
         if (!HAS_CUSTOM_UPDATE_SHAPE.get(block.getClass())) {
@@ -96,15 +89,23 @@ public final class PostProcessGenerationOptimizer {
     private static boolean hasCustomUpdateShape(Class<?> type) {
         for (Class<?> current = type; current != null && current != Block.class; current = current.getSuperclass()) {
             try {
-                current.getDeclaredMethod("updateShape", BlockState.class, Direction.class, BlockState.class, LevelAccessor.class, BlockPos.class, BlockPos.class);
-                return true;
-            } catch (NoSuchMethodException ignored) {
+                for (Method method : current.getDeclaredMethods()) {
+                    if (hasUpdateShapeSignature(method)) {
+                        return true;
+                    }
+                }
             } catch (RuntimeException | LinkageError ignored) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    static boolean hasUpdateShapeSignature(Method method) {
+        return !Modifier.isStatic(method.getModifiers())
+                && BlockState.class.isAssignableFrom(method.getReturnType())
+                && Arrays.equals(method.getParameterTypes(), UPDATE_SHAPE_PARAMETER_TYPES);
     }
 
     private static BlockState updateFromNeighbourShape(BlockState state, LevelAccessor level, BlockPos pos, Direction direction) {

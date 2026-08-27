@@ -2,7 +2,6 @@ package com.moepus.byepregen.mixin.arena;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.worldgen.arena.ArenaHeightmapUpdate;
 import java.util.EnumSet;
@@ -11,12 +10,13 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.ProtoChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @MixinGate(feature = MixinFeature.ARENA)
 @Mixin(ProtoChunk.class)
@@ -29,13 +29,13 @@ public abstract class ProtoChunkArenaHeightmapMixin {
     @Unique private Heightmap byepregen$worldSurfaceWg;
     @Unique private Heightmap byepregen$oceanFloorWg;
 
-    @ModifyExpressionValue(
+    @Redirect(
             method = "setBlockState(Lnet/minecraft/core/BlockPos;"
                     + "Lnet/minecraft/world/level/block/state/BlockState;Z)"
                     + "Lnet/minecraft/world/level/block/state/BlockState;",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/chunk/status/ChunkStatus;"
+                    target = "Lnet/minecraft/world/level/chunk/ChunkStatus;"
                             + "heightmapsAfter()Ljava/util/EnumSet;",
                     ordinal = 0
             ),
@@ -43,11 +43,12 @@ public abstract class ProtoChunkArenaHeightmapMixin {
             allow = 1
     )
     private EnumSet<Heightmap.Types> byepregen$updateArenaNoiseHeightmaps(
-            EnumSet<Heightmap.Types> original,
+            ChunkStatus heightmapStatus,
             BlockPos pos,
             BlockState state,
             boolean isMoving
     ) {
+        EnumSet<Heightmap.Types> original = heightmapStatus.heightmapsAfter();
         ProtoChunk chunk = (ProtoChunk) (Object) this;
         int y = pos.getY();
         LevelChunkSection section = chunk.getSection(chunk.getSectionIndex(y));

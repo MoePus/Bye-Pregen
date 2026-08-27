@@ -12,8 +12,6 @@ enum ConfigOption {
     ARENA_ENABLED("worldgen.arena.enabled"),
     DENSITY_COLUMN_COMPILER("worldgen.arena.density-column-compiler"),
     SERVER_RUNTIME_ARENA("worldgen.arena.server-runtime"),
-    CLIENT_ARENA("worldgen.arena.client"),
-    SURFACE_RULE_COMPILER("worldgen.surface.rule-compiler"),
     SURFACE_BIOME_CACHE("worldgen.surface.biome-cache"),
     FAST_CHUNK_TICKING("server.fast-chunk-ticking.enabled"),
     GC_FREE_WORLDGEN("chunk-saving.gc-free-worldgen"),
