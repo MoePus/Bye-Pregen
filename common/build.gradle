@@ -8,6 +8,7 @@ repositories {
     maven { url = 'https://maven.fabricmc.net/' }
     maven { url = 'https://moepus.github.io/MixinLite/' }
     maven { url = 'https://api.modrinth.com/maven' }
+    maven { url = 'https://cursemaven.com' }
 }
 
 neoForge {
@@ -50,6 +51,7 @@ dependencies {
     compileOnly('com.electronwill.night-config:core:3.8.3')
     compileOnly('com.electronwill.night-config:toml:3.8.3')
     compileOnly('com.ibm.async:asyncutil:0.1.0')
+    implementation("curse.maven:tectonic-686836:8366293")
     compileOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
     compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}")
     add('c2meCompileBundle', "maven.modrinth:c2me-fabric:${c2me_fabric_version}")

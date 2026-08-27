@@ -6,6 +6,7 @@ plugins {
 repositories {
     maven { url = 'https://moepus.github.io/MixinLite/' }
     maven { url = 'https://api.modrinth.com/maven' }
+    maven { url = 'https://cursemaven.com' }
 }
 
 sourceSets {
@@ -36,6 +37,7 @@ dependencies {
     minecraft("com.mojang:minecraft:${minecraft_version}")
     implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}")
+    implementation("curse.maven:tectonic-686836:8360833")
     implementation("org.mixinlite:mixinlite:${mixinlite_version}")
     include("org.mixinlite:mixinlite:${mixinlite_version}")
 
