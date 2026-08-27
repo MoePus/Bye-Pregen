@@ -49,6 +49,7 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.11.3')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'curse.maven:tectonic-686836:8360847'
     implementation 'curse.maven:zfastnoise-1460602:8294347'
     compileOnly 'curse.maven:terrablender-neoforge-940057:6054947'
     implementation 'org.mixinlite:mixinlite:0.2.0'

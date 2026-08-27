@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.moepus.byepregen.integration.architectury.ArchitecturyChunkSaveCompat;
 import com.moepus.byepregen.integration.neoforge.NeoForgeEventBusCompat;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
+import com.moepus.byepregen.integration.tectonic.TectonicCompat;
 import java.util.List;
 import net.neoforged.bus.ListenerList;
 import net.neoforged.bus.api.EventListener;
@@ -26,7 +27,9 @@ public final class ChunkSaveHookGate {
     private static boolean computeCanUseRawSave() {
         boolean hasArchitecturyListeners = hasArchitecturySaveDataListeners();
         boolean hasNeoForgeListeners = hasNeoForgeSaveListeners();
-        boolean canUseRawSave = !hasArchitecturyListeners && !hasNeoForgeListeners;
+        boolean canUseRawSave = !hasArchitecturyListeners
+                && !hasNeoForgeListeners
+                && TectonicCompat.canUseRawSave();
         LOGGER.info("ByePregen GC-free raw chunk save gate: CAN_USE_RAW_SAVE={}", canUseRawSave);
         return canUseRawSave;
     }

@@ -2,6 +2,7 @@ package com.moepus.byepregen.chunksave.serialize;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
+import com.moepus.byepregen.integration.tectonic.TectonicCompat;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.SharedConstants;
@@ -47,6 +48,7 @@ public final class ChunkDataSerializer {
         ChunkTickPostProcessWriter.writeHeightmaps(writer, chunk);
         ChunkAttachmentWriter.write(writer, level, chunk);
         ChunkStructureDataWriter.write(writer, level, pos, chunk);
+        TectonicCompat.writeChunkData(writer);
     }
 
     private static byte[] statusName(ChunkStatus status) {
