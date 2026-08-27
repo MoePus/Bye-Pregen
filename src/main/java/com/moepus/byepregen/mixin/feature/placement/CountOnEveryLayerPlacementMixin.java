@@ -1,7 +1,9 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.block.Blocks;
@@ -15,35 +17,39 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(CountOnEveryLayerPlacement.class)
-public abstract class CountOnEveryLayerPlacementMixin implements FastPlacementModifier {
+public abstract class CountOnEveryLayerPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private IntProvider count;
 
     @Override
+    public boolean byepregen$mayProduceMultipleOrigins() {
+        return true;
+    }
+
+    @Override
     public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
+        List<BlockPos> positions = new ArrayList<>();
         int layer = 0;
         boolean found;
         do {
-            found = this.byepregen$collectLayer(context, x, z, layer, nextIndex);
+            found = false;
+            for (int i = 0; i < this.count.sample(context.random()); i++) {
+                int targetX = x + context.random().nextInt(16);
+                int targetZ = z + context.random().nextInt(16);
+                int height = context.placementContext().getHeight(Heightmap.Types.MOTION_BLOCKING, targetX, targetZ);
+                int groundY = this.byepregen$findOnGroundYPosition(context, targetX, height, targetZ, layer);
+                if (groundY != Integer.MAX_VALUE) {
+                    positions.add(new BlockPos(targetX, groundY, targetZ));
+                    found = true;
+                }
+            }
             layer++;
         } while (found);
-    }
 
-    @Unique
-    private boolean byepregen$collectLayer(FastPlacementContext context, int x, int z, int layer, int nextIndex) {
-        boolean found = false;
-        for (int i = 0, size = this.count.sample(context.random()); i < size; i++) {
-            int targetX = x + context.random().nextInt(16);
-            int targetZ = z + context.random().nextInt(16);
-            int height = context.placementContext().getHeight(Heightmap.Types.MOTION_BLOCKING, targetX, targetZ);
-            int groundY = this.byepregen$findOnGroundYPosition(context, targetX, height, targetZ, layer);
-            if (groundY != Integer.MAX_VALUE) {
-                context.apply(nextIndex, targetX, groundY, targetZ);
-                found = true;
-            }
+        for (BlockPos pos : positions) {
+            context.apply(nextIndex, pos.getX(), pos.getY(), pos.getZ());
         }
-        return found;
     }
 
     @Unique

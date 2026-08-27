@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.WorldGenLevel;
@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(EnvironmentScanPlacement.class)
-public abstract class EnvironmentScanPlacementMixin implements FastPlacementModifier {
+public abstract class EnvironmentScanPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private Direction directionOfSearch;
