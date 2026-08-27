@@ -124,8 +124,10 @@
     "feature.placement.HeightRangePlacementMixin",
     "feature.placement.InSquarePlacementMixin",
     "feature.placement.PlacementFilterMixin",
+    "feature.placement.PlacementFilterPlanCompatibilityMixin",
     "feature.placement.RandomOffsetPlacementMixin",
-    "feature.placement.RepeatingPlacementMixin"
+    "feature.placement.RepeatingPlacementMixin",
+    "feature.placement.RepeatingPlacementPlanCompatibilityMixin"
   ],
   "client": [
     "yalight.ClientChunkCacheYALightMixin",

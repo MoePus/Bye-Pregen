@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import com.moepus.byepregen.mixin.accessor.worldgen.feature.CarvingMaskAccessor;
 import java.util.BitSet;
 import net.minecraft.world.level.ChunkPos;
@@ -13,10 +13,15 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(value = CarvingMaskPlacement.class, remap = false)
-public abstract class CarvingMaskPlacementMixin implements FastPlacementModifier {
+public abstract class CarvingMaskPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private GenerationStep.Carving step;
+
+    @Override
+    public boolean byepregen$mayProduceMultipleOrigins() {
+        return true;
+    }
 
     @Override
     public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {

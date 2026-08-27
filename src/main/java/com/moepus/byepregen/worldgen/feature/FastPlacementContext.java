@@ -25,7 +25,7 @@ public final class FastPlacementContext {
     private List<PlacementModifier> modifiers;
     private FastPlacementContext parent;
     private IdentityHashMap<DiskConfiguration, KnownFalseDiskPredicateCache> nestedDiskCaches;
-    private Terminal terminal;
+    private FastFeaturePlacement terminal;
     private boolean placed;
 
     private FastPlacementContext() {
@@ -82,7 +82,7 @@ public final class FastPlacementContext {
     public boolean apply(int index, int x, int y, int z) {
         if (index == this.modifiers.size()) {
             if (this.terminal != null) {
-                this.terminal.accept(x, y, z);
+                this.placed |= this.terminal.placeOrigin(x, y, z);
                 return this.placed;
             }
             BlockPos pos = new BlockPos(x, y, z);
@@ -142,13 +142,8 @@ public final class FastPlacementContext {
         ));
     }
 
-    public void terminal(Terminal terminal) {
+    public void terminal(FastFeaturePlacement terminal) {
         this.terminal = terminal;
-    }
-
-    @FunctionalInterface
-    public interface Terminal {
-        void accept(int x, int y, int z);
     }
 
     private static final class Stack {

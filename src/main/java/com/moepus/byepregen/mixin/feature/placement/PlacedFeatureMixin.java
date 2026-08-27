@@ -1,11 +1,12 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
-import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
-import com.moepus.byepregen.worldgen.feature.FeaturePlan;
-import com.moepus.byepregen.worldgen.feature.PredicateMemoizedDiskPlacement;
 import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
+import com.moepus.byepregen.worldgen.feature.CompiledFeaturePlan;
+import com.moepus.byepregen.worldgen.feature.FastFeaturePlacement;
+import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
+import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
+import com.moepus.byepregen.worldgen.feature.FeaturePlanCompiler;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -26,7 +27,7 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(value = PlacedFeature.class, remap = false)
 public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     @Unique
-    private volatile FeaturePlan byepregen$featurePlan;
+    private volatile CompiledFeaturePlan byepregen$featurePlan;
 
     @Shadow
     @Final
@@ -42,7 +43,7 @@ public abstract class PlacedFeatureMixin implements FastPlacedFeature {
             List<PlacementModifier> placement
     ) {
         if (feature.isBound()) {
-            this.byepregen$featurePlan = FeaturePlan.create(feature.value(), placement);
+            this.byepregen$featurePlan = FeaturePlanCompiler.compile(feature.value(), placement);
         }
     }
 
@@ -63,18 +64,17 @@ public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     private boolean byepregen$place(PlacementContext context, RandomSource random, BlockPos pos) {
         FastPlacementContext fastContext = FastPlacementContext.acquire(context, random, this.feature.value(), this.placement);
         try {
-            FeaturePlan featurePlan = this.byepregen$featurePlan;
+            CompiledFeaturePlan featurePlan = this.byepregen$featurePlan;
             if (featurePlan == null) {
-                featurePlan = FeaturePlan.create(this.feature.value(), this.placement);
+                featurePlan = FeaturePlanCompiler.compile(this.feature.value(), this.placement);
                 this.byepregen$featurePlan = featurePlan;
             }
-            PredicateMemoizedDiskPlacement memoizedPlacement = featurePlan.open(fastContext);
-            if (memoizedPlacement == null) {
+            FastFeaturePlacement fastPlacement = featurePlan.open(fastContext);
+            if (fastPlacement == null) {
                 return fastContext.apply(0, pos.getX(), pos.getY(), pos.getZ());
             }
-            fastContext.terminal(memoizedPlacement::placeOrigin);
-            fastContext.apply(0, pos.getX(), pos.getY(), pos.getZ());
-            return memoizedPlacement.placed();
+            fastContext.terminal(fastPlacement);
+            return fastContext.apply(0, pos.getX(), pos.getY(), pos.getZ());
         } finally {
             FastPlacementContext.release(fastContext);
         }

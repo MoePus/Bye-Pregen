@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
-import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement;
 import org.spongepowered.asm.mixin.Final;
@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(value = RandomOffsetPlacement.class, remap = false)
-public abstract class RandomOffsetPlacementMixin implements FastPlacementModifier {
+public abstract class RandomOffsetPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow
     @Final
     private IntProvider xzSpread;

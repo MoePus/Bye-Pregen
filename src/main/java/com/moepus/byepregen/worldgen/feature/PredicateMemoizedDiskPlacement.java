@@ -5,9 +5,8 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
 
-public final class PredicateMemoizedDiskPlacement {
+public final class PredicateMemoizedDiskPlacement implements FastFeaturePlacement {
     private final FastDiskPlacement placement;
-    private boolean placed;
 
     private PredicateMemoizedDiskPlacement(
             FastPlacementContext context,
@@ -29,7 +28,7 @@ public final class PredicateMemoizedDiskPlacement {
             FastPlacementContext context,
             DiskConfiguration config,
             Vec3i[] dependencies,
-            boolean repeatingPlacement
+            boolean mayProduceMultipleOrigins
     ) {
         if (!(context.placementContext().getLevel() instanceof WorldGenRegionSectionCache)) {
             return null;
@@ -38,7 +37,7 @@ public final class PredicateMemoizedDiskPlacement {
                 context,
                 config,
                 dependencies,
-                repeatingPlacement
+                mayProduceMultipleOrigins
         );
         return cache == null ? null : new PredicateMemoizedDiskPlacement(context, config, cache);
     }
@@ -47,13 +46,13 @@ public final class PredicateMemoizedDiskPlacement {
             FastPlacementContext context,
             DiskConfiguration config,
             Vec3i[] dependencies,
-            boolean repeatingPlacement
+            boolean mayProduceMultipleOrigins
     ) {
         FastPlacementContext parent = context.parent();
         if (parent != null && parent.feature().feature() == Feature.RANDOM_PATCH) {
             return parent.nestedDiskCache(config, dependencies);
         }
-        if (!repeatingPlacement) {
+        if (!mayProduceMultipleOrigins) {
             return null;
         }
         WorldGenLevel level = context.placementContext().getLevel();
@@ -64,12 +63,9 @@ public final class PredicateMemoizedDiskPlacement {
         );
     }
 
-    public void placeOrigin(int originX, int originY, int originZ) {
-        this.placed |= this.placement.placeOrigin(originX, originY, originZ);
-    }
-
-    public boolean placed() {
-        return this.placed;
+    @Override
+    public boolean placeOrigin(int originX, int originY, int originZ) {
+        return this.placement.placeOrigin(originX, originY, originZ);
     }
 
     private static boolean placeFallbackColumn(FastDiskFeature.ColumnContext context) {

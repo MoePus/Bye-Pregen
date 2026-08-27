@@ -3,7 +3,6 @@ package com.moepus.byepregen.worldgen.feature;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import java.util.BitSet;
 import net.minecraft.core.Vec3i;
-import net.minecraft.world.level.ChunkPos;
 
 final class KnownFalseDiskPredicateCache {
     private final Vec3i[] dependencies;
@@ -18,7 +17,7 @@ final class KnownFalseDiskPredicateCache {
     }
 
     boolean contains(int x, int y, int z) {
-        BitSet column = this.columns.get(ChunkPos.asLong(x, z));
+        BitSet column = this.columns.get(packColumn(x, z));
         return column != null && this.contains(column, y);
     }
 
@@ -27,7 +26,7 @@ final class KnownFalseDiskPredicateCache {
     }
 
     BitSet selectColumn(int x, int z) {
-        return this.columns.computeIfAbsent(ChunkPos.asLong(x, z), ignored -> new BitSet());
+        return this.columns.computeIfAbsent(packColumn(x, z), ignored -> new BitSet());
     }
 
     boolean contains(BitSet column, int y) {
@@ -43,11 +42,12 @@ final class KnownFalseDiskPredicateCache {
     }
 
     void invalidate(int changedX, int changedY, int changedZ) {
+        // cached(p) means target(W, p) is false; a write at q can affect only p = q - dependency.
         for (Vec3i dependency : this.dependencies) {
             int x = changedX - dependency.getX();
             int y = changedY - dependency.getY();
             int z = changedZ - dependency.getZ();
-            BitSet column = this.columns.get(ChunkPos.asLong(x, z));
+            BitSet column = this.columns.get(packColumn(x, z));
             int bit = this.bitIndex(y);
             if (column != null && bit >= 0) {
                 column.clear(bit);
@@ -61,5 +61,9 @@ final class KnownFalseDiskPredicateCache {
 
     private int bitIndex(int y) {
         return y < this.minimumY || y >= this.maximumY ? -1 : y - this.minimumY;
+    }
+
+    private static long packColumn(int x, int z) {
+        return (x & 0xffffffffL) | ((long) z << 32);
     }
 }
