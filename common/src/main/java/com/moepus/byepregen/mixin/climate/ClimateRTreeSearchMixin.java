@@ -32,6 +32,18 @@ public abstract class ClimateRTreeSearchMixin<T> implements FastClimateRTree<T> 
     public final T byepregen$search(final Climate.TargetPoint targetPoint) {
         final ClimateRTreeSearchContext.State<T> state = this.byepregen$context();
         state.setTarget(targetPoint);
+        return this.byepregen$search(state);
+    }
+
+    @Override
+    public final T byepregen$search(final long[] target) {
+        final ClimateRTreeSearchContext.State<T> state = this.byepregen$context();
+        state.setTarget(target);
+        return this.byepregen$search(state);
+    }
+
+    @Unique
+    private T byepregen$search(final ClimateRTreeSearchContext.State<T> state) {
         state.bestDistance = state.bestLeaf == null ? Long.MAX_VALUE : byepregen$distance(state.bestLeaf, state.values);
 
         if (state.bestDistance != 0L) {

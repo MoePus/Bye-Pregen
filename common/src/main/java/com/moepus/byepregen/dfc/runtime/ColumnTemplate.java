@@ -10,17 +10,24 @@ import net.minecraft.world.level.levelgen.DensityFunction;
 public final class ColumnTemplate {
     private final MethodHandle constructor;
     private final List<Binding> bindings;
+    private final boolean yIndependent;
     private final String disabledReason;
 
-    public ColumnTemplate(MethodHandle constructor, List<Binding> bindings) {
+    public ColumnTemplate(
+            MethodHandle constructor,
+            List<Binding> bindings,
+            boolean yIndependent
+    ) {
         this.constructor = Objects.requireNonNull(constructor, "constructor");
         this.bindings = List.copyOf(bindings);
+        this.yIndependent = yIndependent;
         this.disabledReason = null;
     }
 
     private ColumnTemplate(String reason) {
         this.constructor = null;
         this.bindings = List.of();
+        this.yIndependent = false;
         this.disabledReason = Objects.requireNonNull(reason, "reason");
     }
 
@@ -34,6 +41,10 @@ public final class ColumnTemplate {
 
     public String disabledReason() {
         return this.disabledReason;
+    }
+
+    public boolean yIndependent() {
+        return this.yIndependent;
     }
 
     public CompiledColumnEvaluator bind(Function<DensityFunction, DensityFunction> resolver) {

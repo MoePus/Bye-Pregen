@@ -39,6 +39,17 @@ final class MixinRegistryTest {
     private static final String METHOD_SCOPE_DESCRIPTOR = "Lorg/mixinlite/injector/MethodScope;";
     private static final String WRAP_OPERATION_DESCRIPTOR =
             "Lcom/llamalad7/mixinextras/injector/wrapoperation/WrapOperation;";
+    private static final List<String> BIOME_COLUMN_CONFLICTS =
+            List.of("reterraforged", "terrablender", "blueprint");
+    private static final List<String> BIOME_COLUMN_MIXINS = List.of(
+            MIXIN_PREFIX + "accessor.worldgen.biome.MultiNoiseBiomeSourceAccessor",
+            MIXIN_PREFIX + "climate.ClimateParameterListColumnMixin",
+            MIXIN_PREFIX + "climate.ClimateRTreeColumnMixin",
+            MIXIN_PREFIX + "climate.ClimateRTreeNodeCacheMixin",
+            MIXIN_PREFIX + "dfc.BiomeDensityNoiseChunkMixin",
+             MIXIN_PREFIX + "dfc.BiomeDensityRandomStateMixin",
+             MIXIN_PREFIX + "worldgen.biome.NoiseBasedChunkGeneratorBiomeColumnMixin"
+     );
     private static final Set<String> INJECTION_DESCRIPTORS = Set.of(
             "Lcom/llamalad7/mixinextras/injector/ModifyExpressionValue;",
             WRAP_OPERATION_DESCRIPTOR,
@@ -183,6 +194,23 @@ final class MixinRegistryTest {
 
         assertNotNull(wrap, "FastNoise surface ownership handler must use WrapOperation");
         assertEquals(1100, annotationValue(wrap, "order"));
+    }
+
+    @Test
+    void biomeColumnMixinsRejectSemanticBiomeSourceOverrides() throws Exception {
+        Config config = new Config();
+        for (String mixinClassName : BIOME_COLUMN_MIXINS) {
+            AnnotationNode gate = annotation(readClass(mixinClassName), GATE_DESCRIPTOR);
+            assertEquals(MixinFeature.DFC, annotationFeature(gate), mixinClassName);
+            assertEquals(BIOME_COLUMN_CONFLICTS,
+                    annotationStrings(gate, "conflictingMods"), mixinClassName);
+            assertTrue(evaluateGate(mixinClassName, "contract.Target",
+                    new GateEnvironment(Set.of(), Set.of(), config)), mixinClassName);
+            for (String conflict : BIOME_COLUMN_CONFLICTS) {
+                assertFalse(evaluateGate(mixinClassName, "contract.Target",
+                        new GateEnvironment(Set.of(conflict), Set.of(), config)), mixinClassName);
+            }
+        }
     }
 
     @Test
@@ -449,7 +477,7 @@ final class MixinRegistryTest {
     private static EnumMap<MixinFeature, Integer> featureCounts() {
         EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
         counts.put(MixinFeature.ARENA, 16);
-        counts.put(MixinFeature.DFC, 5);
+        counts.put(MixinFeature.DFC, 12);
         counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 5);
         counts.put(MixinFeature.GC_FREE_RAW_CHUNK_IO, 7);
         counts.put(MixinFeature.SURFACE_BIOME_CACHE, 2);
