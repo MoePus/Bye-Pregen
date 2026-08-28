@@ -2,6 +2,7 @@ package com.moepus.byepregen.dfc;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistry;
@@ -57,6 +58,15 @@ final class DensityColumnCompilerTest {
 
         assertArrayEquals(new double[]{2.0D, 2.0D, 2.0D, 2.0D}, output);
         assertEquals(0, beardifierBindings.get());
+    }
+
+    @Test
+    void templateCarriesAnalyzedYDependency() {
+        ColumnTemplate fixed = DensityColumnCompiler.compile(DensityFunctions.constant(2.0D));
+        ColumnTemplate varying = DensityColumnCompiler.compile(new CountingDelegate());
+
+        assertTrue(fixed.yIndependent());
+        assertFalse(varying.yIndependent());
     }
 
     private static double[] evaluate(DensityFunction function, int length) {

@@ -56,7 +56,8 @@ public final class DensityColumnCompiler {
             byte[] classBytes = generated.classBytes();
             MethodHandle constructor = ColumnClassDefiner.defineConstructor(classBytes);
             long defineNanos = System.nanoTime() - defineStart;
-            ColumnTemplate template = new ColumnTemplate(constructor, generated.bindings());
+            ColumnTemplate template = new ColumnTemplate(
+                    constructor, generated.bindings(), specialized.yIndependent());
             DensityColumnMetrics.recordCompiled();
             dumpIfRequested(initial, specialized.root(), classBytes);
             logTimings(frontendNanos, optimized, specializationNanos, asmNanos,
@@ -64,9 +65,9 @@ public final class DensityColumnCompiler {
             return template;
         } catch (Exception | LinkageError throwable) {
             if (throwable instanceof ColumnOptimizer.OptimizationCycleException cycle) {
-                LOGGER.error("Final-density optimizer did not converge; final AST:\n{}", cycle.astDump());
+                LOGGER.error("Density column optimizer did not converge; final AST:\n{}", cycle.astDump());
             }
-            LOGGER.error("Disabling ByePregen final-density column compiler for this RandomState", throwable);
+            LOGGER.error("Disabling ByePregen density column compiler for this root", throwable);
             return ColumnTemplate.disabled(throwable.toString());
         }
     }
@@ -89,7 +90,7 @@ public final class DensityColumnCompiler {
             long define,
             long total
     ) {
-        LOGGER.info("Compiled final-density column: frontend={} ms, Core-1={} ms, Spline={} ms, "
+        LOGGER.info("Compiled density column: frontend={} ms, Core-1={} ms, Spline={} ms, "
                         + "Core-2={} ms, specialization/CSE={} ms, ASM={} ms, class define={} ms, total={} ms",
                 millis(frontend), millis(optimized.core1Nanos()), millis(optimized.splineNanos()),
                 millis(optimized.core2Nanos()), millis(specialization), millis(asm),

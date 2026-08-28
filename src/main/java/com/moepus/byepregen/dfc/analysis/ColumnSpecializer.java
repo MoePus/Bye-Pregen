@@ -28,7 +28,7 @@ public final class ColumnSpecializer {
         Set<AstNode> candidates = selectCandidates(canonical, dependencies, usage);
         SlotAssigner slots = new SlotAssigner(candidates);
         AstNode result = slots.rewrite(canonical.root());
-        return new Result(result, slots.count());
+        return new Result(result, slots.count(), !dependencies.isYDependent(canonical.root()));
     }
 
     private static Set<AstNode> selectCandidates(
@@ -67,7 +67,7 @@ public final class ColumnSpecializer {
         return Collections.newSetFromMap(new IdentityHashMap<>());
     }
 
-    public record Result(AstNode root, int memoizedSlots) {
+    public record Result(AstNode root, int memoizedSlots, boolean yIndependent) {
     }
 
     private record Normalization(AstNode root, Set<AstNode> forced2D) {
