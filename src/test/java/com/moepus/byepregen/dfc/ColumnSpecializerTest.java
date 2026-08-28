@@ -1,6 +1,7 @@
 package com.moepus.byepregen.dfc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +32,7 @@ final class ColumnSpecializerTest {
         assertSame(sum.left(), sum.right());
         assertInstanceOf(AddNode.class, sum.left());
         assertEquals(1, result.memoizedSlots());
+        assertTrue(result.yIndependent());
     }
 
     @Test
@@ -62,6 +64,18 @@ final class ColumnSpecializerTest {
         RangeChoiceNode specializedChoice = assertInstanceOf(RangeChoiceNode.class, root.right());
         assertSame(direct, specializedChoice.whenInRange());
         assertEquals(1, result.memoizedSlots());
+        assertFalse(result.yIndependent());
+    }
+
+    @Test
+    void reportsYDependencyWithoutChangingSpecialization() {
+        ColumnSpecializer.Result x = ColumnSpecializer.specialize(
+                new RootNode(new CoordinateNode(Axis.X)));
+        ColumnSpecializer.Result y = ColumnSpecializer.specialize(
+                new RootNode(new CoordinateNode(Axis.Y)));
+
+        assertTrue(x.yIndependent());
+        assertFalse(y.yIndependent());
     }
 
 }

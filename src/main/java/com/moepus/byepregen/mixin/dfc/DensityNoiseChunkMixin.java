@@ -7,6 +7,7 @@ import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
 import com.moepus.byepregen.dfc.runtime.FinalDensityColumnProvider;
+import com.moepus.byepregen.dfc.runtime.NoiseChunkColumnBinder;
 import com.moepus.byepregen.dfc.runtime.RandomStateColumnProvider;
 import com.moepus.byepregen.dfc.runtime.DensityColumnMetrics;
 import com.moepus.byepregen.worldgen.arena.InterpolatedMarkerAccess;
@@ -34,7 +35,8 @@ import org.slf4j.Logger;
 
 @MixinGate(feature = MixinFeature.DFC)
 @Mixin(NoiseChunk.class)
-public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvider {
+public abstract class DensityNoiseChunkMixin
+        implements FinalDensityColumnProvider, NoiseChunkColumnBinder {
     @Unique private static final boolean byepregen$VERIFY_COLUMN =
             Boolean.getBoolean("byepregen.verifyDfcColumn");
     @Unique private static final double byepregen$VERIFY_TOLERANCE = 1.0E-6D;
@@ -107,22 +109,17 @@ public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvid
             Blender blender,
             CallbackInfo callback
     ) {
-        if (blender != Blender.empty()
-                || !((Object) randomState instanceof RandomStateColumnProvider provider)) return;
-        ColumnTemplate template = provider.byepregen$finalDensityColumnTemplate();
+        if (blender != Blender.empty()) return;
+        if ((Object) randomState instanceof RandomStateColumnProvider provider) {
+            this.byepregen$bindFinalDensityColumn(provider.byepregen$finalDensityColumnTemplate());
+        }
+    }
+
+    @Unique
+    private void byepregen$bindFinalDensityColumn(ColumnTemplate template) {
         if (template == null || !template.available()) return;
         try {
-            this.byepregen$finalDensityColumnEvaluator = template.bindResolved(new ColumnTemplate.BindingResolver() {
-                @Override
-                public DensityFunction resolveDensity(DensityFunction source) {
-                    return byepregen$resolveBinding(source);
-                }
-
-                @Override
-                public DensityFunction resolveInterpolated(DensityFunction source, int ordinal) {
-                    return byepregen$resolveInterpolated(source, ordinal);
-                }
-            });
+            this.byepregen$finalDensityColumnEvaluator = this.byepregen$bindColumn(template);
             this.byepregen$finalDensityColumnContext = new ColumnEvaluationContext();
             if (byepregen$VERIFY_COLUMN && this.byepregen$verificationRoot == null) {
                 throw new IllegalStateException("Missing wrapped final-density scalar root");
@@ -134,6 +131,21 @@ public abstract class DensityNoiseChunkMixin implements FinalDensityColumnProvid
             DensityColumnMetrics.recordBindFailure();
             byepregen$LOGGER.warn("Disabling final-density column evaluator for one NoiseChunk", throwable);
         }
+    }
+
+    @Override
+    public CompiledColumnEvaluator byepregen$bindColumn(ColumnTemplate template) {
+        return template.bindResolved(new ColumnTemplate.BindingResolver() {
+            @Override
+            public DensityFunction resolveDensity(DensityFunction source) {
+                return byepregen$resolveBinding(source);
+            }
+
+            @Override
+            public DensityFunction resolveInterpolated(DensityFunction source, int ordinal) {
+                return byepregen$resolveInterpolated(source, ordinal);
+            }
+        });
     }
 
     @Unique
