@@ -20,7 +20,7 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = mod_id
+    archivesName = "${mod_id}-${minecraft_version}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -140,18 +140,21 @@ tasks.named('compileJava', JavaCompile).configure {
 jarJar.enable()
 
 repositories {
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
     flatDir { dirs 'libs' }
     maven { url = 'https://moepus.github.io/MixinLite/' }
     mavenCentral()
     maven { url = 'https://cursemaven.com' }
-    maven { url = 'https://api.modrinth.com/maven' }
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-    compileOnly fg.deobf("curse.maven:tectonic-686836:7197834")
-    compileOnly fg.deobf('curse.maven:architectury-api-419699:5137938')
+    compileOnly fg.deobf('maven.modrinth:tectonic:3.0.17')
+    compileOnly fg.deobf('maven.modrinth:architectury-api:9.2.14+forge')
     worldgenHarnessImplementation fg.deobf('maven.modrinth:chunky:4FTDk9wv')
     c2mefRuntime fg.deobf('curse.maven:concurrent-chunk-management-engine-for-forge-the-1484205:7746800')
     fastChunkGenRuntime fg.deobf('local:fastchunkgen-0.21-all:0.21')
