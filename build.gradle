@@ -157,7 +157,7 @@ dependencies {
     compileOnly fg.deobf('maven.modrinth:architectury-api:9.2.14+forge')
     worldgenHarnessImplementation fg.deobf('maven.modrinth:chunky:4FTDk9wv')
     c2mefRuntime fg.deobf('curse.maven:concurrent-chunk-management-engine-for-forge-the-1484205:7746800')
-    fastChunkGenRuntime fg.deobf('local:fastchunkgen-0.21-all:0.21')
+    fastChunkGenRuntime fg.deobf('curse.maven:fastchunkgen-1628827:8747049')
     hariumRuntime fg.deobf('curse.maven:harium-1413106:8694838')
 
     implementation(jarJar('org.mixinlite:mixinlite:0.2.0')) {

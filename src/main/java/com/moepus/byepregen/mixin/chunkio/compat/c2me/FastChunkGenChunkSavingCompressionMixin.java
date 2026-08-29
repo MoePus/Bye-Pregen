@@ -15,7 +15,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(targets = "com.misanthropy.fastchunkgen.rewrites.chunkio.common.C2MEStorageThread", remap = false)
 public abstract class FastChunkGenChunkSavingCompressionMixin {
     @Redirect(
-            method = "lambda$writeChunk$13",
+            method = "(Lcom/ibm/asyncutil/util/Either;)"
+                    + "Lcom/misanthropy/fastchunkgen/base/common/structs/RawByteArrayOutputStream;",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/level/chunk/storage/RegionFileVersion;"
