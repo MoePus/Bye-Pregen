@@ -108,7 +108,7 @@ final class MixinRegistryTest {
                 ConfigFlag.DISABLE_WORLDGEN_FEATURES, 1,
                 ConfigFlag.PLACED_FEATURES, 11,
                 ConfigFlag.FAST_CHUNK_TICKING, 4,
-                ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 2,
+                ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, 1,
                 ConfigFlag.CLIENT_ARENA, 1
         ), actual);
     }
@@ -159,11 +159,19 @@ final class MixinRegistryTest {
                 readClass(MIXIN_PREFIX + "chunkio.ChunkStorageRawMixin"), GATE_DESCRIPTOR);
         AnnotationNode worldgenSectionCache = annotation(readClass(
                 MIXIN_PREFIX + "worldgen.cache.WorldGenRegionSectionCacheMixin"), GATE_DESCRIPTOR);
+        AnnotationNode sectionAccessor = annotation(readClass(
+                MIXIN_PREFIX + "accessor.arena.LevelChunkSectionAccessor"), GATE_DESCRIPTOR);
+        AnnotationNode biomeColumnConsumer = annotation(readClass(
+                MIXIN_PREFIX + "worldgen.biome.NoiseBasedChunkGeneratorBiomeColumnMixin"),
+                GATE_DESCRIPTOR);
 
         assertEquals(ConfigFlag.MATERIALIZE_ARENA_LEVEL_CHUNK, annotationConfigFlag(levelChunk));
         assertEquals(ConfigFlag.CLIENT_ARENA, annotationConfigFlag(voxy));
         assertEquals(MixinFeature.GC_FREE_RAW_CHUNK_IO, annotationFeature(rawChunkStorage));
         assertEquals(ConfigFlag.ALWAYS, annotationConfigFlag(worldgenSectionCache));
+        assertEquals(ConfigFlag.ALWAYS, annotationConfigFlag(sectionAccessor));
+        assertEquals(MixinFeature.NONE, annotationFeature(sectionAccessor));
+        assertEquals(MixinFeature.DFC, annotationFeature(biomeColumnConsumer));
     }
 
     @Test
@@ -476,7 +484,7 @@ final class MixinRegistryTest {
 
     private static EnumMap<MixinFeature, Integer> featureCounts() {
         EnumMap<MixinFeature, Integer> counts = new EnumMap<>(MixinFeature.class);
-        counts.put(MixinFeature.ARENA, 16);
+        counts.put(MixinFeature.ARENA, 15);
         counts.put(MixinFeature.DFC, 12);
         counts.put(MixinFeature.GC_FREE_CHUNK_SAVE, 5);
         counts.put(MixinFeature.GC_FREE_RAW_CHUNK_IO, 7);
