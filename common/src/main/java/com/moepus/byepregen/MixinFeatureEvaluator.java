@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 
 final class MixinFeatureEvaluator {
     private static final String SCALABLELUX_MOD_ID = "scalablelux";
+    private static final String BLUEPRINT_MOD_ID = "blueprint";
 
     private final Predicate<String> modExists;
     private final BooleanSupplier rawChunkIoSupported;
@@ -43,7 +44,8 @@ final class MixinFeatureEvaluator {
             case GC_FREE_CHUNK_SAVE -> config.chunkSaving().gcFreeWorldgen();
             case GC_FREE_RAW_CHUNK_IO -> this.rawChunkIoEnabled(config);
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
-            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
+            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler()
+                    && !this.modExists.test(BLUEPRINT_MOD_ID);
             case YA_LIGHT -> config.lighting().ya().enabled()
                     && !this.modExists.test(SCALABLELUX_MOD_ID);
         };
