@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 final class MixinFeatureEvaluator {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Features");
+    private static final String BLUEPRINT_MOD_ID = "blueprint";
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
 
@@ -42,7 +43,8 @@ final class MixinFeatureEvaluator {
             case GC_FREE_CHUNK_SAVE -> config.chunkSaving().gcFreeWorldgen();
             case GC_FREE_RAW_CHUNK_IO -> this.rawChunkIoEnabled(config);
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
-            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
+            case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler()
+                    && !this.modExists.test(BLUEPRINT_MOD_ID);
             case YA_LIGHT -> config.lighting().ya().enabled()
                     && !this.modExists.test(YALightCompatibility.SCALABLELUX_MOD_ID);
         };
