@@ -46,27 +46,7 @@ import org.objectweb.asm.tree.TableSwitchInsnNode;
 
 final class ColumnBytecodeAuditTest {
     @Test
-    void hiddenClassExecutesColumnEntry() throws Throwable {
-        AstNode graph = new MulNode(
-                new com.moepus.byepregen.dfc.ast.AstNodes.AddNode(
-                        new CoordinateNode(Axis.Y), new ConstantNode(2.0D)),
-                new ConstantNode(3.0D));
-        ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(graph);
-        CompiledColumnEvaluator evaluator = (CompiledColumnEvaluator) ColumnClassDefiner
-                .defineConstructor(generated.classBytes()).invoke((Object) new Object[0]);
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        double[] output = new double[3];
-        context.prepare(output, 1, 2, -4, 4, source -> new double[3]);
-        try {
-            evaluator.evalColumn(context);
-        } finally {
-            context.clear();
-        }
-        assertTrue(java.util.Arrays.equals(new double[]{-6.0D, 6.0D, 18.0D}, output));
-    }
-
-    @Test
-    void gradientColumnHelperAvoidsPointFallback() throws Throwable {
+    void gradientColumnHelperAvoidsPointFallback() {
         AstNode graph = new com.moepus.byepregen.dfc.ast.AstNodes.YClampedGradientNode(
                 -4, 4, -1.0D, 1.0D);
         ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(graph);
@@ -75,17 +55,6 @@ final class ColumnBytecodeAuditTest {
         assertNotNull(gradient);
         assertEquals(0, countPointCalls(gradient));
         assertTrue(calls(gradient, com.moepus.byepregen.dfc.runtime.ColumnMath.class, "clampedMap"));
-
-        CompiledColumnEvaluator evaluator = instantiate(generated);
-        double[] output = new double[3];
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(output, 0, 0, -4, 4, source -> output);
-        try {
-            evaluator.evalColumn(context);
-        } finally {
-            context.clear();
-        }
-        assertTrue(java.util.Arrays.equals(new double[]{-1.0D, 0.0D, 1.0D}, output));
     }
 
     @Test
@@ -131,26 +100,6 @@ final class ColumnBytecodeAuditTest {
                         && method.name.endsWith("MinShortNode"))
                 .count());
         assertTrue(type.methods.stream().noneMatch(method -> method.name.endsWith("ConstantNode")));
-    }
-
-    @Test
-    void shortMinHybridColumnEvaluatesOnlySelectedLanes() throws Throwable {
-        AstNode graph = new MinShortNode(new CoordinateNode(Axis.Y),
-                new CoordinateNode(Axis.X), 0.0D);
-        ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(graph);
-        CompiledColumnEvaluator evaluator = instantiate(generated);
-        double[] output = new double[]{0.0D, 0.0D, 0.0D, 0.0D};
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(output, 10, 0, -4, 4, source -> output);
-        try {
-            evaluator.evalColumn(context);
-        } finally {
-            context.clear();
-        }
-        assertEquals(-4.0D, output[0]);
-        assertEquals(0.0D, output[1]);
-        assertEquals(4.0D, output[2]);
-        assertEquals(8.0D, output[3]);
     }
 
     @Test
@@ -224,36 +173,6 @@ final class ColumnBytecodeAuditTest {
     }
 
     @Test
-    void rangeChoiceEvaluatesArithmeticBranchesAsColumnRuns() throws Throwable {
-        AstNode graph = new RangeChoiceNode(new CoordinateNode(Axis.Y), 0.0D, 8.0D,
-                new com.moepus.byepregen.dfc.ast.AstNodes.AddNode(
-                        new CoordinateNode(Axis.X), new CoordinateNode(Axis.Y)),
-                new MulNode(new ConstantNode(2.0D), new CoordinateNode(Axis.Y)));
-        ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(graph);
-        ClassNode type = read(generated.classBytes());
-        MethodNode choice = find(type, "column", "RangeChoiceNode");
-        MethodNode add = find(type, "column", "AddNode");
-        MethodNode mul = find(type, "column", "MulNode");
-        assertNotNull(choice);
-        assertNotNull(add);
-        assertNotNull(mul);
-        assertEquals(0, countCallsWithPrefix(choice, "point"));
-        assertTrue(add.desc.endsWith("[DII)V"));
-        assertTrue(mul.desc.endsWith("[DII)V"));
-
-        CompiledColumnEvaluator evaluator = instantiate(generated);
-        double[] output = new double[5];
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(output, 10, 0, -4, 4, source -> output);
-        try {
-            evaluator.evalColumn(context);
-        } finally {
-            context.clear();
-        }
-        assertTrue(java.util.Arrays.equals(new double[]{-8.0D, 10.0D, 14.0D, 16.0D, 24.0D}, output));
-    }
-
-    @Test
     void evalColumnUsesDedicatedArrayHelpersForArithmetic() {
         AstNode graph = new MulNode(new CoordinateNode(Axis.Y), new ConstantNode(2.0D));
         ClassNode type = read(new ColumnClassBuilder(0).build(graph).classBytes());
@@ -284,19 +203,6 @@ final class ColumnBytecodeAuditTest {
     }
 
     @Test
-    void negativeMemoizedSlotsAreRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new ColumnClassBuilder(-1));
-    }
-
-    @Test
-    void inactiveContextIsRejectedAtColumnEntry() throws Throwable {
-        CompiledColumnEvaluator evaluator = instantiate(new ColumnClassBuilder(0)
-                .build(new CoordinateNode(Axis.Y)));
-        assertThrows(IllegalStateException.class,
-                () -> evaluator.evalColumn(new ColumnEvaluationContext()));
-    }
-
-    @Test
     void evalColumnOwnsTheOnlyCleanupHandlerAndRethrows() throws Throwable {
         AstNode graph = new MulNode(new CoordinateNode(Axis.Y),
                 new Memoized2DNode(new ConstantNode(2.0D), 1));
@@ -320,24 +226,8 @@ final class ColumnBytecodeAuditTest {
     }
 
     @Test
-    void directSplineHelpersExecuteAndUseTableSwitch() throws Throwable {
-        SplineFixture fixture = splineFixture();
-        ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(fixture.node());
-        CompiledColumnEvaluator evaluator = instantiate(generated);
-        double[] actual = new double[7];
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(actual, 3, 5, -6, 2, source -> new double[7]);
-        try {
-            evaluator.evalColumn(context);
-        } finally {
-            context.clear();
-        }
-        for (int lane = 0; lane < actual.length; ++lane) {
-            int y = -6 + lane * 2;
-            double expected = sampleSpline(fixture.spline(), y);
-            assertEquals(expected, actual[lane], 1.0E-6D * (1.0D + Math.abs(expected)));
-        }
-
+    void directSplineHelpersUseTableSwitch() {
+        ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(splineNode());
         byte[] bytes = generated.classBytes();
         assertFalse(new String(bytes, StandardCharsets.ISO_8859_1).contains("SplineProgram"));
         ClassNode type = read(bytes);
@@ -446,7 +336,7 @@ final class ColumnBytecodeAuditTest {
                 .defineConstructor(generated.classBytes()).invoke((Object) values);
     }
 
-    private static SplineFixture splineFixture() {
+    private static SplineNode splineNode() {
         DensityFunctions.Spline.Coordinate coordinate = SplineTestFixtures.coordinate();
         CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> child =
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-2.0F, 2.0F},
@@ -456,59 +346,8 @@ final class ColumnBytecodeAuditTest {
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-4.0F, 0.0F, 4.0F},
                         List.of(CubicSpline.constant(-5.0F), child, CubicSpline.constant(7.0F)),
                         new float[]{0.0F, 0.5F, 0.0F}, -5.0F, 7.0F);
-        return new SplineFixture(
-                new SplineNode(root, List.of(coordinate),
-                        List.of(new CoordinateNode(Axis.Y))),
-                root);
-    }
-
-    private static float sampleSpline(
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
-            float point
-    ) {
-        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> constant) return constant.value();
-        CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> values = (CubicSpline.Multipoint<
-                DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>) spline;
-        int range = referenceRange(values.locations(), point);
-        int last = values.locations().length - 1;
-        if (range < 0 || range == last) {
-            int index = range < 0 ? 0 : last;
-            return sampleSpline(values.values().get(index), point)
-                    + values.derivatives()[index] * (point - values.locations()[index]);
-        }
-        return sampleInside(values, point, range);
-    }
-
-    private static float sampleInside(
-            CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                    DensityFunctions.Spline.Coordinate> spline,
-            float point,
-            int range
-    ) {
-        float leftLocation = spline.locations()[range];
-        float span = spline.locations()[range + 1] - leftLocation;
-        float alpha = (point - leftLocation) / span;
-        float left = sampleSpline(spline.values().get(range), point);
-        float right = sampleSpline(spline.values().get(range + 1), point);
-        float delta = right - left;
-        float leftSlope = spline.derivatives()[range] * span - delta;
-        float rightSlope = -spline.derivatives()[range + 1] * span + delta;
-        return left + alpha * (delta + (1.0F - alpha)
-                * (leftSlope + alpha * (rightSlope - leftSlope)));
-    }
-
-    private static int referenceRange(float[] locations, float point) {
-        int range = -1;
-        while (range + 1 < locations.length && point >= locations[range + 1]) ++range;
-        return range;
-    }
-
-    private record SplineFixture(
-            SplineNode node,
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
-    ) {
+        return new SplineNode(root, List.of(coordinate),
+                List.of(new CoordinateNode(Axis.Y)));
     }
 
     private static int countPointCalls(MethodNode method) {

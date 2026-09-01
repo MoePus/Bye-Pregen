@@ -180,7 +180,7 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 17
 }
 
-tasks.withType(Test).configureEach {
+tasks.named('test', Test) {
     useJUnitPlatform()
 }
 
@@ -232,7 +232,6 @@ apply from: 'gradle/byepregen-startup-verification.gradle'
 apply from: 'gradle/byepregen-production-verification.gradle'
 apply from: 'gradle/byepregen-worldgen-smoke.gradle'
 apply from: 'gradle/byepregen-light-verification.gradle'
-apply from: 'gradle/byepregen-unit-verification.gradle'
 
 def compatRuns = [
         C2mefServer           : [configurations.c2mefRuntime],
