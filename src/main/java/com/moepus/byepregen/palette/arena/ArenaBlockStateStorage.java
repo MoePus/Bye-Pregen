@@ -28,9 +28,8 @@ final class ArenaBlockStateStorage {
         this.uniformState = source.uniformState;
         this.arena = source.arena == null ? null : source.arena.clone();
         this.denseIds = source.denseIds == null ? null : source.denseIds.clone();
-        this.denseRawIdCounts = source.denseRawIdCounts == null
-                ? null
-                : new Int2IntOpenHashMap(source.denseRawIdCounts);
+        // Counts are derived from denseIds and may be changing while a renderer snapshots the section.
+        this.denseRawIdCounts = null;
     }
 
     BlockState stateAt(int x, int y, int z) {
@@ -202,13 +201,22 @@ final class ArenaBlockStateStorage {
     }
 
     Int2IntOpenHashMap denseRawIdCounts() {
-        if (this.denseRawIdCounts == null && this.denseIds != null) {
-            this.denseRawIdCounts = new Int2IntOpenHashMap();
-            for (int i = 0; i < SECTION_SIZE; ++i) {
-                this.denseRawIdCounts.addTo(UnsafeIntArrayAccess.get(this.denseIds, i), 1);
-            }
+        Int2IntOpenHashMap counts = this.denseRawIdCounts;
+        if (counts != null) {
+            return counts;
         }
-        return this.denseRawIdCounts;
+
+        int[] dense = this.denseIds;
+        if (dense == null) {
+            return null;
+        }
+
+        counts = new Int2IntOpenHashMap();
+        for (int i = 0; i < SECTION_SIZE; ++i) {
+            counts.addTo(UnsafeIntArrayAccess.get(dense, i), 1);
+        }
+        this.denseRawIdCounts = counts;
+        return counts;
     }
 
     int arenaPageBase(int page) {
