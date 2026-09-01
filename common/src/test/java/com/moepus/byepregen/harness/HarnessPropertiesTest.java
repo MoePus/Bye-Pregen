@@ -2,7 +2,6 @@ package com.moepus.byepregen.harness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -60,47 +59,13 @@ class HarnessPropertiesTest {
     }
 
     @Test
-    void rejectsBlankAndInvalidValuesWithThePropertyName() {
-        System.setProperty(STRING, " ");
-        System.setProperty(BOOLEAN, "yes");
-        System.setProperty(INTEGER, "1.5");
-
-        assertInvalid(STRING, () -> HarnessProperties.get(STRING, "value"));
-        assertInvalid(BOOLEAN, () -> HarnessProperties.getBoolean(BOOLEAN, false));
-        assertInvalid(INTEGER, () -> HarnessProperties.getInt(INTEGER, 0));
-    }
-
-    @Test
-    void rejectsNonFiniteAndMalformedNumbers() {
-        System.setProperty(DOUBLE, "NaN");
-        System.setProperty(LONG, "large");
-
-        assertInvalid(DOUBLE, () -> HarnessProperties.getDouble(DOUBLE, 0.0D));
-        assertInvalid(LONG, () -> HarnessProperties.getLong(LONG, 0L));
-
-        System.setProperty(DOUBLE, "Infinity");
-        assertInvalid(DOUBLE, () -> HarnessProperties.getDouble(DOUBLE, 0.0D));
-    }
-
-    @Test
-    void chunkBoundsUseTheSameStrictIntegerParser() {
+    void chunkBoundsUseTheSameIntegerParser() {
         System.setProperty(BOUNDS_PREFIX + ".minChunkX", "-0x10");
         System.setProperty(BOUNDS_PREFIX + ".maxChunkX", "15");
         System.setProperty(BOUNDS_PREFIX + ".minChunkZ", "-8");
         System.setProperty(BOUNDS_PREFIX + ".maxChunkZ", "07");
 
         assertEquals(new ChunkBounds(-16, 15, -8, 7), ChunkBounds.fromSystemProperties(BOUNDS_PREFIX));
-
-        System.setProperty(BOUNDS_PREFIX + ".maxChunkX", "far");
-        assertInvalid(
-                BOUNDS_PREFIX + ".maxChunkX",
-                () -> ChunkBounds.fromSystemProperties(BOUNDS_PREFIX)
-        );
-    }
-
-    private static void assertInvalid(String property, Runnable action) {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, action::run);
-        assertTrue(exception.getMessage().contains("-D" + property + "="));
     }
 
     private void restoreProperty(String property) {

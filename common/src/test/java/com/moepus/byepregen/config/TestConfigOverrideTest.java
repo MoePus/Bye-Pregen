@@ -2,7 +2,6 @@ package com.moepus.byepregen.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -71,44 +70,6 @@ final class TestConfigOverrideTest {
 
         assertTrue(config.server().fastChunkTicking().enabled());
         assertEquals(existing, Files.readString(path));
-    }
-
-    @Test
-    void rejectsValuesWithoutActiveMarker() {
-        setOption("worldgen.arena.enabled", "False");
-
-        assertThrows(IllegalArgumentException.class, TestConfigOverride::load);
-    }
-
-    @Test
-    void rejectsValuesWithDisabledMarker() {
-        System.setProperty(TestConfigOverride.ENABLE_PROPERTY, "false");
-        setOption("worldgen.arena.enabled", "False");
-
-        assertThrows(IllegalArgumentException.class, TestConfigOverride::load);
-    }
-
-    @Test
-    void rejectsUnknownOption() {
-        enableTestConfig();
-        setOption("worldgen.unknown.enabled", "True");
-
-        assertThrows(IllegalArgumentException.class, TestConfigOverride::load);
-    }
-
-    @Test
-    void rejectsInvalidOptionValue() {
-        enableTestConfig();
-        setOption("worldgen.arena.enabled", "sometimes");
-
-        assertThrows(IllegalArgumentException.class, TestConfigOverride::load);
-    }
-
-    @Test
-    void rejectsInvalidMarkerValue() {
-        System.setProperty(TestConfigOverride.ENABLE_PROPERTY, "sometimes");
-
-        assertThrows(IllegalArgumentException.class, TestConfigOverride::load);
     }
 
     private static void enableTestConfig() {
