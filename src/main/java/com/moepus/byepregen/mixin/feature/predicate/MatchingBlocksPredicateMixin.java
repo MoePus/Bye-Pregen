@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import java.util.List;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -14,6 +16,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.MatchingBlocksPredicate", remap = false)
 public abstract class MatchingBlocksPredicateMixin {
     @Shadow

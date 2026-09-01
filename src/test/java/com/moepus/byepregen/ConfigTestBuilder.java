@@ -60,10 +60,11 @@ final class ConfigTestBuilder {
 
     Config build() {
         Config.Worldgen worldgen = new Config.Worldgen(
-                new Config.PlacedFeatures(this.placedFeatures, true),
+                new Config.PlacedFeatures(this.placedFeatures, true, true),
                 new Config.Arena(this.arena, this.densityColumnCompiler,
                         new Config.ArenaRuntime(this.serverRuntimeArena, this.clientArena)),
-                new Config.Surface(this.surfaceRuleCompiler, this.surfaceBiomeCache)
+                new Config.Surface(this.surfaceRuleCompiler, this.surfaceBiomeCache),
+                new Config.Misc(true)
         );
         return Config.builder()
                 .debug(new Config.Debug(false))

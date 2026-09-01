@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.dfc;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.dfc.runtime.FlatCacheAccess;
 import net.minecraft.core.QuartPos;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -8,6 +10,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(config = ConfigFlag.FLAT_CACHE_ACCESS)
 @Mixin(targets = "net.minecraft.world.level.levelgen.NoiseChunk$FlatCache")
 public abstract class DensityFlatCacheMixin implements FlatCacheAccess {
     @Shadow @Final private DensityFunction noiseFiller;

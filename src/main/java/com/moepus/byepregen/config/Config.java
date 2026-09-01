@@ -107,30 +107,37 @@ public final class Config {
         }
     }
 
-    public record Worldgen(PlacedFeatures placedFeatures, Arena arena, Surface surface) {
+    public record Worldgen(PlacedFeatures placedFeatures, Arena arena, Surface surface, Misc misc) {
         public Worldgen {
             Objects.requireNonNull(placedFeatures, "placedFeatures");
             Objects.requireNonNull(arena, "arena");
             Objects.requireNonNull(surface, "surface");
+            Objects.requireNonNull(misc, "misc");
         }
 
         public Worldgen() {
-            this(new PlacedFeatures(), new Arena(), new Surface());
+            this(new PlacedFeatures(), new Arena(), new Surface(), new Misc());
         }
     }
 
-    public record PlacedFeatures(BooleanSetting enabledSetting, BooleanSetting memoizedDiskPlanSetting) {
+    public record PlacedFeatures(
+            BooleanSetting enabledSetting,
+            BooleanSetting memoizedDiskPlanSetting,
+            BooleanSetting localOptimizationsSetting
+    ) {
         public PlacedFeatures {
             Objects.requireNonNull(enabledSetting, "enabledSetting");
             Objects.requireNonNull(memoizedDiskPlanSetting, "memoizedDiskPlanSetting");
+            Objects.requireNonNull(localOptimizationsSetting, "localOptimizationsSetting");
         }
 
-        public PlacedFeatures(boolean enabled, boolean memoizedDiskPlan) {
-            this(BooleanSetting.explicit(enabled), BooleanSetting.explicit(memoizedDiskPlan));
+        public PlacedFeatures(boolean enabled, boolean memoizedDiskPlan, boolean localOptimizations) {
+            this(BooleanSetting.explicit(enabled), BooleanSetting.explicit(memoizedDiskPlan),
+                    BooleanSetting.explicit(localOptimizations));
         }
 
         public PlacedFeatures() {
-            this(BooleanSetting.DEFAULT, BooleanSetting.DEFAULT);
+            this(BooleanSetting.DEFAULT, BooleanSetting.DEFAULT, BooleanSetting.DEFAULT);
         }
 
         public boolean enabled() {
@@ -139,6 +146,10 @@ public final class Config {
 
         public boolean memoizedDiskPlan() {
             return this.memoizedDiskPlanSetting.resolve(true);
+        }
+
+        public boolean localOptimizations() {
+            return this.localOptimizationsSetting.resolve(true);
         }
     }
 
@@ -213,6 +224,24 @@ public final class Config {
 
         public boolean biomeCache() {
             return this.biomeCacheSetting.resolve(true);
+        }
+    }
+
+    public record Misc(BooleanSetting flatCacheAccessSetting) {
+        public Misc {
+            Objects.requireNonNull(flatCacheAccessSetting, "flatCacheAccessSetting");
+        }
+
+        public Misc(boolean flatCacheAccess) {
+            this(BooleanSetting.explicit(flatCacheAccess));
+        }
+
+        public Misc() {
+            this(BooleanSetting.DEFAULT);
+        }
+
+        public boolean flatCacheAccess() {
+            return this.flatCacheAccessSetting.resolve(true);
         }
     }
 

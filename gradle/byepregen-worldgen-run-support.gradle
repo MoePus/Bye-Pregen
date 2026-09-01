@@ -31,6 +31,9 @@ ext.byepregenWorldgenTestConfig = { Map options ->
                             enabled             : options.containsKey('enablePlacedFeatureMixin')
                                     ? options.enablePlacedFeatureMixin
                                     : false,
+                            'local-optimizations': options.containsKey('placedFeatureLocalOptimizations')
+                                    ? options.placedFeatureLocalOptimizations
+                                    : true,
                             'memoized-disk-plan': options.containsKey('enableMemoizedDiskPlan')
                                     ? options.enableMemoizedDiskPlan
                                     : true,
@@ -47,6 +50,11 @@ ext.byepregenWorldgenTestConfig = { Map options ->
                                     ? options.surfaceScalar
                                     : true,
                             'biome-cache'  : surfaceBiomeCache,
+                    ],
+                    misc             : [
+                            'flat-cache-access': options.containsKey('flatCacheAccess')
+                                    ? options.flatCacheAccess
+                                    : true,
                     ],
             ],
             server        : [

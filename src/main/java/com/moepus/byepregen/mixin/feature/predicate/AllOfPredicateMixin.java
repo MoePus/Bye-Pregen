@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastCombiningPredicate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -12,6 +14,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(targets = "net.minecraft.world.level.levelgen.blockpredicates.AllOfPredicate", remap = false)
 public abstract class AllOfPredicateMixin extends CombiningPredicate implements FastCombiningPredicate {
     @Unique
