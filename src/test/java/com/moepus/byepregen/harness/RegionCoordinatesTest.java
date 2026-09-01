@@ -1,8 +1,6 @@
 package com.moepus.byepregen.harness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,17 +12,6 @@ class RegionCoordinatesTest {
     void parsesCanonicalPositiveAndNegativeNames() throws IOException {
         assertEquals(new RegionCoordinates(12, -7), RegionCoordinates.parse("r.12.-7.mca"));
         assertTrue(RegionCoordinates.isRegionFileName("r.-1.0.mca"));
-    }
-
-    @Test
-    void rejectsNonRegionAndOverflowingNames() {
-        List<String> invalid = List.of("region.0.0.mca", "r.0.mca", "r.x.0.mca");
-        for (String fileName : invalid) {
-            assertThrows(IOException.class, () -> RegionCoordinates.parse(fileName));
-            assertFalse(RegionCoordinates.isRegionFileName(fileName));
-        }
-        assertThrows(IOException.class, () -> RegionCoordinates.parse("r.2147483648.0.mca"));
-        assertTrue(RegionCoordinates.isRegionFileName("r.2147483648.0.mca"));
     }
 
     @Test

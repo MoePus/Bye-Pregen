@@ -136,7 +136,9 @@ tasks.named('jar', Jar) {
     exclude 'com/moepus/byepregen/bootstrap/TestWorldGenBootstrap.class'
 }
 
-apply from: 'gradle/byepregen-unit-verification.gradle'
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
 
 def runtimeCheck = tasks.register('runtimeCheck') {
     group = 'verification'

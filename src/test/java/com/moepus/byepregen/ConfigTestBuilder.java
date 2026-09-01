@@ -3,24 +3,15 @@ package com.moepus.byepregen;
 import com.moepus.byepregen.config.Config;
 
 final class ConfigTestBuilder {
-    private boolean disableWorldgenFeatures;
     private boolean placedFeatures;
-    private boolean memoizedDiskPlan = true;
     private boolean arena = true;
     private boolean densityColumnCompiler = true;
     private boolean serverRuntimeArena;
     private boolean clientArena;
     private boolean surfaceRuleCompiler = true;
     private boolean surfaceBiomeCache = true;
-    private boolean fastChunkTicking;
     private boolean gcFreeWorldgen = true;
-    private boolean retainBuffer = true;
     private boolean yaLight;
-
-    ConfigTestBuilder disableWorldgenFeatures(boolean value) {
-        this.disableWorldgenFeatures = value;
-        return this;
-    }
 
     ConfigTestBuilder placedFeatures(boolean value) {
         this.placedFeatures = value;
@@ -69,16 +60,16 @@ final class ConfigTestBuilder {
 
     Config build() {
         Config.Worldgen worldgen = new Config.Worldgen(
-                new Config.PlacedFeatures(this.placedFeatures, this.memoizedDiskPlan),
+                new Config.PlacedFeatures(this.placedFeatures, true),
                 new Config.Arena(this.arena, this.densityColumnCompiler,
                         new Config.ArenaRuntime(this.serverRuntimeArena, this.clientArena)),
                 new Config.Surface(this.surfaceRuleCompiler, this.surfaceBiomeCache)
         );
         return Config.builder()
-                .debug(new Config.Debug(this.disableWorldgenFeatures))
+                .debug(new Config.Debug(false))
                 .worldgen(worldgen)
-                .server(new Config.Server(new Config.FastChunkTicking(this.fastChunkTicking)))
-                .chunkSaving(new Config.ChunkSaving(this.gcFreeWorldgen, this.retainBuffer))
+                .server(new Config.Server(new Config.FastChunkTicking(false)))
+                .chunkSaving(new Config.ChunkSaving(this.gcFreeWorldgen, true))
                 .lighting(new Config.Lighting(new Config.Ya(this.yaLight)))
                 .build();
     }
