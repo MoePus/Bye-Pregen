@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@MixinGate(config = ConfigFlag.PLACED_FEATURES)
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = HeightmapPlacement.class, remap = false)
 public abstract class HeightmapPlacementMixin implements FastPlacementModifier {
     @Shadow

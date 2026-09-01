@@ -7,7 +7,7 @@ import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
 import net.minecraft.world.level.levelgen.placement.InSquarePlacement;
 import org.spongepowered.asm.mixin.Mixin;
 
-@MixinGate(config = ConfigFlag.PLACED_FEATURES)
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = InSquarePlacement.class, remap = false)
 public abstract class InSquarePlacementMixin implements FastPlacementModifier {
     @Override

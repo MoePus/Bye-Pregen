@@ -11,7 +11,7 @@ import net.minecraft.world.level.levelgen.placement.PlacementFilter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@MixinGate(config = ConfigFlag.PLACED_FEATURES)
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = PlacementFilter.class, remap = false)
 public abstract class PlacementFilterMixin implements FastPlacementModifier {
     @Shadow

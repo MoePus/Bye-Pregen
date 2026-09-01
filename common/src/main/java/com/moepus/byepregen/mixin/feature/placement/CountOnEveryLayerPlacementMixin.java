@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
-@MixinGate(config = ConfigFlag.PLACED_FEATURES)
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = CountOnEveryLayerPlacement.class, remap = false)
 public abstract class CountOnEveryLayerPlacementMixin implements FastPlacementModifier {
     @Shadow
