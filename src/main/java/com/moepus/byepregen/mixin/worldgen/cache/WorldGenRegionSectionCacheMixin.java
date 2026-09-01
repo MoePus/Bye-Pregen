@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.worldgen.cache;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.WorldGenRegionSectionCache;
 
 import javax.annotation.Nullable;
@@ -12,6 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(WorldGenRegion.class)
 public abstract class WorldGenRegionSectionCacheMixin implements WorldGenRegionSectionCache {
     @Unique

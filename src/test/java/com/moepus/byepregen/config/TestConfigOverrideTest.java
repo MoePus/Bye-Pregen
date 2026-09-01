@@ -47,12 +47,16 @@ final class TestConfigOverrideTest {
         enableTestConfig();
         setOption("worldgen.arena.enabled", "False");
         setOption("worldgen.arena.density-column-compiler", "Default");
+        setOption("worldgen.placed-features.local-optimizations", "False");
+        setOption("worldgen.misc.flat-cache-access", "False");
         setOption("lighting.ya.enabled", "true");
 
         Config config = TestConfigOverride.load().orElseThrow();
 
         assertFalse(config.worldgen().arena().enabled());
         assertTrue(config.worldgen().arena().densityColumnCompiler());
+        assertFalse(config.worldgen().placedFeatures().localOptimizations());
+        assertFalse(config.worldgen().misc().flatCacheAccess());
         assertTrue(config.lighting().ya().enabled());
         assertEquals(BooleanSetting.DEFAULT, config.worldgen().arena().densityColumnCompilerSetting());
     }

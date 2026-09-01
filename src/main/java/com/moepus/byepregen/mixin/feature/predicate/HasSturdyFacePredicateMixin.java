@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastBlockPredicateOptimizer;
 import com.moepus.byepregen.worldgen.feature.FastDiskBlockPredicate;
 import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
@@ -11,6 +13,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.blockpredicates.HasSturdyFacePredicate;
 import org.spongepowered.asm.mixin.*;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(HasSturdyFacePredicate.class)
 public abstract class HasSturdyFacePredicateMixin implements FastDiskBlockPredicate {
     @Shadow

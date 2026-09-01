@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.disk;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.DiskBlockPredicateEvaluator;
 import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
 import com.moepus.byepregen.worldgen.feature.FastRuleBasedBlockStateProvider;
@@ -15,6 +17,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(RuleBasedBlockStateProvider.class)
 public abstract class RuleBasedBlockStateProviderMixin implements FastRuleBasedBlockStateProvider {
     @Unique

@@ -108,13 +108,15 @@ public final class ConfigLoader {
         return new Config.Worldgen(
                 new Config.PlacedFeatures(
                         source.apply(ConfigOption.PLACED_FEATURES_ENABLED),
-                        source.apply(ConfigOption.MEMOIZED_DISK_PLAN)),
+                        source.apply(ConfigOption.MEMOIZED_DISK_PLAN),
+                        source.apply(ConfigOption.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)),
                 new Config.Arena(
                         source.apply(ConfigOption.ARENA_ENABLED),
                         source.apply(ConfigOption.DENSITY_COLUMN_COMPILER),
                         new Config.ArenaRuntime(
                                 source.apply(ConfigOption.SERVER_RUNTIME_ARENA))),
-                new Config.Surface(source.apply(ConfigOption.SURFACE_BIOME_CACHE))
+                new Config.Surface(source.apply(ConfigOption.SURFACE_BIOME_CACHE)),
+                new Config.Misc(source.apply(ConfigOption.FLAT_CACHE_ACCESS))
         );
     }
 
@@ -176,6 +178,9 @@ public final class ConfigLoader {
                 "Default: False\nUses direct loops and reusable placement state to avoid temporary streams,\n"
                         + "iterators, and block positions. Experimental; modded features may be placed incorrectly\n"
                         + "if they rely on details of the vanilla placement path.");
+        option(placed, "local-optimizations", value.placedFeatures().localOptimizationsSetting(),
+                "Default: True\nApplies mathematically equivalent local placement and predicate optimizations\n"
+                        + "without replacing the complete placed-feature pipeline.");
         option(placed, "memoized-disk-plan", value.placedFeatures().memoizedDiskPlanSetting(),
                 "Default: True\nReuses block-predicate results while disk features such as clay and sand\n"
                         + "are placed, trading a small amount of temporary memory for fewer block lookups.");
@@ -197,6 +202,11 @@ public final class ConfigLoader {
         option(surface, "biome-cache", value.surface().biomeCacheSetting(),
                 "Default: True\nCaches each chunk's quart-biome grid and skips repeated biome zoom lookups in\n"
                         + "uniform areas. Uses additional temporary memory while the chunk surface is generated.");
+
+        CommentedConfig misc = table(worldgen, "misc", "Independent world-generation optimizations.");
+        option(misc, "flat-cache-access", value.misc().flatCacheAccessSetting(),
+                "Default: True\nLets compiled density columns read NoiseChunk flat-cache values directly.\n"
+                        + "When disabled, density functions are evaluated through their standard compute method.");
     }
 
     private static void addServer(CommentedConfig root, Config.Server value) {

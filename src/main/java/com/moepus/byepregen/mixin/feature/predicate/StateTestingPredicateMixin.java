@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.predicate;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastBlockPredicateOptimizer;
 import com.moepus.byepregen.worldgen.feature.FastDiskBlockPredicate;
 import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
@@ -14,6 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(value = StateTestingPredicate.class, priority = 1100)
 public abstract class StateTestingPredicateMixin implements FastDiskBlockPredicate, FastStateTestingPredicate {
     @Shadow

@@ -25,10 +25,13 @@ final class ConfigLoaderTest {
         assertTrue(config.worldgen().arena().enabled());
         assertTrue(config.worldgen().arena().densityColumnCompiler());
         assertTrue(config.worldgen().placedFeatures().memoizedDiskPlan());
+        assertTrue(config.worldgen().placedFeatures().localOptimizations());
+        assertTrue(config.worldgen().misc().flatCacheAccess());
         assertFalse(config.chunkSaving().gcFreeWorldgen());
         assertTrue(output.contains("[worldgen.arena]"));
-        assertEquals(11, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
-        assertEquals(11, output.lines().map(String::strip)
+        assertTrue(output.contains("[worldgen.misc]"));
+        assertEquals(13, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
+        assertEquals(13, output.lines().map(String::strip)
                 .filter(line -> line.equals("# Default: True") || line.equals("# Default: False"))
                 .count());
         assertTrue(output.contains("# Default: True"));
@@ -60,6 +63,12 @@ final class ConfigLoaderTest {
                 rule-compiler = true
 
                 biome-cache = false
+
+                [worldgen.placed-features]
+                local-optimizations = "false"
+
+                [worldgen.misc]
+                flat-cache-access = false
                 """, StandardCharsets.UTF_8);
 
         Config config = new ConfigLoader(path).load();
@@ -67,6 +76,8 @@ final class ConfigLoaderTest {
 
         assertFalse(config.worldgen().arena().enabled());
         assertFalse(config.worldgen().surface().biomeCache());
+        assertFalse(config.worldgen().placedFeatures().localOptimizations());
+        assertFalse(config.worldgen().misc().flatCacheAccess());
         assertFalse(firstOutput.contains("custom comment"));
         assertFalse(firstOutput.contains("unknown ="));
         assertTrue(firstOutput.contains("[lighting.ya]"));
@@ -75,6 +86,8 @@ final class ConfigLoaderTest {
         assertFalse(firstOutput.contains("client ="));
         assertFalse(firstOutput.contains("rule-compiler"));
         assertTrue(firstOutput.contains("biome-cache = \"False\""));
+        assertTrue(firstOutput.contains("local-optimizations = \"False\""));
+        assertTrue(firstOutput.contains("flat-cache-access = \"False\""));
 
         new ConfigLoader(path).load();
         assertEquals(firstOutput, Files.readString(path, StandardCharsets.UTF_8));
@@ -134,7 +147,9 @@ final class ConfigLoaderTest {
         Path path = this.temporaryDirectory.resolve("配置.toml");
 
         assertTrue(new ConfigLoader(path).save(Config.defaults()));
-        assertTrue(Files.readString(path, StandardCharsets.UTF_8).contains("[chunk-saving]"));
+        String output = Files.readString(path, StandardCharsets.UTF_8);
+        assertTrue(output.contains("local-optimizations = \"Default\""));
+        assertTrue(output.contains("flat-cache-access = \"Default\""));
     }
 
     @Test

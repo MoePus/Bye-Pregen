@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.placement;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
 import com.moepus.byepregen.worldgen.feature.PlanCompatiblePlacementModifier;
 import com.moepus.byepregen.mixin.accessor.worldgen.feature.CarvingMaskAccessor;
@@ -12,6 +14,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(CarvingMaskPlacement.class)
 public abstract class CarvingMaskPlacementMixin implements PlanCompatiblePlacementModifier {
     @Shadow

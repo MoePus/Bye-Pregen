@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.feature.disk;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastDiskPlacement;
 import com.moepus.byepregen.worldgen.feature.FastDiskFeature;
 import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
@@ -17,6 +19,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
+@MixinGate(config = ConfigFlag.PLACED_FEATURE_LOCAL_OPTIMIZATIONS)
 @Mixin(DiskFeature.class)
 public abstract class DiskFeatureMixin extends Feature<DiskConfiguration> implements FastDiskFeature {
     protected DiskFeatureMixin(Codec<DiskConfiguration> codec) {
