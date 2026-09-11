@@ -71,7 +71,9 @@ abstract class PostProcessingContext {
 
     BlockPos unpackPos(int sectionIndex, short packedPos) {
         int sectionY = chunk.getSectionYFromSectionIndex(sectionIndex);
-        return pos.set(chunkPos.getMinBlockX() + localX(packedPos), SectionPos.sectionToBlockCoord(sectionY, localY(packedPos)), chunkPos.getMinBlockZ() + localZ(packedPos));
+        return pos.set(chunkPos.getMinBlockX() + PostProcessingSorter.localX(packedPos),
+                SectionPos.sectionToBlockCoord(sectionY, PostProcessingSorter.localY(packedPos)),
+                chunkPos.getMinBlockZ() + PostProcessingSorter.localZ(packedPos));
     }
 
     boolean isOutsideBuildHeight(BlockPos pos) {
@@ -122,7 +124,7 @@ abstract class PostProcessingContext {
                 return PostProcessGenerationOptimizer.isNoOpPostProcess(state);
             }
 
-            if (isLocalChunkEdge(localX(packedPos), localZ(packedPos))) {
+            if (isLocalChunkEdge(PostProcessingSorter.localX(packedPos), PostProcessingSorter.localZ(packedPos))) {
                 return false;
             }
 
@@ -138,14 +140,13 @@ abstract class PostProcessingContext {
     private static final class PostProcess extends PostProcessingContext {
         private final LevelChunk levelChunk;
         private final ServerLevel level;
-        private boolean westChecked;
-        private boolean eastChecked;
-        private boolean northChecked;
-        private boolean southChecked;
-        private LevelChunk westChunk;
-        private LevelChunk eastChunk;
-        private LevelChunk northChunk;
-        private LevelChunk southChunk;
+        private final boolean[] edgeChecked = new boolean[EDGE_DIRECTION_COUNT];
+        private final LevelChunk[] edgeChunks = new LevelChunk[EDGE_DIRECTION_COUNT];
+        private static final int DIRECTION_WEST = 0;
+        private static final int DIRECTION_EAST = 1;
+        private static final int DIRECTION_NORTH = 2;
+        private static final int DIRECTION_SOUTH = 3;
+        private static final int EDGE_DIRECTION_COUNT = 4;
 
         private PostProcess(LevelChunk chunk, ServerLevel level) {
             super(chunk);
@@ -176,13 +177,13 @@ abstract class PostProcessingContext {
         }
 
         boolean areRequiredNeighborsFull(int localX, int localZ) {
-            if (localX == 0 && !isWestFull())
+            if (localX == 0 && !isEdgeFull(DIRECTION_WEST))
                 return false;
-            if (localX == LOCAL_MASK && !isEastFull())
+            if (localX == LOCAL_MASK && !isEdgeFull(DIRECTION_EAST))
                 return false;
-            if (localZ == 0 && !isNorthFull())
+            if (localZ == 0 && !isEdgeFull(DIRECTION_NORTH))
                 return false;
-            return localZ != LOCAL_MASK || isSouthFull();
+            return localZ != LOCAL_MASK || isEdgeFull(DIRECTION_SOUTH);
         }
 
         private boolean scheduleDelayedEdgeFluidTickIfNeighborMissing(BlockPos pos, FluidState fluidState) {
@@ -200,55 +201,25 @@ abstract class PostProcessingContext {
             return true;
         }
 
-        private boolean isWestFull() {
-            if (!westChecked) {
-                westChunk = getLoadedFullChunk(chunkPos.x - 1, chunkPos.z);
-                westChecked = true;
+        private boolean isEdgeFull(int direction) {
+            if (!this.edgeChecked[direction]) {
+                int chunkX = switch (direction) {
+                    case DIRECTION_WEST -> chunkPos.x - 1;
+                    case DIRECTION_EAST -> chunkPos.x + 1;
+                    default -> chunkPos.x;
+                };
+                int chunkZ = switch (direction) {
+                    case DIRECTION_NORTH -> chunkPos.z - 1;
+                    case DIRECTION_SOUTH -> chunkPos.z + 1;
+                    default -> chunkPos.z;
+                };
+                this.edgeChunks[direction] = level.getChunkSource().getChunkNow(chunkX, chunkZ);
+                this.edgeChecked[direction] = true;
             }
-            return westChunk != null;
-        }
-
-        private boolean isEastFull() {
-            if (!eastChecked) {
-                eastChunk = getLoadedFullChunk(chunkPos.x + 1, chunkPos.z);
-                eastChecked = true;
-            }
-            return eastChunk != null;
-        }
-
-        private boolean isNorthFull() {
-            if (!northChecked) {
-                northChunk = getLoadedFullChunk(chunkPos.x, chunkPos.z - 1);
-                northChecked = true;
-            }
-            return northChunk != null;
-        }
-
-        private boolean isSouthFull() {
-            if (!southChecked) {
-                southChunk = getLoadedFullChunk(chunkPos.x, chunkPos.z + 1);
-                southChecked = true;
-            }
-            return southChunk != null;
-        }
-
-        private LevelChunk getLoadedFullChunk(int chunkX, int chunkZ) {
-            return level.getChunkSource().getChunkNow(chunkX, chunkZ);
+            return this.edgeChunks[direction] != null;
         }
     }
 
-
-    static int localX(short packedPos) {
-        return packedPos & LOCAL_MASK;
-    }
-
-    static int localY(short packedPos) {
-        return (packedPos >>> 4) & LOCAL_MASK;
-    }
-
-    static int localZ(short packedPos) {
-        return (packedPos >>> 8) & LOCAL_MASK;
-    }
 
     static boolean isLocalChunkEdge(int localX, int localZ) {
         return localX == 0 || localX == LOCAL_MASK || localZ == 0 || localZ == LOCAL_MASK;

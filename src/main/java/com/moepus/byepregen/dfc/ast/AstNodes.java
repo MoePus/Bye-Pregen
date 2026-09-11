@@ -85,13 +85,25 @@ public final class AstNodes {
         CACHE_ONCE,
         CACHE_ALL_IN_CELL,
         FLAT_CACHE,
-        INTERPOLATED,
-        UNKNOWN
+        INTERPOLATED
     }
 
     public enum SourceMode {
         FLAT,
         INTERPOLATED
+    }
+
+    /**
+     * Folds a binary node whose two operands are compile-time constants. Shared by the optimizer
+     * pass and the column emitter so both agree on every foldable node type.
+     */
+    public static double foldBinary(BinaryNode node, double left, double right) {
+        if (node instanceof AddNode) return left + right;
+        if (node instanceof MulNode) return left * right;
+        if (node instanceof DivNode) return left / right;
+        if (node instanceof MinNode || node instanceof MinShortNode) return Math.min(left, right);
+        if (node instanceof MaxNode || node instanceof MaxShortNode) return Math.max(left, right);
+        throw new IllegalArgumentException("Unsupported binary node " + node.getClass().getName());
     }
 
     public record RootNode(AstNode next) implements UnaryNode {

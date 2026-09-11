@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final MixinGateEvaluator MIXIN_GATE_EVALUATOR = MixinGateEvaluator.createDefault();
-    private static final MixinFeatureEvaluator MIXIN_FEATURE_EVALUATOR =
+    static final MixinFeatureEvaluator MIXIN_FEATURE_EVALUATOR =
             MixinFeatureEvaluator.createDefault();
 
     public MixinPlugin() {

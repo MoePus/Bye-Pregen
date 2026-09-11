@@ -56,11 +56,6 @@ public final class NbtWriter implements DataOutput {
         this.writeByte(value);
     }
 
-    public void putShort(byte[] name, short value) {
-        this.writeNamedType(Tag.TAG_SHORT, name);
-        this.writeShort(value);
-    }
-
     public void putInt(byte[] name, int value) {
         this.writeNamedType(Tag.TAG_INT, name);
         this.writeInt(value);
@@ -119,15 +114,6 @@ public final class NbtWriter implements DataOutput {
         this.ensureCapacity(length);
         UNSAFE.setMemory(this.address(), length, value);
         this.offset += length;
-    }
-
-    public void putIntArray(byte[] name, int[] value) {
-        this.writeNamedType(Tag.TAG_INT_ARRAY, name);
-        this.writeInt(value.length);
-        this.ensureCapacity(value.length * Integer.BYTES);
-        for (int entry : value) {
-            this.insertInt(entry);
-        }
     }
 
     public void putLongArray(byte[] name, long[] value) {

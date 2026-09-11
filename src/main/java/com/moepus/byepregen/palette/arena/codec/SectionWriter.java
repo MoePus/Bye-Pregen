@@ -51,8 +51,4 @@ public final class SectionWriter {
             writer.finishCompound();
         }
     }
-
-    public static void writeStateEntry(NbtWriter writer, BlockState state) {
-        BlockStateNbtCache.writeStateEntry(writer, state);
-    }
 }

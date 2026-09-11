@@ -66,7 +66,7 @@ final class ColumnConditionalEmitter {
         method.visitIincInsn(6, 1);
         method.visitJumpInsn(Opcodes.GOTO, scan);
         method.visitLabel(done);
-        recycleScratch(method, 5);
+        ColumnMethodEmitter.recycleScratch(method, 5);
     }
 
     void emitRangeChoice(MethodVisitor method, RangeChoiceNode node) {
@@ -167,12 +167,6 @@ final class ColumnConditionalEmitter {
         method.visitInsn(Opcodes.ARRAYLENGTH);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "borrowDoubleArray", "(I)[D", false);
         method.visitVarInsn(Opcodes.ASTORE, local);
-    }
-
-    private static void recycleScratch(MethodVisitor method, int local) {
-        method.visitVarInsn(Opcodes.ALOAD, 1);
-        method.visitVarInsn(Opcodes.ALOAD, local);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "recycleDoubleArray", "([D)V", false);
     }
 
     private static void jumpIfAtEnd(MethodVisitor method, int index, Label end) {

@@ -107,7 +107,6 @@ public final class ColumnSpecializer {
                 case CACHE_ONCE, CACHE_ALL_IN_CELL -> cache.delegate();
                 case FLAT_CACHE -> new SourceNode(cache.source(), SourceMode.FLAT);
                 case INTERPOLATED -> new SourceNode(cache.source(), SourceMode.INTERPOLATED);
-                case UNKNOWN -> new DelegateNode(cache.source(), false);
             };
         }
 

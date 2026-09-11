@@ -28,7 +28,7 @@ public final class StateImporter {
         }
 
         int bits = vanillaSerializedBits(paletteRawIds.length);
-        if (packedStorage == null || packedStorage.length != packedLength(bits)) {
+        if (packedStorage == null || packedStorage.length != SerializationScratch.packedLength(bits)) {
             return false;
         }
         if (bits == BITS_PER_ENTRY
@@ -101,7 +101,7 @@ public final class StateImporter {
         }
 
         int storageLength = buffer.readVarInt();
-        if (bits == BITS_PER_ENTRY && paletteSize <= PAGE_PALETTE_SIZE && storageLength == packedLength(bits)) {
+        if (bits == BITS_PER_ENTRY && paletteSize <= PAGE_PALETTE_SIZE && storageLength == SerializationScratch.packedLength(bits)) {
             importNetworkPacked4BitPalette(container, paletteRawIds, buffer);
             return;
         }
@@ -131,7 +131,7 @@ public final class StateImporter {
 
     private static boolean tryImportPacked4BitPalette(
             ArenaBlockStatePalettedContainer container, int[] paletteRawIds, long[] packedStorage, int paletteSize) {
-        if (paletteSize <= 1 || paletteSize > PAGE_PALETTE_SIZE || packedStorage.length != packedLength(BITS_PER_ENTRY)) {
+        if (paletteSize <= 1 || paletteSize > PAGE_PALETTE_SIZE || packedStorage.length != SerializationScratch.packedLength(BITS_PER_ENTRY)) {
             return false;
         }
         if (paletteSize < PAGE_PALETTE_SIZE && hasInvalidLocalId(packedStorage, paletteSize)) {
@@ -331,11 +331,6 @@ public final class StateImporter {
     private static int vanillaSerializedBits(int paletteSize) {
         int bits = 32 - Integer.numberOfLeadingZeros(paletteSize - 1);
         return Math.max(BITS_PER_ENTRY, bits);
-    }
-
-    private static int packedLength(int bits) {
-        int valuesPerLong = Long.SIZE / bits;
-        return (SECTION_SIZE + valuesPerLong - 1) / valuesPerLong;
     }
 
     @FunctionalInterface

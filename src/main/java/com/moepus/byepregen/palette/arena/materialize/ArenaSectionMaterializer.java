@@ -128,22 +128,11 @@ public final class ArenaSectionMaterializer {
             int sectionIndex = page << 10;
             for (int wordIndex = 0; wordIndex < INDEX_WORDS_PER_PAGE; ++wordIndex) {
                 int word = container.arenaPaletteWord(base, wordIndex);
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, word & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 4) & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 8) & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 12) & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 16) & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 20) & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 24) & PALETTE_INDEX_MASK));
-                writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
-                        scratch.pageLocalIdAtOffset(pageLocalIdOffset, (word >>> 28) & PALETTE_INDEX_MASK));
+                for (int shift = 0; shift < Integer.SIZE; shift += BITS_PER_ENTRY) {
+                    writePackedId(output, valuesPerLong, mask, bits, sectionIndex++,
+                            scratch.pageLocalIdAtOffset(pageLocalIdOffset,
+                                    (word >>> shift) & PALETTE_INDEX_MASK));
+                }
             }
         }
     }

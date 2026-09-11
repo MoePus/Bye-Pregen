@@ -161,10 +161,6 @@ final class PostProcessingSorter {
         return BUCKET_INTERIOR;
     }
 
-    private static int palettedIndex(short packedPos) {
-        return (localY(packedPos) << 8) | (localZ(packedPos) << 4) | localX(packedPos);
-    }
-
     private static short packPalettedIndex(int index) {
         int localX = index & LOCAL_MASK;
         int localZ = (index >>> 4) & LOCAL_MASK;
@@ -172,15 +168,15 @@ final class PostProcessingSorter {
         return (short) ((localZ << 8) | (localY << 4) | localX);
     }
 
-    private static int localX(short packedPos) {
+    static int localX(short packedPos) {
         return packedPos & LOCAL_MASK;
     }
 
-    private static int localY(short packedPos) {
+    static int localY(short packedPos) {
         return (packedPos >>> 4) & LOCAL_MASK;
     }
 
-    private static int localZ(short packedPos) {
+    static int localZ(short packedPos) {
         return (packedPos >>> 8) & LOCAL_MASK;
     }
 }

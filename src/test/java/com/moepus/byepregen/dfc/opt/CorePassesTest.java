@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.moepus.byepregen.dfc.ast.AstNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.*;
+import com.moepus.byepregen.dfc.runtime.ColumnMath;
 import org.junit.jupiter.api.Test;
 
 final class CorePassesTest {
@@ -23,6 +24,26 @@ final class CorePassesTest {
         ConstantNode result = assertInstanceOf(ConstantNode.class,
                 CorePasses.constantFold(new MulNode(new ConstantNode(2.0D), new ConstantNode(3.0D))));
         assertEquals(6.0D, result.value());
+    }
+
+    @Test
+    void constantFoldEvaluatesSqueezeThroughColumnMath() {
+        // The squeeze formula lives in ColumnMath because the generated emitters call it there;
+        // the optimizer must fold constants through that same implementation, not a private copy.
+        for (double value : new double[] {-4.0D, -1.0D, -0.25D, 0.0D, 0.25D, 1.0D, 4.0D}) {
+            ConstantNode result = assertInstanceOf(ConstantNode.class,
+                    CorePasses.constantFold(new SqueezeNode(new ConstantNode(value))));
+            assertEquals(ColumnMath.squeeze(value), result.value(),
+                    "squeeze fold must match ColumnMath.squeeze for input " + value);
+        }
+    }
+
+    @Test
+    void constantFoldSqueezeMatchesClampAndCubeFormula() {
+        double clamped = 0.25D;
+        assertEquals(clamped * 0.5D - clamped * clamped * clamped / 24.0D,
+                assertInstanceOf(ConstantNode.class,
+                        CorePasses.constantFold(new SqueezeNode(new ConstantNode(clamped)))).value());
     }
 
     @Test

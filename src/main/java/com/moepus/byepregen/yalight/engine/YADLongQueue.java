@@ -6,20 +6,9 @@ public final class YADLongQueue {
     private static final int INITIAL_CAPACITY = 2048;
     private static final int MAX_RETAINED_CAPACITY = 1 << 15;
 
-    private long[] values;
-    private final int maxRetainedCapacity;
+    private long[] values = new long[INITIAL_CAPACITY << 1];
     private int readIndex;
     private int writeIndex;
-
-    public YADLongQueue() {
-        this(INITIAL_CAPACITY, MAX_RETAINED_CAPACITY);
-    }
-
-    private YADLongQueue(int initialCapacity, int maxRetainedCapacity) {
-        int capacity = Math.max(initialCapacity, 1);
-        this.values = new long[capacity << 1];
-        this.maxRetainedCapacity = Math.max(maxRetainedCapacity, capacity);
-    }
 
     public void add(long first, long second) {
         if (this.writeIndex >= this.values.length >> 1) {
@@ -50,8 +39,8 @@ public final class YADLongQueue {
     }
 
     public void clear() {
-        if (this.values.length > this.maxRetainedCapacity << 1) {
-            this.values = new long[this.maxRetainedCapacity << 1];
+        if (this.values.length > MAX_RETAINED_CAPACITY << 1) {
+            this.values = new long[MAX_RETAINED_CAPACITY << 1];
         }
         this.readIndex = 0;
         this.writeIndex = 0;

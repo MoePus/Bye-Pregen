@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 final class MixinFeatureEvaluator {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Features");
+    private static final String SCALABLELUX_MOD_ID = "scalablelux";
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
     private static final String FAST_CHUNK_GEN_SERIALIZER_ACCESS =
@@ -32,7 +33,7 @@ final class MixinFeatureEvaluator {
         );
     }
 
-    boolean isEnabled(MixinFeature feature, Config config) {
+    public boolean isEnabled(MixinFeature feature, Config config) {
         Objects.requireNonNull(feature, "feature");
         Objects.requireNonNull(config, "config");
         return switch (feature) {
@@ -46,7 +47,8 @@ final class MixinFeatureEvaluator {
             case GC_FREE_CHUNK_SAVE -> config.chunkSaving().gcFreeWorldgen();
             case GC_FREE_RAW_CHUNK_IO -> this.rawChunkIoEnabled(config);
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
-            case YA_LIGHT -> config.lighting().ya().enabled();
+            case YA_LIGHT -> config.lighting().ya().enabled()
+                    && !this.modExists.test(SCALABLELUX_MOD_ID);
         };
     }
 
