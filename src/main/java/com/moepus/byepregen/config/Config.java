@@ -227,21 +227,26 @@ public final class Config {
         }
     }
 
-    public record Misc(BooleanSetting flatCacheAccessSetting) {
+    public record Misc(BooleanSetting flatCacheAccessSetting, BooleanSetting paletteLockSetting) {
         public Misc {
             Objects.requireNonNull(flatCacheAccessSetting, "flatCacheAccessSetting");
+            Objects.requireNonNull(paletteLockSetting, "paletteLockSetting");
         }
 
-        public Misc(boolean flatCacheAccess) {
-            this(BooleanSetting.explicit(flatCacheAccess));
+        public Misc(boolean flatCacheAccess, boolean paletteLock) {
+            this(BooleanSetting.explicit(flatCacheAccess), BooleanSetting.explicit(paletteLock));
         }
 
         public Misc() {
-            this(BooleanSetting.DEFAULT);
+            this(BooleanSetting.DEFAULT, BooleanSetting.DEFAULT);
         }
 
         public boolean flatCacheAccess() {
             return this.flatCacheAccessSetting.resolve(true);
+        }
+
+        public boolean paletteLock() {
+            return this.paletteLockSetting.resolve(true);
         }
     }
 

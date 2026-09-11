@@ -27,10 +27,11 @@ final class ConfigLoaderTest {
         assertTrue(config.worldgen().placedFeatures().memoizedDiskPlan());
         assertTrue(config.worldgen().placedFeatures().localOptimizations());
         assertTrue(config.worldgen().misc().flatCacheAccess());
+        assertTrue(config.worldgen().misc().paletteLock());
         assertTrue(output.contains("[worldgen.arena]"));
         assertTrue(output.contains("[worldgen.misc]"));
-        assertEquals(15, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
-        assertEquals(15, output.lines().map(String::strip)
+        assertEquals(16, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
+        assertEquals(16, output.lines().map(String::strip)
                 .filter(line -> line.equals("# Default: True") || line.equals("# Default: False"))
                 .count());
         assertTrue(output.contains("# Default: True"));
@@ -62,6 +63,7 @@ final class ConfigLoaderTest {
 
                 [worldgen.misc]
                 flat-cache-access = false
+                palette-lock = "False"
                 """, StandardCharsets.UTF_8);
 
         Config config = new ConfigLoader(path).load();
@@ -72,6 +74,7 @@ final class ConfigLoaderTest {
         assertFalse(config.worldgen().surface().biomeCache());
         assertFalse(config.worldgen().placedFeatures().localOptimizations());
         assertFalse(config.worldgen().misc().flatCacheAccess());
+        assertFalse(config.worldgen().misc().paletteLock());
         assertFalse(firstOutput.contains("custom comment"));
         assertFalse(firstOutput.contains("unknown ="));
         assertTrue(firstOutput.contains("[lighting.ya]"));
@@ -81,6 +84,7 @@ final class ConfigLoaderTest {
         assertTrue(firstOutput.contains("biome-cache = \"False\""));
         assertTrue(firstOutput.contains("local-optimizations = \"False\""));
         assertTrue(firstOutput.contains("flat-cache-access = \"False\""));
+        assertTrue(firstOutput.contains("palette-lock = \"False\""));
 
         new ConfigLoader(path).load();
         assertEquals(firstOutput, Files.readString(path, StandardCharsets.UTF_8));

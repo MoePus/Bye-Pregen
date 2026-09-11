@@ -7,7 +7,9 @@ import com.moepus.byepregen.worldgen.feature.FastFeaturePlacement;
 import com.moepus.byepregen.worldgen.feature.FastPlacementContext;
 import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
 import com.moepus.byepregen.worldgen.feature.FeaturePlanCompiler;
+
 import java.util.List;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.util.RandomSource;
@@ -23,7 +25,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
-@MixinGate(config = ConfigFlag.PLACED_FEATURES)
+@MixinGate(config = ConfigFlag.PLACED_FEATURES, conflictingMods = {"biolith", "confluence"})
 @Mixin(value = PlacedFeature.class, remap = false)
 public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     @Unique
@@ -61,6 +63,7 @@ public abstract class PlacedFeatureMixin implements FastPlacedFeature {
         return this.byepregen$place(parent.nestedPlacementContext(), random, pos);
     }
 
+    @Unique
     private boolean byepregen$place(PlacementContext context, RandomSource random, BlockPos pos) {
         FastPlacementContext fastContext = FastPlacementContext.acquire(context, random, this.feature.value(), this.placement);
         try {

@@ -17,6 +17,7 @@ enum ConfigOption {
     SURFACE_RULE_COMPILER("worldgen.surface.rule-compiler"),
     SURFACE_BIOME_CACHE("worldgen.surface.biome-cache"),
     FLAT_CACHE_ACCESS("worldgen.misc.flat-cache-access"),
+    PALETTE_LOCK("worldgen.misc.palette-lock"),
     FAST_CHUNK_TICKING("server.fast-chunk-ticking.enabled"),
     GC_FREE_WORLDGEN("chunk-saving.gc-free-worldgen"),
     RETAIN_BUFFER("chunk-saving.retain-buffer"),
