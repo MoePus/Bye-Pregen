@@ -116,7 +116,8 @@ public final class ConfigLoader {
                         new Config.ArenaRuntime(
                                 source.apply(ConfigOption.SERVER_RUNTIME_ARENA))),
                 new Config.Surface(source.apply(ConfigOption.SURFACE_BIOME_CACHE)),
-                new Config.Misc(source.apply(ConfigOption.FLAT_CACHE_ACCESS))
+                new Config.Misc(source.apply(ConfigOption.FLAT_CACHE_ACCESS),
+                        source.apply(ConfigOption.PALETTE_LOCK))
         );
     }
 
@@ -207,6 +208,10 @@ public final class ConfigLoader {
         option(misc, "flat-cache-access", value.misc().flatCacheAccessSetting(),
                 "Default: True\nLets compiled density columns read NoiseChunk flat-cache values directly.\n"
                         + "When disabled, density functions are evaluated through their standard compute method.");
+        option(misc, "palette-lock", value.misc().paletteLockSetting(),
+                "Default: True\nRemoves the internal lock of PalettedContainer, whose acquire/release bookkeeping is redundant\n"
+                        + "If you installed Lithium and disabled its chunk.no_locking option, disable this option too;\n"
+                        + "otherwise the two sides would disagree about whether palette locking is still required.");
     }
 
     private static void addServer(CommentedConfig root, Config.Server value) {

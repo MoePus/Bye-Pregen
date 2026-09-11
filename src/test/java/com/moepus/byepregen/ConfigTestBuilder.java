@@ -52,7 +52,7 @@ final class ConfigTestBuilder {
                 new Config.Arena(this.arena, this.densityColumnCompiler,
                         new Config.ArenaRuntime(this.serverRuntimeArena)),
                 new Config.Surface(this.surfaceBiomeCache),
-                new Config.Misc(true)
+                new Config.Misc(true, true)
         );
         return Config.builder()
                 .debug(new Config.Debug(false))

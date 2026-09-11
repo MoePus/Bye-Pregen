@@ -11,6 +11,7 @@ public enum ConfigFlag {
     PLACED_FEATURE_LOCAL_OPTIMIZATIONS(config -> config.worldgen().placedFeatures().enabled()
             || config.worldgen().placedFeatures().localOptimizations()),
     FLAT_CACHE_ACCESS(config -> config.worldgen().misc().flatCacheAccess()),
+    PALETTE_LOCK(config -> config.worldgen().misc().paletteLock()),
     FAST_CHUNK_TICKING(config -> config.server().fastChunkTicking().enabled()),
     MATERIALIZE_ARENA_LEVEL_CHUNK(
             config -> !config.worldgen().arena().runtime().server()
