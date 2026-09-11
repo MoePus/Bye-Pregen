@@ -7,6 +7,7 @@
 package com.moepus.byepregen.dfc.codegen;
 
 import com.moepus.byepregen.dfc.ast.AstNode;
+import com.moepus.byepregen.dfc.ast.AstNodes;
 import com.moepus.byepregen.dfc.ast.AstNodes.*;
 import com.moepus.byepregen.dfc.codegen.BindingRegistry.FieldRef;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
@@ -133,7 +134,7 @@ final class ColumnMethodEmitter {
         FieldRef field = this.bindings.interpolatedField(node.source(), slot);
         method.visitVarInsn(Opcodes.ALOAD, 1);
         ColumnClassBuilder.pushInt(method, slot);
-        this.loadField(method, field);
+        BindingRegistry.loadField(method, this.owner, field);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 3);
         method.visitVarInsn(Opcodes.ILOAD, 4);
@@ -188,7 +189,7 @@ final class ColumnMethodEmitter {
     private void emitBinary(MethodVisitor method, BinaryNode node) {
         if (node.left() instanceof ConstantNode left
                 && node.right() instanceof ConstantNode right) {
-            emitFill(method, constantBinaryValue(node, left.value(), right.value()));
+            emitFill(method, AstNodes.foldBinary(node, left.value(), right.value()));
             return;
         }
         if (node.left() instanceof ConstantNode left) {
@@ -227,15 +228,6 @@ final class ColumnMethodEmitter {
         emitBinaryOperation(method, node);
         method.visitInsn(Opcodes.DASTORE);
         emitLoopEnd(method, 5, loop);
-    }
-
-    private static double constantBinaryValue(BinaryNode node, double left, double right) {
-        if (node instanceof AddNode) return left + right;
-        if (node instanceof MulNode) return left * right;
-        if (node instanceof DivNode) return left / right;
-        if (node instanceof MinNode) return Math.min(left, right);
-        if (node instanceof MaxNode) return Math.max(left, right);
-        throw new IllegalArgumentException("Unsupported binary column node " + node.getClass().getName());
     }
 
     private void emitBinaryLoop(MethodVisitor method, BinaryNode node, int scratch, int from, int to) {
@@ -293,11 +285,6 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, fromLocal);
         method.visitVarInsn(Opcodes.ILOAD, toLocal);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.owner, this.method(node), DESC, false);
-    }
-
-    private void loadField(MethodVisitor method, FieldRef field) {
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitFieldInsn(Opcodes.GETFIELD, this.owner, field.name(), Type.getDescriptor(field.type()));
     }
 
     private static void emitFill(MethodVisitor method, double value) {
@@ -389,7 +376,7 @@ final class ColumnMethodEmitter {
         method.visitInsn(Opcodes.DALOAD);
     }
 
-    private static void recycleScratch(MethodVisitor method, int local) {
+    static void recycleScratch(MethodVisitor method, int local) {
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitVarInsn(Opcodes.ALOAD, local);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "recycleDoubleArray", "([D)V", false);

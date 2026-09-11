@@ -96,9 +96,9 @@ final class SplineMethodEmitter {
         method.visitVarInsn(Opcodes.FSTORE, 5);
         FieldRef locations = this.bindings.field(points.locations().clone(), float[].class, false);
         FieldRef derivatives = this.bindings.field(points.derivatives().clone(), float[].class, false);
-        this.loadField(method, locations);
+        BindingRegistry.loadField(method, this.owner, locations);
         method.visitVarInsn(Opcodes.ASTORE, 6);
-        this.loadField(method, derivatives);
+        BindingRegistry.loadField(method, this.owner, derivatives);
         method.visitVarInsn(Opcodes.ASTORE, 7);
         SplineValue[] values = new SplineValue[points.values().size()];
         for (int i = 0; i < values.length; ++i) {
@@ -260,11 +260,6 @@ final class SplineMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 3);
         method.visitVarInsn(Opcodes.ALOAD, 4);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.owner, value.method(), DESC, false);
-    }
-
-    private void loadField(MethodVisitor method, FieldRef field) {
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitFieldInsn(Opcodes.GETFIELD, this.owner, field.name(), Type.getDescriptor(field.type()));
     }
 
     private static void loadFloat(MethodVisitor method, int array, int index) {

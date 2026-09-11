@@ -20,10 +20,6 @@ final public class UnsafeIntArrayAccess {
         UNSAFE.putInt(array, offset(index), value);
     }
 
-    public static void clear(int[] array, int fromIndex, int toIndex) {
-        UNSAFE.setMemory(array, offset(fromIndex), (long) (toIndex - fromIndex) << INT_ARRAY_SHIFT, (byte) 0);
-    }
-
     public static byte get(byte[] array, int index) {
         return UNSAFE.getByte(array, BYTE_ARRAY_BASE + index);
     }

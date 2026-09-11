@@ -72,9 +72,7 @@ public abstract class ChunkAccessArenaMixin {
 
     @Unique
     private boolean byepregen$shouldUseArena(Config config, boolean isProtoChunk, LevelHeightAccessor heightAccessor) {
-        if (!config.worldgen().arena().enabled()) {
-            return false;
-        }
+        // @MixinGate(feature = ARENA) already requires arena().enabled().
         if (isProtoChunk) {
             return true;
         }

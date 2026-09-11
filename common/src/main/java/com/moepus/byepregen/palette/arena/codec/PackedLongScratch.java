@@ -44,10 +44,6 @@ final class PackedLongScratch {
         return this.packedWord;
     }
 
-    int valuesPerLong() {
-        return this.valuesPerLong;
-    }
-
     void clear() {
         this.writeMask = 0L;
         this.packedWord = 0L;

@@ -1,6 +1,8 @@
 package com.moepus.byepregen.fabric;
 
-import com.moepus.byepregen.YALightCompatibility;
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinPlugin;
+import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import net.fabricmc.api.ModInitializer;
@@ -12,13 +14,15 @@ public final class ByepregenFabric implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        if (ConfigManager.getConfig().lighting().ya().enabled()) {
-            if (YALightCompatibility.isScalableLuxLoaded()) {
-                LOGGER.warn("ScalableLux is installed, so ByePregen YA light has been disabled "
-                        + "despite lighting.ya.enabled=true");
-                return;
-            }
-            YABlockStateLightClass.initialize();
+        Config config = ConfigManager.getConfig();
+        if (!config.lighting().ya().enabled()) {
+            return;
         }
+        if (!MixinPlugin.MIXIN_FEATURE_EVALUATOR.isEnabled(MixinFeature.YA_LIGHT, config)) {
+            LOGGER.warn("ScalableLux is installed, so ByePregen YA light has been disabled "
+                    + "despite lighting.ya.enabled=true");
+            return;
+        }
+        YABlockStateLightClass.initialize();
     }
 }

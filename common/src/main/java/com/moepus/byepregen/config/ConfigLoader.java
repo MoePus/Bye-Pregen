@@ -69,10 +69,6 @@ public final class ConfigLoader {
         }
     }
 
-    public Path path() {
-        return this.path;
-    }
-
     private static Config read(UnmodifiableConfig source) {
         return read(option -> settingValue(source, option));
     }

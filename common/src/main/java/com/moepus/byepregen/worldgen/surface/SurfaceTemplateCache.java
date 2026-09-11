@@ -72,18 +72,19 @@ public final class SurfaceTemplateCache {
         try {
             SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(source);
             SurfaceDirectTemplate template = SurfaceScalarAsmCompiler.compile(plan);
-            SurfaceScalarMetrics.compiled(template.statistics());
+            SurfaceDirectTemplate.Statistics statistics = template.statistics();
+            SurfaceScalarMetrics.compiled(statistics);
             LOGGER.info(
                     "Compiled SurfaceRule: bytes={} fields/events={}/{} regions={} "
                             + "noiseSamples/predicates={}/{}",
-                    template.statistics().classBytes(),
-                    template.statistics().bindingSlots(),
-                    template.statistics().bindingEvents(),
-                    template.statistics().regions(),
-                    template.statistics().noiseSamples(),
-                    template.statistics().noiseOccurrences()
+                    statistics.classBytes(),
+                    statistics.bindingSlots(),
+                    statistics.bindingEvents(),
+                    statistics.regions(),
+                    statistics.noiseSamples(),
+                    statistics.noiseOccurrences()
             );
-            LOGGER.info("SurfaceRule regions: {}", template.statistics().regionShape());
+            LOGGER.info("SurfaceRule regions: {}", statistics.regionShape());
             return new Entry(source, template);
         } catch (SurfaceCompileException | RuntimeException exception) {
             SurfaceScalarMetrics.rejected();

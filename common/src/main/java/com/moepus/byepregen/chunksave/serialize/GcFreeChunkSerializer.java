@@ -10,7 +10,6 @@ package com.moepus.byepregen.chunksave.serialize;
 import com.moepus.byepregen.chunksave.compat.ChunkSaveHookGate;
 import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkType;
@@ -71,19 +70,5 @@ public final class GcFreeChunkSerializer {
 
     private static boolean hasBlockEntities(ChunkAccess chunk) {
         return !chunk.getBlockEntitiesPos().isEmpty();
-    }
-
-    public record SerializedChunk(CompoundTag tag, byte[] rawBytes) {
-        public static SerializedChunk vanilla(CompoundTag tag) {
-            return new SerializedChunk(tag, null);
-        }
-
-        public static SerializedChunk raw(byte[] rawBytes) {
-            return new SerializedChunk(null, rawBytes);
-        }
-
-        public boolean isRaw() {
-            return this.rawBytes != null;
-        }
     }
 }

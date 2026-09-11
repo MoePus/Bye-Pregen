@@ -8,6 +8,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 final class MixinFeatureEvaluator {
+    private static final String SCALABLELUX_MOD_ID = "scalablelux";
+
     private final Predicate<String> modExists;
     private final BooleanSupplier rawChunkIoSupported;
 
@@ -30,7 +32,7 @@ final class MixinFeatureEvaluator {
         );
     }
 
-    boolean isEnabled(MixinFeature feature, Config config) {
+    public boolean isEnabled(MixinFeature feature, Config config) {
         Objects.requireNonNull(feature, "feature");
         Objects.requireNonNull(config, "config");
         return switch (feature) {
@@ -44,7 +46,7 @@ final class MixinFeatureEvaluator {
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();
             case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler();
             case YA_LIGHT -> config.lighting().ya().enabled()
-                    && !this.modExists.test(YALightCompatibility.SCALABLELUX_MOD_ID);
+                    && !this.modExists.test(SCALABLELUX_MOD_ID);
         };
     }
 

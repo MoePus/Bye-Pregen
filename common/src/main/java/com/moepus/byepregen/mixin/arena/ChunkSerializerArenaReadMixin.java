@@ -56,9 +56,7 @@ public abstract class ChunkSerializerArenaReadMixin {
 
     @Unique
     private static boolean byepregen$shouldReadArena(Config config, ChunkType chunkType) {
-        if (!config.worldgen().arena().enabled()) {
-            return false;
-        }
+        // @MixinGate(feature = ARENA) already requires arena().enabled().
         if (chunkType == ChunkType.PROTOCHUNK) {
             return true;
         }
