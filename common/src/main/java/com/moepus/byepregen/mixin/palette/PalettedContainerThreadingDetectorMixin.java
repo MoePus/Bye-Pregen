@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.palette;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import net.minecraft.util.ThreadingDetector;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -7,6 +9,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@MixinGate(config = ConfigFlag.PALETTE_LOCK)
 @Mixin(value = PalettedContainer.class, remap = false)
 public abstract class PalettedContainerThreadingDetectorMixin {
     @Unique

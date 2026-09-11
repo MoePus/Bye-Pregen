@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
-@MixinGate(config = ConfigFlag.PLACED_FEATURES)
+@MixinGate(config = ConfigFlag.PLACED_FEATURES, conflictingMods = {"biolith", "confluence"})
 @Mixin(value = PlacedFeature.class, remap = false)
 public abstract class PlacedFeatureMixin implements FastPlacedFeature {
     @Unique
