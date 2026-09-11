@@ -2,6 +2,7 @@ package com.moepus.byepregen.chunksave.serialize;
 
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.palette.arena.codec.SectionWriter;
+import com.moepus.byepregen.serialization.nbt.BlockStateNbtCache;
 import com.moepus.byepregen.serialization.nbt.BiomeNbtCache;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
@@ -136,7 +137,7 @@ final class ChunkSectionDataWriter {
             writer.startFixedList(PALETTE, context.paletteSize(), Tag.TAG_COMPOUND);
             for (int index = 0; index < context.paletteSize(); ++index) {
                 writer.compoundEntryStart();
-                SectionWriter.writeStateEntry(writer, context.paletteEntry(index));
+                BlockStateNbtCache.writeStateEntry(writer, context.paletteEntry(index));
                 writer.finishCompound();
             }
             if (context.packedLength() != 0) {

@@ -150,7 +150,7 @@ final class PointMethodEmitter {
 
     private void emitNoise(MethodVisitor method, NoiseNode node) {
         FieldRef field = this.bindings.field(node.noise(), DensityFunction.NoiseHolder.class, false);
-        this.loadField(method, field);
+        BindingRegistry.loadField(method, this.owner, field);
         this.call(method, node.inputX());
         this.call(method, node.inputY());
         this.call(method, node.inputZ());
@@ -166,7 +166,7 @@ final class PointMethodEmitter {
         method.visitMethodInsn(Opcodes.INVOKESTATIC, COLUMN_MATH, "rarity", "(L" + mapper + ";D)D", false);
         method.visitVarInsn(Opcodes.DSTORE, 7);
         FieldRef field = this.bindings.field(node.noise(), DensityFunction.NoiseHolder.class, false);
-        this.loadField(method, field);
+        BindingRegistry.loadField(method, this.owner, field);
         emitCoordinateDividedBy(method, 1, 7);
         emitCoordinateDividedBy(method, 2, 7);
         emitCoordinateDividedBy(method, 3, 7);
@@ -179,7 +179,7 @@ final class PointMethodEmitter {
     private void emitDelegate(MethodVisitor method, DelegateNode node) {
         FieldRef field = this.bindings.field(node.delegate(), DensityFunction.class, true);
         method.visitVarInsn(Opcodes.ALOAD, 4);
-        this.loadField(method, field);
+        BindingRegistry.loadField(method, this.owner, field);
         method.visitVarInsn(Opcodes.ILOAD, 1);
         method.visitVarInsn(Opcodes.ILOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 3);
@@ -194,14 +194,14 @@ final class PointMethodEmitter {
             this.ensureInterpolationToken(node.source());
             FieldRef field = this.bindings.interpolatedField(node.source(), slot);
             ColumnClassBuilder.pushInt(method, slot);
-            this.loadField(method, field);
+            BindingRegistry.loadField(method, this.owner, field);
             method.visitVarInsn(Opcodes.ILOAD, 2);
             method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "interpolatedValue",
                     "(IL" + DENSITY_FUNCTION + ";I)D", false);
             return;
         }
         FieldRef field = this.bindings.field(node.source(), DensityFunction.class, true);
-        this.loadField(method, field);
+        BindingRegistry.loadField(method, this.owner, field);
         method.visitVarInsn(Opcodes.ILOAD, 1);
         method.visitVarInsn(Opcodes.ILOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 3);
@@ -253,11 +253,6 @@ final class PointMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 3);
         method.visitVarInsn(Opcodes.ALOAD, 4);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.owner, this.method(node), DESC, false);
-    }
-
-    private void loadField(MethodVisitor method, FieldRef field) {
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitFieldInsn(Opcodes.GETFIELD, this.owner, field.name(), Type.getDescriptor(field.type()));
     }
 
     int interpolationSlot(DensityFunction source) {

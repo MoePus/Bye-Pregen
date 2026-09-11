@@ -1,6 +1,7 @@
 package com.moepus.byepregen;
 
 import com.moepus.byepregen.integration.c2me.GcFreeCompat;
+import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import net.neoforged.bus.api.IEventBus;
@@ -21,13 +22,15 @@ public class Byepregen {
     }
 
     private static void onLoadComplete(FMLLoadCompleteEvent event) {
-        if (ConfigManager.getConfig().lighting().ya().enabled()) {
-            if (YALightCompatibility.isScalableLuxLoaded()) {
-                LOGGER.warn("ScalableLux is installed, so ByePregen YA light has been disabled "
-                        + "despite lighting.ya.enabled=true");
-                return;
-            }
-            event.enqueueWork(() -> YABlockStateLightClass.initialize());
+        Config config = ConfigManager.getConfig();
+        if (!config.lighting().ya().enabled()) {
+            return;
         }
+        if (!MixinPlugin.MIXIN_FEATURE_EVALUATOR.isEnabled(MixinFeature.YA_LIGHT, config)) {
+            LOGGER.warn("ScalableLux is installed, so ByePregen YA light has been disabled "
+                    + "despite lighting.ya.enabled=true");
+            return;
+        }
+        event.enqueueWork(() -> YABlockStateLightClass.initialize());
     }
 }

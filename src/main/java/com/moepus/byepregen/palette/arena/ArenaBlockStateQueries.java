@@ -27,19 +27,16 @@ final class ArenaBlockStateQueries {
             return;
         }
 
+        // denseRawIdCounts() is null whenever denseIds is null, which also covers the page-palette
+        // state. Reaching here means the storage is neither uniform nor page-palette based, so it
+        // must have dense ids and this branch always runs. The check is kept because it costs one
+        // field read, keeps getAll consistent with maybeHas/count above (which test the same flag),
+        // and fails closed instead of throwing if that storage invariant is ever broken.
         if (container.hasDenseIds()) {
             for (int rawId : container.denseRawIdCounts().keySet()) {
                 consumer.accept(Block.stateById(rawId));
             }
-            return;
         }
-
-        IntSet seen = new IntOpenHashSet();
-        forEachRawId(container, (sectionIndex, rawId) -> {
-            if (seen.add(rawId)) {
-                consumer.accept(Block.stateById(rawId));
-            }
-        });
     }
 
     static boolean maybeHas(ArenaBlockStatePalettedContainer container, Predicate<BlockState> predicate) {

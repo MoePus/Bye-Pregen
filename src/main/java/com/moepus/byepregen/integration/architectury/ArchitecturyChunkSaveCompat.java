@@ -9,10 +9,6 @@ public final class ArchitecturyChunkSaveCompat {
     private ArchitecturyChunkSaveCompat() {
     }
 
-    public static boolean hasSaveDataListeners() {
-        return !saveDataListenerClassNames().isEmpty();
-    }
-
     public static List<String> saveDataListenerClassNames() {
         if (!(ChunkEvent.SAVE_DATA instanceof ArchitecturyEventImplAccessor accessor)) {
             return List.of(ChunkEvent.SAVE_DATA.getClass().getName());

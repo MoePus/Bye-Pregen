@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
@@ -59,6 +60,11 @@ final class BindingRegistry {
 
     List<ColumnTemplate.Binding> bindings() {
         return this.ordered.stream().map(FieldRef::binding).toList();
+    }
+
+    static void loadField(MethodVisitor method, String owner, FieldRef field) {
+        method.visitVarInsn(Opcodes.ALOAD, 0);
+        method.visitFieldInsn(Opcodes.GETFIELD, owner, field.name(), Type.getDescriptor(field.type()));
     }
 
     record FieldRef(String name, Class<?> type, ColumnTemplate.Binding binding) {

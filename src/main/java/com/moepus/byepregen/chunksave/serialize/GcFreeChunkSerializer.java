@@ -13,7 +13,6 @@ import com.moepus.byepregen.integration.c2me.C2MEAsyncSerializationCompat;
 import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import com.mojang.logging.LogUtils;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkType;
@@ -102,19 +101,5 @@ public final class GcFreeChunkSerializer {
     }
 
     private record C2meAsyncAvailability(boolean available, boolean lookupFailed) {
-    }
-
-    public record SerializedChunk(CompoundTag tag, byte[] rawBytes) {
-        public static SerializedChunk vanilla(CompoundTag tag) {
-            return new SerializedChunk(tag, null);
-        }
-
-        public static SerializedChunk raw(byte[] rawBytes) {
-            return new SerializedChunk(null, rawBytes);
-        }
-
-        public boolean isRaw() {
-            return this.rawBytes != null;
-        }
     }
 }

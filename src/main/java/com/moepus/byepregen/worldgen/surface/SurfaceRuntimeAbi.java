@@ -112,10 +112,6 @@ final class SurfaceRuntimeAbi {
         return this.contextClass;
     }
 
-    Class<?> ruleClass() {
-        return this.ruleClass;
-    }
-
     String contextOwner() {
         return this.contextOwner;
     }

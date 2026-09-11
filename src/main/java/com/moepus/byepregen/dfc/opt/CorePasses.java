@@ -7,9 +7,10 @@
 package com.moepus.byepregen.dfc.opt;
 
 import com.moepus.byepregen.dfc.ast.AstNode;
+import com.moepus.byepregen.dfc.ast.AstNodes;
 import com.moepus.byepregen.dfc.ast.AstNodes.*;
 import com.moepus.byepregen.dfc.ast.AstRewriter;
-import net.minecraft.util.Mth;
+import com.moepus.byepregen.dfc.runtime.ColumnMath;
 
 final class CorePasses {
     private CorePasses() {
@@ -35,21 +36,12 @@ final class CorePasses {
         if (node instanceof BinaryNode binary
                 && binary.left() instanceof ConstantNode a
                 && binary.right() instanceof ConstantNode b) {
-            return new ConstantNode(foldBinary(binary, a.value(), b.value()));
+            return new ConstantNode(AstNodes.foldBinary(binary, a.value(), b.value()));
         }
         if (node instanceof UnaryNode unary && unary.operand() instanceof ConstantNode value) {
             return foldUnary(unary, value.value());
         }
         return node;
-    }
-
-    private static double foldBinary(BinaryNode node, double left, double right) {
-        if (node instanceof AddNode) return left + right;
-        if (node instanceof MulNode) return left * right;
-        if (node instanceof DivNode) return left / right;
-        if (node instanceof MinNode || node instanceof MinShortNode) return Math.min(left, right);
-        if (node instanceof MaxNode || node instanceof MaxShortNode) return Math.max(left, right);
-        throw new IllegalArgumentException("Unknown binary node " + node.getClass().getName());
     }
 
     private static AstNode foldUnary(UnaryNode node, double value) {
@@ -61,8 +53,7 @@ final class CorePasses {
             return new ConstantNode(value > 0.0D ? value : value * neg.multiplier());
         }
         if (node instanceof SqueezeNode) {
-            double clamped = Mth.clamp(value, -1.0D, 1.0D);
-            return new ConstantNode(clamped * 0.5D - clamped * clamped * clamped / 24.0D);
+            return new ConstantNode(ColumnMath.squeeze(value));
         }
         return (AstNode) node;
     }

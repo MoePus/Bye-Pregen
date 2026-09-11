@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 final class MixinFeatureEvaluator {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Mixin Features");
     private static final String BLUEPRINT_MOD_ID = "blueprint";
+    private static final String SCALABLELUX_MOD_ID = "scalablelux";
     private static final String C2ME_SERIALIZER_ACCESS =
             "com.ishland.c2me.base.common.registry.SerializerAccess";
 
@@ -31,7 +32,7 @@ final class MixinFeatureEvaluator {
         );
     }
 
-    boolean isEnabled(MixinFeature feature, Config config) {
+    public boolean isEnabled(MixinFeature feature, Config config) {
         Objects.requireNonNull(feature, "feature");
         Objects.requireNonNull(config, "config");
         return switch (feature) {
@@ -46,7 +47,7 @@ final class MixinFeatureEvaluator {
             case SURFACE_RULE_COMPILER -> config.worldgen().surface().ruleCompiler()
                     && !this.modExists.test(BLUEPRINT_MOD_ID);
             case YA_LIGHT -> config.lighting().ya().enabled()
-                    && !this.modExists.test(YALightCompatibility.SCALABLELUX_MOD_ID);
+                    && !this.modExists.test(SCALABLELUX_MOD_ID);
         };
     }
 
