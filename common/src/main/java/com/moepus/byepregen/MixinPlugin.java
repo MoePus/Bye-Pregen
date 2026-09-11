@@ -13,10 +13,23 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String CONFIG_FILE_NAME = "byepregen.toml";
     private static final MixinGateEvaluator MIXIN_GATE_EVALUATOR = MixinGateEvaluator.createDefault();
-    static final MixinFeatureEvaluator MIXIN_FEATURE_EVALUATOR =
+    private static final MixinFeatureEvaluator MIXIN_FEATURE_EVALUATOR =
             MixinFeatureEvaluator.createDefault();
 
     public MixinPlugin() {
+    }
+
+    /**
+     * Whether a {@link MixinFeature} is enabled for the given config.
+     *
+     * <p>Public because this line's Fabric entry point lives in
+     * {@code com.moepus.byepregen.fabric} and cannot reach a package-private member, while
+     * {@link MixinFeatureEvaluator} stays package-private. The NeoForge entry point shares this
+     * package and could call the evaluator directly, but goes through here so both loaders express
+     * the ScalableLux policy in exactly one place.
+     */
+    public static boolean isFeatureEnabled(MixinFeature feature, Config config) {
+        return MIXIN_FEATURE_EVALUATOR.isEnabled(feature, config);
     }
 
     @Override

@@ -18,7 +18,7 @@ public final class ByepregenFabric implements ModInitializer {
         if (!config.lighting().ya().enabled()) {
             return;
         }
-        if (!MixinPlugin.MIXIN_FEATURE_EVALUATOR.isEnabled(MixinFeature.YA_LIGHT, config)) {
+        if (!MixinPlugin.isFeatureEnabled(MixinFeature.YA_LIGHT, config)) {
             LOGGER.warn("ScalableLux is installed, so ByePregen YA light has been disabled "
                     + "despite lighting.ya.enabled=true");
             return;
