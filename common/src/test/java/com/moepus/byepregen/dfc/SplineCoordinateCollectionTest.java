@@ -14,9 +14,9 @@ final class SplineCoordinateCollectionTest {
     void coordinatesFollowFirstOccurrenceTraversalOrder() {
         DensityFunctions.Spline.Coordinate first = SplineTestFixtures.coordinate();
         DensityFunctions.Spline.Coordinate second = SplineTestFixtures.coordinate();
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> nested =
+        CubicSpline<DensityFunctions.Spline.Coordinate> nested =
                 multipoint(second, List.of(multipoint(first, List.of(CubicSpline.constant(1.0F)))));
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> root =
+        CubicSpline<DensityFunctions.Spline.Coordinate> root =
                 multipoint(first, List.of(nested, CubicSpline.constant(2.0F)));
 
         List<DensityFunctions.Spline.Coordinate> coordinates =
@@ -27,11 +27,10 @@ final class SplineCoordinateCollectionTest {
         assertSame(second, coordinates.get(1));
     }
 
-    private static CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>
+    private static CubicSpline<DensityFunctions.Spline.Coordinate>
     multipoint(
             DensityFunctions.Spline.Coordinate coordinate,
-            List<CubicSpline<DensityFunctions.Spline.Point,
-                    DensityFunctions.Spline.Coordinate>> values
+            List<CubicSpline<DensityFunctions.Spline.Coordinate>> values
     ) {
         int size = values.size();
         float[] locations = new float[size];

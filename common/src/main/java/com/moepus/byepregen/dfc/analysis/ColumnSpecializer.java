@@ -175,7 +175,7 @@ public final class ColumnSpecializer {
             if (node instanceof CoordinateNode coordinate) return coordinate.axis() == Axis.Y;
             if (node instanceof SourceNode source) return source.mode() == SourceMode.INTERPOLATED;
             if (node instanceof DelegateNode delegate) return !delegate.yIndependent();
-            if (node instanceof YClampedGradientNode || node instanceof WeirdScaledNode) return true;
+            if (node instanceof YClampedGradientNode) return true;
             AstNode[] children = node.children();
             if (children.length == 0) return true;
             for (AstNode child : children) if (this.isYDependent(child)) return true;

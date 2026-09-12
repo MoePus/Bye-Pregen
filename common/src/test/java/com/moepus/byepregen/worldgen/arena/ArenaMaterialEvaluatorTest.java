@@ -90,7 +90,7 @@ final class ArenaMaterialEvaluatorTest {
             ++this.computeCalls;
             return context.blockY();
         }
-        @Override public DensityFunction mapAll(Visitor visitor) { return visitor.apply(this); }
+        @Override public DensityFunction mapChildren(Visitor visitor) { return this; }
         @Override public double minValue() { return -1000.0D; }
         @Override public double maxValue() { return 1000.0D; }
         @Override public KeyDispatchDataCodec<? extends DensityFunction> codec() { return null; }

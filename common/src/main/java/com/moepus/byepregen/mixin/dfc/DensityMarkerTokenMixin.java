@@ -37,6 +37,17 @@ public abstract class DensityMarkerTokenMixin implements InterpolatedMarkerAcces
         this.byepregen$interpolationToken = token;
     }
 
+    public DensityFunction mapChildren(DensityFunction.Visitor visitor) {
+        DensityFunctions.Marker source = (DensityFunctions.Marker) (Object) this;
+        DensityFunctions.Marker mapped = new DensityFunctions.Marker(
+                source.type(), visitor.apply(source.wrapped()));
+        if (this.byepregen$interpolationToken != null) {
+            ((InterpolatedMarkerAccess) (Object) mapped)
+                    .byepregen$setInterpolationToken(this.byepregen$interpolationToken);
+        }
+        return mapped;
+    }
+
     // MethodScope is priority-neutral; require=0 keeps this optional when C2ME DFC is absent.
     @MethodScope(
             method = "c2me$withDelegate",

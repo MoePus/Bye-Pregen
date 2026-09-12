@@ -95,7 +95,7 @@ public final class FastDiskStateCursor {
     }
 
     public void markForPostprocessing(BlockPos pos) {
-        this.columnChunk.markPosForPostprocessing(pos);
+        this.columnChunk.markPosForPostProcessing(pos);
     }
 
     private LevelChunkSection getSection(int sectionX, int sectionIndex, int sectionZ) {

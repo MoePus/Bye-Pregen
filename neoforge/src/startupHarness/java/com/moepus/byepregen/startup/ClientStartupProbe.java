@@ -28,7 +28,7 @@ public final class ClientStartupProbe {
         }
         Minecraft minecraft = Minecraft.getInstance();
         ++this.ticks;
-        if (minecraft.getWindow() != null && minecraft.screen != null) {
+        if (minecraft.getWindow() != null && minecraft.gui.screen() != null) {
             ++this.stableTicks;
         }
         if (this.stableTicks >= STABLE_TICKS) {
@@ -42,7 +42,7 @@ public final class ClientStartupProbe {
 
     private static void passAndStop(Minecraft minecraft) {
         try {
-            StartupResult.pass("client", "screen=" + minecraft.screen.getClass().getName());
+            StartupResult.pass("client", "screen=" + minecraft.gui.screen().getClass().getName());
             LOGGER.info("BYEPREGEN_STARTUP_CLIENT_PASS");
         } catch (Throwable throwable) {
             StartupResult.fail(throwable);

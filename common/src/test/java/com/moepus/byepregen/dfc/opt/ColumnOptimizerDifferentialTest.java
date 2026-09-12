@@ -45,13 +45,13 @@ final class ColumnOptimizerDifferentialTest {
 
     @Test
     void splineAbsorptionUsesFloatSemanticsWithinTolerance() {
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline =
+        CubicSpline<DensityFunctions.Spline.Coordinate> spline =
                 CubicSpline.constant(2.25F);
         SplineNode source = new SplineNode(spline, List.of(), List.of());
         AstNode optimized = SplineArithmeticPass.apply(
                 new AddNode(new ConstantNode(0.5D), source));
         SplineNode result = assertInstanceOf(SplineNode.class, optimized);
-        assertEquals(2.75D, result.spline().apply(null), SPLINE_TOLERANCE);
+        assertEquals(2.75D, CubicSpline.sample(result.spline(), null), SPLINE_TOLERANCE);
 
         AstNode inexact = new AddNode(new ConstantNode(0.1D), source);
         assertInstanceOf(AddNode.class, SplineArithmeticPass.apply(inexact));
@@ -68,13 +68,12 @@ final class ColumnOptimizerDifferentialTest {
         SplineNode result = assertInstanceOf(SplineNode.class,
                 SplineArithmeticPass.apply(original));
         assertSame(y, result.coordinateNode(coordinate));
-        CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> points = multipoint(result.spline());
+        CubicSpline.Multipoint<DensityFunctions.Spline.Coordinate> points = multipoint(result.spline());
         assertFloatArrayEquals(new float[]{-1.0F, 1.0F, 2.0F}, points.locations());
         assertFloatArrayEquals(new float[]{-6.0F, -4.0F, -2.0F}, points.derivatives());
-        assertEquals(30.0F, points.values().get(0).apply(null));
-        assertEquals(20.0F, points.values().get(1).apply(null));
-        assertEquals(10.0F, points.values().get(2).apply(null));
+        assertEquals(30.0F, CubicSpline.sample(points.values().get(0), null));
+        assertEquals(20.0F, CubicSpline.sample(points.values().get(1), null));
+        assertEquals(10.0F, CubicSpline.sample(points.values().get(2), null));
     }
 
     @Test
@@ -132,7 +131,7 @@ final class ColumnOptimizerDifferentialTest {
             DensityFunctions.Spline.Coordinate coordinate,
             AstNode coordinateNode
     ) {
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline =
+        CubicSpline<DensityFunctions.Spline.Coordinate> spline =
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-2.0F, 0.0F, 4.0F},
                         List.of(CubicSpline.constant(10.0F), CubicSpline.constant(20.0F),
                                 CubicSpline.constant(30.0F)),
@@ -141,12 +140,10 @@ final class ColumnOptimizerDifferentialTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-            DensityFunctions.Spline.Coordinate> multipoint(
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
+    private static CubicSpline.Multipoint<DensityFunctions.Spline.Coordinate> multipoint(
+            CubicSpline<DensityFunctions.Spline.Coordinate> spline
     ) {
-        return (CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate>) spline;
+        return (CubicSpline.Multipoint<DensityFunctions.Spline.Coordinate>) spline;
     }
 
     private static void assertFloatArrayEquals(float[] expected, float[] actual) {

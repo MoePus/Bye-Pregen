@@ -277,27 +277,13 @@ public final class AstNodes {
         }
     }
 
-    public record WeirdScaledNode(
-            AstNode input,
-            DensityFunction.NoiseHolder noise,
-            DensityFunctions.WeirdScaledSampler.RarityValueMapper mapper
-    ) implements UnaryNode {
-        public WeirdScaledNode {
-            Objects.requireNonNull(input, "input");
-            Objects.requireNonNull(noise, "noise");
-            Objects.requireNonNull(mapper, "mapper");
-        }
-        @Override public AstNode operand() { return this.input; }
-        @Override public UnaryNode withOperand(AstNode value) { return new WeirdScaledNode(value, this.noise, this.mapper); }
-    }
-
     public static final class SplineNode implements AstNode {
-        private final CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline;
+        private final CubicSpline<DensityFunctions.Spline.Coordinate> spline;
         private final List<DensityFunctions.Spline.Coordinate> coordinates;
         private final List<AstNode> coordinateNodes;
 
         public SplineNode(
-                CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
+                CubicSpline<DensityFunctions.Spline.Coordinate> spline,
                 List<DensityFunctions.Spline.Coordinate> coordinates,
                 List<AstNode> coordinateNodes
         ) {
@@ -309,7 +295,7 @@ public final class AstNodes {
             }
         }
 
-        public CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline() { return this.spline; }
+        public CubicSpline<DensityFunctions.Spline.Coordinate> spline() { return this.spline; }
 
         public AstNode coordinateNode(DensityFunctions.Spline.Coordinate coordinate) {
             for (int i = 0; i < this.coordinates.size(); ++i) {
@@ -351,7 +337,7 @@ public final class AstNodes {
     }
 
     public static <P, C extends BoundedFloatFunction<P>> List<C> collectSplineCoordinates(
-            CubicSpline<P, C> spline
+            CubicSpline<C> spline
     ) {
         List<C> coordinates = new ArrayList<>();
         Set<C> seen = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -360,11 +346,11 @@ public final class AstNodes {
     }
 
     private static <P, C extends BoundedFloatFunction<P>> void collectSplineCoordinates(
-            CubicSpline<P, C> spline, List<C> coordinates, Set<C> seen
+            CubicSpline<C> spline, List<C> coordinates, Set<C> seen
     ) {
-        if (!(spline instanceof CubicSpline.Multipoint<P, C> multipoint)) return;
+        if (!(spline instanceof CubicSpline.Multipoint<C> multipoint)) return;
         if (seen.add(multipoint.coordinate())) coordinates.add(multipoint.coordinate());
-        for (CubicSpline<P, C> child : multipoint.values()) {
+        for (CubicSpline<C> child : multipoint.values()) {
             collectSplineCoordinates(child, coordinates, seen);
         }
     }

@@ -21,7 +21,6 @@
     "climate.ClimateRTreeNodeCacheMixin",
     "feature.disk.DiskFeatureMixin",
     "dfc.DensityFlatCacheMixin",
-    "dfc.DensityMarkerMapTokenMixin",
     "dfc.DensityMarkerTokenMixin",
     "dfc.BiomeDensityRandomStateMixin",
     "dfc.BiomeDensityNoiseChunkMixin",

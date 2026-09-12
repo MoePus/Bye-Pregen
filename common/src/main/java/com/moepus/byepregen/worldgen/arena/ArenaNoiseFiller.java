@@ -251,7 +251,7 @@ public final class ArenaNoiseFiller {
             }
             if (this.aquifer.shouldScheduleFluidUpdate() && !state.getFluidState().isEmpty()) {
                 this.mutablePos.set(blockX, blockY, blockZ);
-                this.chunk.markPosForPostprocessing(this.mutablePos);
+                this.chunk.markPosForPostProcessing(this.mutablePos);
             }
             int pageLocalY = blockY & (Layout.PAGE_HEIGHT - 1);
             int pageLocalIndex = Layout.localIndex(blockX & 15, pageLocalY, blockZ & 15);

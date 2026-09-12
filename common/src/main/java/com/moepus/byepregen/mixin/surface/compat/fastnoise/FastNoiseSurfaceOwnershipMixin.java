@@ -5,7 +5,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
-import net.minecraft.core.Registry;
+import java.util.Set;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.biome.Biome;
@@ -38,8 +39,8 @@ public abstract class FastNoiseSurfaceOwnershipMixin {
                             + "Lnet/minecraft/world/level/levelgen/RandomState;"
                             + "Lnet/minecraft/world/level/StructureManager;"
                             + "Lnet/minecraft/world/level/biome/BiomeManager;"
-                            + "Lnet/minecraft/core/Registry;"
-                            + "Lnet/minecraft/world/level/levelgen/blending/Blender;)V"
+                            + "Lnet/minecraft/world/level/levelgen/blending/Blender;"
+                            + "Ljava/util/Set;)V"
             ),
             order = byepregen$SURFACE_WRAP_ORDER
     )
@@ -50,8 +51,8 @@ public abstract class FastNoiseSurfaceOwnershipMixin {
             RandomState randomState,
             StructureManager structureManager,
             BiomeManager biomeManager,
-            Registry<Biome> biomeRegistry,
             Blender blender,
+            Set<Holder<Biome>> biomes,
             Operation<Void> original
     ) {
         Config.Surface surface = ConfigManager.getConfig().worldgen().surface();
@@ -64,8 +65,8 @@ public abstract class FastNoiseSurfaceOwnershipMixin {
                     randomState,
                     structureManager,
                     biomeManager,
-                    biomeRegistry,
-                    blender
+                    blender,
+                    biomes
             );
             return;
         }
@@ -76,8 +77,8 @@ public abstract class FastNoiseSurfaceOwnershipMixin {
                 randomState,
                 structureManager,
                 biomeManager,
-                biomeRegistry,
-                blender
+                blender,
+                biomes
         );
     }
 }

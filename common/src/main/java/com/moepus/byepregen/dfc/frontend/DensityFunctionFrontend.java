@@ -50,9 +50,7 @@ public final class DensityFunctionFrontend {
         if (function instanceof DensityFunctions.Shift shift) return this.shift(shift);
         if (function instanceof DensityFunctions.RangeChoice range) return this.range(range);
         if (function instanceof DensityFunctions.YClampedGradient gradient) return this.gradient(gradient);
-        if (function instanceof DensityFunctions.WeirdScaledSampler weird) return this.weird(weird);
         if (function instanceof DensityFunctions.Spline spline) return this.spline(spline);
-        if (function instanceof DensityFunctions.BlendDensity blend) return this.convert(blend.input());
         if (function instanceof DensityFunctions.BlendAlpha) return new ConstantNode(1.0D);
         if (function instanceof DensityFunctions.BlendOffset) return new ConstantNode(0.0D);
         return new DelegateNode(function, ColumnDensityFunctionRegistry.isYIndependentDelegate(function));
@@ -95,12 +93,16 @@ public final class DensityFunctionFrontend {
     }
 
     private AstNode marker(DensityFunctions.Marker marker) {
+        if (marker.type() == DensityFunctions.Marker.Type.BlendDensity) {
+            return this.convert(marker.wrapped());
+        }
         CacheKind kind = switch (marker.type()) {
             case Cache2D -> CacheKind.CACHE_2D;
             case CacheOnce -> CacheKind.CACHE_ONCE;
             case CacheAllInCell -> CacheKind.CACHE_ALL_IN_CELL;
             case FlatCache -> CacheKind.FLAT_CACHE;
             case Interpolated -> CacheKind.INTERPOLATED;
+            case BlendDensity -> throw new IllegalStateException("BlendDensity marker was not unwrapped");
         };
         return new CacheNode(marker, kind, this.convert(marker.wrapped()));
     }
@@ -152,17 +154,12 @@ public final class DensityFunctionFrontend {
                 function.fromValue(), function.toValue());
     }
 
-    private AstNode weird(DensityFunctions.WeirdScaledSampler function) {
-        return new WeirdScaledNode(this.convert(function.input()), function.noise(),
-                function.rarityValueMapper());
-    }
-
     private AstNode spline(DensityFunctions.Spline function) {
         List<DensityFunctions.Spline.Coordinate> keys =
                 AstNodes.collectSplineCoordinates(function.spline());
         List<AstNode> children = new ArrayList<>(keys.size());
         for (DensityFunctions.Spline.Coordinate coordinate : keys) {
-            children.add(this.convert(coordinate.function().value()));
+            children.add(this.convert(coordinate.function()));
         }
         return new SplineNode(function.spline(), keys, children);
     }

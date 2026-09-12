@@ -26,7 +26,6 @@ import com.moepus.byepregen.dfc.ast.AstNodes.SourceNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.SplineNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.SquareNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.SqueezeNode;
-import com.moepus.byepregen.dfc.ast.AstNodes.WeirdScaledNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.YClampedGradientNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Axis;
 import com.moepus.byepregen.dfc.codegen.ColumnClassBuilder;
@@ -117,8 +116,6 @@ final class DensityColumnFrontendProbe {
         requireNode(frontend, DensityFunctions.shift(parameters), MulNode.class);
         requireNode(frontend, DensityFunctions.shiftedNoise2d(value, value, 0.25D, parameters),
                 NoiseNode.class);
-        requireNode(frontend, DensityFunctions.weirdScaledSampler(value, parameters,
-                DensityFunctions.WeirdScaledSampler.RarityValueMapper.TYPE1), WeirdScaledNode.class);
         requireNode(frontend, DensityFunctions.rangeChoice(value, -1.0D, 1.0D, value, value),
                 RangeChoiceNode.class);
         requireNode(frontend, DensityFunctions.yClampedGradient(-64, 320, -1.0D, 1.0D),
@@ -342,7 +339,7 @@ final class DensityColumnFrontendProbe {
         @Override public void fillArray(double[] values, ContextProvider provider) {
             provider.fillAllDirectly(values, this);
         }
-        @Override public DensityFunction mapAll(Visitor visitor) { return visitor.apply(this); }
+        @Override public DensityFunction mapChildren(Visitor visitor) { return this; }
         @Override public double minValue() { return this.value; }
         @Override public double maxValue() { return this.value; }
         @Override public KeyDispatchDataCodec<? extends DensityFunction> codec() { return null; }

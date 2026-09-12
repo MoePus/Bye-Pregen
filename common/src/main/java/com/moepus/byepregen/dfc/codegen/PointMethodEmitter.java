@@ -14,7 +14,6 @@ import com.moepus.byepregen.dfc.runtime.ColumnMath;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.world.level.levelgen.DensityFunction;
-import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -78,7 +77,6 @@ final class PointMethodEmitter {
         else if (node instanceof RangeChoiceNode range) this.emitRange(method, range);
         else if (node instanceof YClampedGradientNode gradient) emitGradient(method, gradient);
         else if (node instanceof NoiseNode noise) this.emitNoise(method, noise);
-        else if (node instanceof WeirdScaledNode weird) this.emitWeird(method, weird);
         else if (node instanceof SplineNode spline) this.emitSpline(method, spline);
         else if (node instanceof UnaryNode unary) this.emitUnary(method, unary);
         else if (node instanceof BinaryNode binary) this.binaries.emit(method, binary);
@@ -155,25 +153,6 @@ final class PointMethodEmitter {
         this.call(method, node.inputY());
         this.call(method, node.inputZ());
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, NOISE_HOLDER, "getValue", "(DDD)D", false);
-    }
-
-    private void emitWeird(MethodVisitor method, WeirdScaledNode node) {
-        this.call(method, node.input());
-        method.visitVarInsn(Opcodes.DSTORE, 5);
-        String mapper = Type.getInternalName(DensityFunctions.WeirdScaledSampler.RarityValueMapper.class);
-        method.visitFieldInsn(Opcodes.GETSTATIC, mapper, node.mapper().name(), 'L' + mapper + ';');
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, COLUMN_MATH, "rarity", "(L" + mapper + ";D)D", false);
-        method.visitVarInsn(Opcodes.DSTORE, 7);
-        FieldRef field = this.bindings.field(node.noise(), DensityFunction.NoiseHolder.class, false);
-        BindingRegistry.loadField(method, this.owner, field);
-        emitCoordinateDividedBy(method, 1, 7);
-        emitCoordinateDividedBy(method, 2, 7);
-        emitCoordinateDividedBy(method, 3, 7);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, NOISE_HOLDER, "getValue", "(DDD)D", false);
-        invokeUnaryMath(method, "abs");
-        method.visitVarInsn(Opcodes.DLOAD, 7);
-        method.visitInsn(Opcodes.DMUL);
     }
 
     private void emitDelegate(MethodVisitor method, DelegateNode node) {

@@ -40,11 +40,9 @@ final class DensityColumnEvaluationProbe {
                 0.2D, parameters);
         DensityFunction choice = DensityFunctions.rangeChoice(
                 gradient, -0.5D, 0.5D, noise.abs(), shifted.square());
-        DensityFunction weird = DensityFunctions.weirdScaledSampler(
-                gradient, parameters, DensityFunctions.WeirdScaledSampler.RarityValueMapper.TYPE2);
         DensityFunction sum = DensityFunctions.add(
                 DensityFunctions.mul(DensityFunctions.constant(0.75D), choice),
-                DensityFunctions.add(weird.halfNegative(), gradient.squeeze()));
+                DensityFunctions.add(noise.halfNegative(), gradient.squeeze()));
         return DensityFunctions.max(DensityFunctions.constant(-2.0D),
                 DensityFunctions.min(DensityFunctions.constant(2.0D), sum));
     }
@@ -53,8 +51,8 @@ final class DensityColumnEvaluationProbe {
         DensityFunction coordinateFunction = DensityFunctions.yClampedGradient(
                 -64, 64, -1.0D, 1.0D);
         DensityFunctions.Spline.Coordinate coordinate =
-                new DensityFunctions.Spline.Coordinate(Holder.direct(coordinateFunction));
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline =
+                new DensityFunctions.Spline.Coordinate(coordinateFunction);
+        CubicSpline<DensityFunctions.Spline.Coordinate> spline =
                 new CubicSpline.Multipoint<>(coordinate,
                         new float[]{-1.0F, 0.0F, 1.0F},
                         List.of(CubicSpline.constant(-0.75F), CubicSpline.constant(0.25F),

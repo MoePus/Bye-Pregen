@@ -11,14 +11,14 @@ description = '''Runs one packaged Surface scalar linkage probe and stops the se
 [[dependencies.byepregen_surface_linkage_test]]
 modId = "neoforge"
 type = "required"
-versionRange = "[26.1.2.97,)"
+versionRange = "[26.2.0.87,)"
 ordering = "NONE"
 side = "SERVER"
 
 [[dependencies.byepregen_surface_linkage_test]]
 modId = "minecraft"
 type = "required"
-versionRange = "[26.1.2]"
+versionRange = "[26.2]"
 ordering = "NONE"
 side = "SERVER"
 

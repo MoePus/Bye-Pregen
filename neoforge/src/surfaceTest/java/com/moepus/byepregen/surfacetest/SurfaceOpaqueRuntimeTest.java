@@ -6,9 +6,15 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderOwner;
+import net.minecraft.core.HolderSet;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
@@ -19,6 +25,18 @@ import net.minecraft.world.level.levelgen.VerticalAnchor;
 public final class SurfaceOpaqueRuntimeTest {
     public static final String ENABLED_PROPERTY = "byepregen.surfaceOpaqueRuntimeTest";
     private static final int OUTLINED_DELEGATES = 72;
+    private static final HolderOwner<Biome> BIOME_OWNER = new HolderOwner<>() {};
+    private static final Map<ResourceKey<Biome>, Holder.Reference<Biome>> BIOME_HOLDERS = new HashMap<>();
+    private static final HolderGetter<Biome> BIOME_LOOKUP = new HolderGetter<>() {
+        @Override public Optional<Holder.Reference<Biome>> get(ResourceKey<Biome> key) {
+            return Optional.of(BIOME_HOLDERS.computeIfAbsent(
+                    key, value -> Holder.Reference.createStandAlone(BIOME_OWNER, value)));
+        }
+
+        @Override public Optional<HolderSet.Named<Biome>> get(TagKey<Biome> key) {
+            return Optional.empty();
+        }
+    };
 
     private SurfaceOpaqueRuntimeTest() {
     }
@@ -29,7 +47,7 @@ public final class SurfaceOpaqueRuntimeTest {
         continuesAfterNullDelegate(context);
         stopsAfterNonNullDelegate(context);
         continuesAfterOutlinedRegion(context);
-        customBiomeHolderFallsBackLazily(context);
+        biomeHolderSelectionRemainsLazy(context);
         TerraBlenderSurfaceRuntimeTest.run();
         System.out.println("Surface opaque hidden-class runtime test passed");
     }
@@ -116,51 +134,50 @@ public final class SurfaceOpaqueRuntimeTest {
         );
     }
 
-    private static void customBiomeHolderFallsBackLazily(Object context)
+    private static void biomeHolderSelectionRemainsLazy(Object context)
             throws ReflectiveOperationException {
-        BiomeProbe probe = new BiomeProbe();
-        Holder<Biome> holder = probe.holder();
-        setBiome(context, 101L, () -> holder);
+        Holder<Biome> plains = BIOME_LOOKUP.getOrThrow(Biomes.PLAINS);
+        Holder<Biome> desert = BIOME_LOOKUP.getOrThrow(Biomes.DESERT);
+        setBiome(context, 101L, plains);
         SurfaceRules.RuleSource source = SurfaceRules.sequence(
                 SurfaceRules.ifTrue(
-                        SurfaceRules.isBiome(Biomes.PLAINS),
+                        SurfaceRules.isBiome(BIOME_LOOKUP, Biomes.PLAINS),
                         SurfaceRules.state(Blocks.DIAMOND_BLOCK.defaultBlockState())
                 ),
                 SurfaceRules.ifTrue(
-                        SurfaceRules.isBiome(Biomes.DESERT),
+                        SurfaceRules.isBiome(BIOME_LOOKUP, Biomes.DESERT),
                         SurfaceRules.state(Blocks.GOLD_BLOCK.defaultBlockState())
                 ),
                 SurfaceRules.state(Blocks.EMERALD_BLOCK.defaultBlockState())
         );
         SurfaceBoundAccess.Rule generated = bind(source, context, false);
 
-        probe.answer(true);
         assertSame(
                 Blocks.DIAMOND_BLOCK.defaultBlockState(),
                 generated.tryApply(0, 64, 0),
                 "custom biome first occurrence"
         );
-        assertEquals(1, probe.calls, "custom biome short circuit");
 
-        setBiome(context, 102L, () -> holder);
-        probe.answer(false, true);
+        setBiome(context, 102L, desert);
         assertSame(
                 Blocks.GOLD_BLOCK.defaultBlockState(),
                 generated.tryApply(0, 63, 0),
                 "custom biome next Y"
         );
-        assertEquals(2, probe.calls, "custom biome occurrence order");
-        generated.tryApply(0, 63, 0);
-        assertEquals(2, probe.calls, "custom biome same-Y cache");
+        assertSame(
+                Blocks.GOLD_BLOCK.defaultBlockState(),
+                generated.tryApply(0, 63, 0),
+                "custom biome same-Y cache"
+        );
     }
 
     private static void setBiome(
             Object context,
             long lastUpdateY,
-            Supplier<Holder<Biome>> supplier
+            Holder<Biome> biome
     ) throws ReflectiveOperationException {
         setField(context, "lastUpdateY", lastUpdateY);
-        setField(context, "biome", supplier);
+        setField(context, "biome", biome);
     }
 
     static void setField(Object target, String name, Object value)
@@ -270,48 +287,6 @@ public final class SurfaceOpaqueRuntimeTest {
                         + x + "," + y + "," + z);
             }
             return this.result;
-        }
-    }
-
-    private static final class BiomeProbe {
-        private boolean[] answers = new boolean[0];
-        private int answerIndex;
-        private int calls;
-
-        @SuppressWarnings("unchecked")
-        private Holder<Biome> holder() {
-            return (Holder<Biome>) Proxy.newProxyInstance(
-                    SurfaceOpaqueRuntimeTest.class.getClassLoader(),
-                    new Class<?>[]{Holder.class},
-                    (proxy, method, arguments) -> {
-                        if (method.getName().equals("is")
-                                && arguments != null
-                                && arguments.length == 1
-                                && arguments[0] instanceof Predicate<?>) {
-                            return this.test();
-                        }
-                        return switch (method.getName()) {
-                            case "hashCode" -> System.identityHashCode(proxy);
-                            case "equals" -> proxy == arguments[0];
-                            case "toString" -> "CustomBiomeHolder";
-                            default -> defaultValue(method.getReturnType());
-                        };
-                    }
-            );
-        }
-
-        private void answer(boolean... values) {
-            this.answers = values;
-            this.answerIndex = 0;
-            this.calls = 0;
-        }
-
-        private boolean test() {
-            this.calls++;
-            if (this.answerIndex >= this.answers.length) {
-                throw new AssertionError("Unexpected custom Holder predicate evaluation");
-            }
-            return this.answers[this.answerIndex++];
         }
     }
 

@@ -103,7 +103,7 @@ final class ChunkNbtParity {
         int y = Math.clamp(level.getSeaLevel(), level.getMinY() + 16, level.getMaxY() - 15);
         BlockPos block = new BlockPos(pos.getMinBlockX() + 1, y, pos.getMinBlockZ() + 1);
         chunk.setBlockState(block, Blocks.STONE.defaultBlockState(), Block.UPDATE_NONE);
-        chunk.markPosForPostprocessing(block.above());
+        chunk.markPosForPostProcessing(block.above());
         return chunk;
     }
 

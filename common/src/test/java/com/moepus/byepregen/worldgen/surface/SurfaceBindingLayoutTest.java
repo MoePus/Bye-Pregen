@@ -3,9 +3,16 @@ package com.moepus.byepregen.worldgen.surface;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderOwner;
+import net.minecraft.core.HolderSet;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
@@ -15,6 +22,17 @@ import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import org.junit.jupiter.api.Test;
 
 public final class SurfaceBindingLayoutTest {
+    private static final HolderOwner<Biome> BIOME_OWNER = new HolderOwner<>() {};
+    private static final HolderGetter<Biome> BIOME_LOOKUP = new HolderGetter<>() {
+        @Override public Optional<Holder.Reference<Biome>> get(ResourceKey<Biome> key) {
+            return Optional.of(Holder.Reference.createStandAlone(BIOME_OWNER, key));
+        }
+
+        @Override public Optional<HolderSet.Named<Biome>> get(TagKey<Biome> key) {
+            return Optional.empty();
+        }
+    };
+
     private SurfaceBindingLayoutTest() {
     }
 
@@ -277,7 +295,7 @@ public final class SurfaceBindingLayoutTest {
     }
 
     private static SurfaceRules.ConditionSource biome() {
-        return SurfaceRules.isBiome(Biomes.PLAINS);
+        return SurfaceRules.isBiome(BIOME_LOOKUP, Biomes.PLAINS);
     }
 
     private static SurfaceRules.ConditionSource water() {

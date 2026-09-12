@@ -8,9 +8,9 @@ import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
 import com.moepus.byepregen.yalight.storage.YALightStorage;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.level.BlockAndLightGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(feature = MixinFeature.YA_LIGHT)
-@Mixin(value = LevelRenderer.class, priority = 900)
+@Mixin(value = LightCoordsUtil.class, priority = 900)
 public abstract class LevelRendererYALightMixin {
     /**
      * @author
@@ -40,13 +40,13 @@ public abstract class LevelRendererYALightMixin {
                 int rawId = YAChunkRunCache.rawIdAt(chunk, x, y, z);
                 int lightClass = YABlockStateLightClass.fromRawId(rawId);
                 if (lightClass == YABlockStateLightClass.SLOW && rawId >= 0) {
-                    return getLightCoords(LevelRenderer.BrightnessGetter.DEFAULT, level, Block.stateById(rawId), pos);
+                    return getLightCoords(LightCoordsUtil.BrightnessGetter.DEFAULT, level, Block.stateById(rawId), pos);
                 }
             }
             return light;
         }
         return getLightCoords(
-                LevelRenderer.BrightnessGetter.DEFAULT, blockGetter, blockGetter.getBlockState(pos), pos);
+                LightCoordsUtil.BrightnessGetter.DEFAULT, blockGetter, blockGetter.getBlockState(pos), pos);
     }
 
     /**
@@ -55,7 +55,7 @@ public abstract class LevelRendererYALightMixin {
      */
     @Overwrite
     public static int getLightCoords(
-            LevelRenderer.BrightnessGetter brightnessGetter,
+            LightCoordsUtil.BrightnessGetter brightnessGetter,
             BlockAndLightGetter blockGetter,
             BlockState state,
             BlockPos pos) {
@@ -69,7 +69,7 @@ public abstract class LevelRendererYALightMixin {
         if (state.isAir()) {
             return light;
         }
-        if (state.emissiveRendering(blockGetter, pos)) {
+        if (state.emissiveRendering()) {
             return 0xF000F0; // FULL_BRIGHT_LIGHT_COLOR
         }
         return byepregen$applyStateLight(light, state.getLightEmission());

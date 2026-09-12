@@ -7,9 +7,7 @@ import java.lang.reflect.Proxy;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -29,8 +27,6 @@ final class TerraBlenderSurfaceRuntimeTest {
 
     static void run() throws Exception {
         Object context = SurfaceOpaqueRuntimeTest.createContext();
-        AtomicReference<Holder<Biome>> biome = new AtomicReference<>();
-        SurfaceOpaqueRuntimeTest.setField(context, "biome", (Supplier<Holder<Biome>>) biome::get);
 
         NullProbe nullProbe = new NullProbe();
         Map<String, SurfaceRules.RuleSource> sources = new LinkedHashMap<>();
@@ -44,9 +40,9 @@ final class TerraBlenderSurfaceRuntimeTest {
         Object bound = new SurfaceTemplateCache().bind(source, context);
         assertDispatcherAndBranches(bound);
 
-        biome.set(holder("minecraft"));
+        SurfaceOpaqueRuntimeTest.setField(context, "biome", holder("minecraft"));
         assertSame(Blocks.GOLD_BLOCK.defaultBlockState(), apply(bound), "namespace hit");
-        biome.set(holder("fallback"));
+        SurfaceOpaqueRuntimeTest.setField(context, "biome", holder("fallback"));
         assertSame(Blocks.DIAMOND_BLOCK.defaultBlockState(), apply(bound), "base fallback");
         assertEquals(1, nullProbe.calls, "selected null rule calls");
     }

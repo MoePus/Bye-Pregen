@@ -141,6 +141,8 @@ dependencies {
     implementation("org.mixinlite:mixinlite:${mixinlite_version}")
     annotationProcessor("org.mixinlite:mixinlite:${mixinlite_version}")
     jarJar("org.mixinlite:mixinlite:${mixinlite_version}")
+    implementation("io.github.llamalad7:mixinextras-neoforge:${mixinextras_version}")
+    jarJar("io.github.llamalad7:mixinextras-neoforge:${mixinextras_version}")
     compileOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}")
 
     if (optionalRuntimeEnabled) {
@@ -158,12 +160,6 @@ dependencies {
         }
     }
 
-    if (providers.gradleProperty('byepregen.enableConnectorRuntime').map(String::toBoolean).orElse(false).get()) {
-        implementation("org.sinytra.launchpad:launchpad:${launchpad_version}")
-        implementation("org.sinytra.forgified-fabric-api:forgified-fabric-api:${forgified_fabric_api_version}")
-        implementation("org.sinytra:connector:${connector_version}")
-        runtimeOnly("maven.modrinth:voxy:${voxy_fabric_version}")
-    }
 }
 
 apply from: rootProject.file('gradle/byepregen-test-config.gradle')

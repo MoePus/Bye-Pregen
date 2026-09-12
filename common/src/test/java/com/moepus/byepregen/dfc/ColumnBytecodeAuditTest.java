@@ -327,11 +327,11 @@ final class ColumnBytecodeAuditTest {
 
     private static SplineNode splineNode() {
         DensityFunctions.Spline.Coordinate coordinate = SplineTestFixtures.coordinate();
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> child =
+        CubicSpline<DensityFunctions.Spline.Coordinate> child =
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-2.0F, 2.0F},
                         List.of(CubicSpline.constant(-1.0F), CubicSpline.constant(3.0F)),
                         new float[]{0.25F, -0.5F}, -1.0F, 3.0F);
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> root =
+        CubicSpline<DensityFunctions.Spline.Coordinate> root =
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-4.0F, 0.0F, 4.0F},
                         List.of(CubicSpline.constant(-5.0F), child, CubicSpline.constant(7.0F)),
                         new float[]{0.0F, 0.5F, 0.0F}, -5.0F, 7.0F);

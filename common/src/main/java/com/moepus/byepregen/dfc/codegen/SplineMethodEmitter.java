@@ -34,7 +34,7 @@ final class SplineMethodEmitter {
     private final ClassWriter writer;
     private final BindingRegistry bindings;
     private final BiConsumer<MethodVisitor, AstNode> pointCaller;
-    private final Map<SplineNode, Map<CubicSpline<?, ?>, SplineValue>> methods = new IdentityHashMap<>();
+    private final Map<SplineNode, Map<CubicSpline<?>, SplineValue>> methods = new IdentityHashMap<>();
     private int methodCount;
 
     SplineMethodEmitter(GenerationContext context, BiConsumer<MethodVisitor, AstNode> pointCaller) {
@@ -51,13 +51,12 @@ final class SplineMethodEmitter {
 
     private SplineValue method(
             SplineNode root,
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
+            CubicSpline<DensityFunctions.Spline.Coordinate> spline
     ) {
-        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> constant) {
+        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Coordinate> constant) {
             return new SplineValue(constant.value(), null);
         }
-        Map<CubicSpline<?, ?>, SplineValue> rootMethods =
+        Map<CubicSpline<?>, SplineValue> rootMethods =
                 this.methods.computeIfAbsent(root, ignored -> new HashMap<>());
         SplineValue existing = rootMethods.get(spline);
         if (existing != null) return existing;
@@ -70,11 +69,10 @@ final class SplineMethodEmitter {
 
     private void generate(
             SplineNode root,
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
+            CubicSpline<DensityFunctions.Spline.Coordinate> spline,
             String name
     ) {
-        if (!(spline instanceof CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> points)) {
+        if (!(spline instanceof CubicSpline.Multipoint<DensityFunctions.Spline.Coordinate> points)) {
             throw new IllegalArgumentException("Unsupported spline " + spline.getClass().getName());
         }
         MethodVisitor method = this.writer.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
@@ -87,8 +85,7 @@ final class SplineMethodEmitter {
 
     private void emitMultipoint(
             SplineNode root,
-            CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                    DensityFunctions.Spline.Coordinate> points,
+            CubicSpline.Multipoint<DensityFunctions.Spline.Coordinate> points,
             MethodVisitor method
     ) {
         this.callPoint(method, root.coordinateNode(points.coordinate()));
