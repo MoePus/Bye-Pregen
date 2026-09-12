@@ -215,6 +215,7 @@ final class ColumnMethodEmitter {
 
     private void emitConstantBinaryLoop(MethodVisitor method, BinaryNode node,
                                         double constant, boolean constantOnLeft) {
+        boolean multiplyByReciprocal = node instanceof DivNode && !constantOnLeft;
         Loop loop = emitLoopStart(method, 5, 3, 4);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 5);
@@ -223,9 +224,10 @@ final class ColumnMethodEmitter {
             loadArrayValue(method, 2, 5);
         } else {
             loadArrayValue(method, 2, 5);
-            method.visitLdcInsn(constant);
+            method.visitLdcInsn(multiplyByReciprocal ? 1.0D / constant : constant);
         }
-        emitBinaryOperation(method, node);
+        if (multiplyByReciprocal) method.visitInsn(Opcodes.DMUL);
+        else emitBinaryOperation(method, node);
         method.visitInsn(Opcodes.DASTORE);
         emitLoopEnd(method, 5, loop);
     }

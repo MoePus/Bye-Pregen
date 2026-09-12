@@ -10,6 +10,7 @@ import com.moepus.byepregen.dfc.ast.AstNodes.ConstantNode;
 import com.moepus.byepregen.dfc.ast.AstNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.CoordinateNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Axis;
+import com.moepus.byepregen.dfc.ast.AstNodes.DivNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MaxShortNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Memoized2DNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MinShortNode;
@@ -163,6 +164,18 @@ final class ColumnBytecodeAuditTest {
         assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DALOAD));
         assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DASTORE));
         assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DMUL));
+    }
+
+    @Test
+    void constantDivisorColumnUsesReciprocalMultiplication() {
+        ClassNode type = read(new ColumnClassBuilder(0).build(
+                new DivNode(new CoordinateNode(Axis.Y), new ConstantNode(4.0D))).classBytes());
+        MethodNode div = find(type, "column", "DivNode");
+
+        assertNotNull(div);
+        assertTrue(containsOpcode(div, org.objectweb.asm.Opcodes.DMUL));
+        assertFalse(containsOpcode(div, org.objectweb.asm.Opcodes.DDIV));
+        assertTrue(containsDoubleConstant(div, 0.25D));
     }
 
     @Test

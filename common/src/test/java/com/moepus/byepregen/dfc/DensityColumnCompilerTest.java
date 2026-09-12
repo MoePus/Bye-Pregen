@@ -12,6 +12,8 @@ import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.DensityFunctions;
@@ -58,6 +60,17 @@ final class DensityColumnCompilerTest {
 
         assertArrayEquals(new double[]{2.0D, 2.0D, 2.0D, 2.0D}, output);
         assertEquals(0, beardifierBindings.get());
+    }
+
+    @Test
+    void invertMappedFunctionCompilesAsReciprocal() {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        DensityFunction input = DensityFunctions.yClampedGradient(0, 12, 2.0D, 8.0D);
+        DensityFunction inverted = DensityFunctions.map(input, DensityFunctions.Mapped.Type.INVERT);
+
+        assertArrayEquals(new double[]{1.0D / 2.0D, 1.0D / 4.0D, 1.0D / 6.0D, 1.0D / 8.0D},
+                evaluate(inverted, 4));
     }
 
     @Test

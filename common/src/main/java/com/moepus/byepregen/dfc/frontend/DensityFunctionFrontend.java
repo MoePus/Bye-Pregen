@@ -84,6 +84,7 @@ public final class DensityFunctionFrontend {
         if (type == DensityFunctions.Mapped.Type.CUBE) return new CubeNode(input);
         if (type == DensityFunctions.Mapped.Type.HALF_NEGATIVE) return new NegMulNode(input, 0.5D);
         if (type == DensityFunctions.Mapped.Type.QUARTER_NEGATIVE) return new NegMulNode(input, 0.25D);
+        if (type == DensityFunctions.Mapped.Type.INVERT) return new DivNode(new ConstantNode(1.0D), input);
         return new SqueezeNode(input);
     }
 

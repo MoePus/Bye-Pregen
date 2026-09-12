@@ -47,6 +47,11 @@ final class PointBinaryEmitter {
 
     private void emitEager(MethodVisitor method, BinaryNode node) {
         this.caller.call(method, node.left());
+        if (node instanceof DivNode && node.right() instanceof ConstantNode constant) {
+            method.visitLdcInsn(1.0D / constant.value());
+            method.visitInsn(Opcodes.DMUL);
+            return;
+        }
         this.caller.call(method, node.right());
         if (node instanceof AddNode) method.visitInsn(Opcodes.DADD);
         else if (node instanceof MulNode) method.visitInsn(Opcodes.DMUL);
