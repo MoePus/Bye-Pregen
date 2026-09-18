@@ -107,8 +107,8 @@ final class LightRestartVerifier {
         LevelLightEngine engine = level.getChunkSource().getLightEngine();
         ClientboundLightUpdatePacketData packet = new ClientboundLightUpdatePacketData(pos, engine, null, null);
         int index = (LightRestartProbe.ROOF_Y >> 4) - engine.getMinLightSection();
-        boolean empty = packet.getEmptySkyYMask().get(index);
-        boolean zeroUpdate = packet.getSkyYMask().get(index) && packetUpdateIsZero(packet, index);
+        boolean empty = packet.emptySkyYMask().get(index);
+        boolean zeroUpdate = packet.skyYMask().get(index) && packetUpdateIsZero(packet, index);
         if (!empty && !zeroUpdate) {
             throw new IllegalStateException("Packet omitted zero-sky roof sentinel at " + pos + " index=" + index);
         }
@@ -123,8 +123,8 @@ final class LightRestartVerifier {
     }
 
     private static boolean packetUpdateIsZero(ClientboundLightUpdatePacketData packet, int sectionIndex) {
-        int updateIndex = packet.getSkyYMask().get(0, sectionIndex).cardinality();
-        byte[] data = packet.getSkyUpdates().get(updateIndex);
+        int updateIndex = packet.skyYMask().get(0, sectionIndex).cardinality();
+        byte[] data = packet.skyUpdates().get(updateIndex);
         for (byte value : data) {
             if (value != 0) {
                 return false;

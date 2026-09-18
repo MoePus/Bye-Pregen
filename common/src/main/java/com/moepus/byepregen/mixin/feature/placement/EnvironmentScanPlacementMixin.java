@@ -33,7 +33,7 @@ public abstract class EnvironmentScanPlacementMixin implements FastPlacementModi
     private int maxSteps;
 
     @Override
-    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
+    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {
         BlockPos.MutableBlockPos pos = context.modifierPos(x, y, z);
         WorldGenLevel level = context.placementContext().getLevel();
         if (!this.allowedSearchCondition.test(level, pos)) {
@@ -42,7 +42,7 @@ public abstract class EnvironmentScanPlacementMixin implements FastPlacementModi
 
         for (int i = 0; i < this.maxSteps; i++) {
             if (this.targetCondition.test(level, pos)) {
-                context.apply(nextIndex, pos.getX(), pos.getY(), pos.getZ());
+                context.emit(pos.getX(), pos.getY(), pos.getZ());
                 return;
             }
 
@@ -56,7 +56,7 @@ public abstract class EnvironmentScanPlacementMixin implements FastPlacementModi
         }
 
         if (this.targetCondition.test(level, pos)) {
-            context.apply(nextIndex, pos.getX(), pos.getY(), pos.getZ());
+            context.emit(pos.getX(), pos.getY(), pos.getZ());
         }
     }
 }

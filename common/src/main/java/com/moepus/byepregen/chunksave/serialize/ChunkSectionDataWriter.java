@@ -28,6 +28,7 @@ import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 
 final class ChunkSectionDataWriter {
+    private static final int LIGHT_ARRAY_BYTES = 2048;
     private static final byte[] SECTIONS = NbtWriter.asciiName("sections");
     private static final byte[] BLOCK_STATES = NbtWriter.asciiName("block_states");
     private static final byte[] BIOMES = NbtWriter.asciiName("biomes");
@@ -50,6 +51,8 @@ final class ChunkSectionDataWriter {
         LevelChunkSection[] sections = chunk.getSections();
         LevelLightEngine lightEngine = level.getChunkSource().getLightEngine();
         Registry<Biome> biomeRegistry = level.registryAccess().lookupOrThrow(Registries.BIOME);
+        // With YA light the layer engines are YA's; its per-chunk storage is the source of truth and
+        // the light-engine listeners no longer describe what has to reach the chunk file.
         YAChunkLightAccess yaLight = chunk instanceof YAChunkLightAccess access ? access : null;
         LayerLightEventListener blockListener = yaLight == null ? lightEngine.getLayerListener(LightLayer.BLOCK) : null;
         LayerLightEventListener skyListener = yaLight == null ? lightEngine.getLayerListener(LightLayer.SKY) : null;
@@ -117,7 +120,7 @@ final class ChunkSectionDataWriter {
 
     private static void writeLight(NbtWriter writer, byte[] name, byte[] data, boolean full) {
         if (full) {
-            writer.putByteArrayFilled(name, YANibbleArray.SIZE, (byte)-1);
+            writer.putByteArrayFilled(name, LIGHT_ARRAY_BYTES, (byte)-1);
         } else if (data != null) {
             writer.putByteArray(name, data);
         }
@@ -135,18 +138,39 @@ final class ChunkSectionDataWriter {
         context.pack(states, 4);
         try {
             writer.startCompound(BLOCK_STATES);
-            writer.startFixedList(PALETTE, context.paletteSize(), Tag.TAG_COMPOUND);
-            for (int index = 0; index < context.paletteSize(); ++index) {
-                writer.compoundEntryStart();
-                BlockStateNbtCache.writeStateEntry(writer, context.paletteEntry(index));
-                writer.finishCompound();
-            }
+            writePalette(writer, context);
             if (context.packedLength() != 0) {
                 writer.putLongArray(DATA, context.packed(), context.packedLength());
             }
             writer.finishCompound();
         } finally {
             context.clear();
+        }
+    }
+
+    /**
+     * Writes the palette the way the block-state codec does: a list of bare block names when every entry
+     * is a default state, otherwise a compound list with the shortened entries wrapped.
+     */
+    private static void writePalette(NbtWriter writer, ChunkSectionSerializationContext context) {
+        int size = context.paletteSize();
+        boolean shortForms = true;
+        for (int index = 0; index < size; ++index) {
+            if (!BlockStateNbtCache.stateUsesShortForm(context.paletteEntry(index))) {
+                shortForms = false;
+                break;
+            }
+        }
+        writer.startFixedList(PALETTE, size, shortForms ? Tag.TAG_STRING : Tag.TAG_COMPOUND);
+        for (int index = 0; index < size; ++index) {
+            BlockState state = context.paletteEntry(index);
+            if (shortForms) {
+                writer.write(BlockStateNbtCache.stateFileEntryBytes(state));
+            } else {
+                writer.compoundEntryStart();
+                writer.write(BlockStateNbtCache.stateFileWrappedEntryBytes(state));
+                writer.finishCompound();
+            }
         }
     }
 

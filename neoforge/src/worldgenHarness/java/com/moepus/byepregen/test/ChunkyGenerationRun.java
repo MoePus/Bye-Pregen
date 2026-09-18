@@ -1,6 +1,5 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.worldgen.surface.SurfaceScalarMetrics;
 import com.mojang.logging.LogUtils;
 import java.time.Duration;
 import net.minecraft.server.MinecraftServer;
@@ -74,14 +73,8 @@ final class ChunkyGenerationRun {
             this.controller.failAndStop(this.server, "Fast tick runtime probe failed after worldgen");
             return;
         }
-        String densityColumnMetrics;
-        try {
-            densityColumnMetrics = DensityColumnRuntimeProbe.verify();
-        } catch (RuntimeException throwable) {
-            this.controller.failAndStop(this.server,
-                    "Density column runtime probe failed: " + throwable.getMessage());
-            return;
-        }
+        // TODO(26.3): The density column and surface scalar probes were written against the removed
+        // per-column codegen; restore equivalents for the float sampler port.
         double wallSeconds = (System.nanoTime() - this.startedNanos) / 1_000_000_000.0D;
         double cpuSeconds = (processCpuNanos() - this.startedCpuNanos) / 1_000_000_000.0D;
         LOGGER.info(
@@ -90,21 +83,7 @@ final class ChunkyGenerationRun {
                 wallSeconds,
                 cpuSeconds
         );
-        logSurfaceScalarMetrics();
-        this.controller.succeedAndStop(this.server,
-                "world=" + event.world() + "\ndensityColumn=" + densityColumnMetrics
-        );
-    }
-
-    private static void logSurfaceScalarMetrics() {
-        SurfaceScalarMetrics.Snapshot metrics = SurfaceScalarMetrics.snapshot();
-        LOGGER.info(
-                "Surface scalar metrics: compiled={} rejected={} bindings={} bindFailures={} "
-                        + "outputComparisons={} outputMismatches={} classBytes={} regions={}",
-                metrics.compiled(), metrics.rejected(), metrics.bindings(), metrics.bindFailures(),
-                metrics.outputComparisons(), metrics.outputMismatches(), metrics.latestClassBytes(),
-                metrics.latestRegions()
-        );
+        this.controller.succeedAndStop(this.server, "world=" + event.world());
     }
 
     private static long processCpuNanos() {

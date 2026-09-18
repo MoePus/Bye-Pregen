@@ -1,5 +1,6 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.RegionCoordinates;
 import com.moepus.byepregen.harness.RegionStorageInfos;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
@@ -121,13 +122,15 @@ public final class LightGoldenPrepareRelight {
     }
 
     private static StripCounts stripRegion(Path regionPath, BufferedWriter chunkList) throws IOException {
-        RegionCoords region = RegionCoords.parse(regionPath.getFileName().toString());
+        RegionCoordinates region = RegionCoordinates.parse(regionPath.getFileName().toString());
         int chunks = 0;
         int relightChunks = 0;
         try (RegionFile regionFile = new RegionFile(REGION_INFO, regionPath, regionPath.getParent(), false)) {
-            for (int localZ = 0; localZ < 32; ++localZ) {
-                for (int localX = 0; localX < 32; ++localX) {
-                    ChunkPos pos = new ChunkPos(region.x * 32 + localX, region.z * 32 + localZ);
+            for (int localZ = 0; localZ < RegionCoordinates.CHUNKS_PER_AXIS; ++localZ) {
+                for (int localX = 0; localX < RegionCoordinates.CHUNKS_PER_AXIS; ++localX) {
+                    ChunkPos pos = new ChunkPos(
+                            region.x() * RegionCoordinates.CHUNKS_PER_AXIS + localX,
+                            region.z() * RegionCoordinates.CHUNKS_PER_AXIS + localZ);
                     CompoundTag chunkTag;
                     try (DataInputStream input = regionFile.getChunkDataInputStream(pos)) {
                         if (input == null) {
@@ -168,19 +171,6 @@ public final class LightGoldenPrepareRelight {
             CompoundTag section = sections.getCompound(i).orElseGet(CompoundTag::new);
             section.remove("BlockLight");
             section.remove("SkyLight");
-        }
-    }
-
-    private record RegionCoords(int x, int z) {
-        static RegionCoords parse(String fileName) throws IOException {
-            if (!fileName.startsWith("r.") || !fileName.endsWith(".mca")) {
-                throw new IOException("Invalid region file name: " + fileName);
-            }
-            String[] parts = fileName.substring(2, fileName.length() - 4).split("\\.");
-            if (parts.length != 2) {
-                throw new IOException("Invalid region file name: " + fileName);
-            }
-            return new RegionCoords(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
         }
     }
 

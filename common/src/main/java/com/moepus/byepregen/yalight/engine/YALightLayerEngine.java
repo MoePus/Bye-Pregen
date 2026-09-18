@@ -272,8 +272,36 @@ public interface YALightLayerEngine extends LayerLightEventListener {
         this.runCache().setUpdatingLight(this.storage(), x, y, z, value);
     }
 
+    // The run cache pins the section of the current propagation target: a read or write inside that
+    // section skips the per-call chunk window lookup the cached forms need. A position is either inside
+    // the pinned section or not, so both the read and the write of one position must pick the same path.
+    default int readUpdating(int x, int y, int z, boolean resident) {
+        return resident
+                ? this.runCache().getResidentUpdatingLight(x, y, z)
+                : this.getCachedUpdatingLight(x, y, z);
+    }
+
+    default int readEnabledUpdating(int x, int y, int z, boolean resident) {
+        return resident
+                ? this.runCache().getEnabledResidentUpdatingLight(x, y, z)
+                : this.getEnabledCachedUpdatingLight(x, y, z);
+    }
+
+    default void writeUpdating(int x, int y, int z, int value, boolean resident) {
+        if (resident) {
+            this.runCache().setResidentUpdatingLight(this.storage(), x, y, z, value);
+        } else {
+            this.setCachedUpdatingLight(x, y, z, value);
+        }
+    }
+
+    default int blockAt(int x, int y, int z, boolean resident) {
+        YALightBlockAccess blocks = this.blockAccess();
+        return resident ? blocks.residentBlockAt(x, y, z) : blocks.blockAt(x, y, z);
+    }
+
     default YANibbleArray getNibble(int chunkX, int sectionY, int chunkZ) {
-        return this.storage().getSection(chunkX, sectionY, chunkZ);
+        return this.storage().getVisibleSection(this.storage().chunkAccess(chunkX, chunkZ), sectionY);
     }
 
     default void enqueueDecrease(long pos, int level, int directions) {

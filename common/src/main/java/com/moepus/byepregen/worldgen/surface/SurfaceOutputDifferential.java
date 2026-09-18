@@ -5,7 +5,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.SurfaceRules;
+import net.minecraft.world.level.levelgen.material.rule.RuleEvaluator;
 
 /**
  * Compares generated and vanilla return values as an output-only diagnostic.
@@ -17,7 +17,8 @@ import net.minecraft.world.level.levelgen.SurfaceRules;
 final class SurfaceOutputDifferential {
     private static final String ENABLED_PROPERTY = "byepregen.surfaceOutputDifferential";
     private static final String LEGACY_ENABLED_PROPERTY = "byepregen.surfaceDifferential";
-    private static final Class<?> RULE_INTERFACE = resolveRuleInterface();
+    // 26.3: bound rules are RuleEvaluator instances, not SurfaceRules$SurfaceRule.
+    private static final Class<?> RULE_INTERFACE = RuleEvaluator.class;
 
     private SurfaceOutputDifferential() {
     }
@@ -39,7 +40,7 @@ final class SurfaceOutputDifferential {
 
     private static Outcome evaluate(Object rule, Point point) {
         try {
-            BlockState state = ((SurfaceBoundAccess.Rule) rule).tryApply(
+            BlockState state = ((RuleEvaluator) rule).tryApply(
                     point.x(), point.y(), point.z()
             );
             return new Outcome(state, null);
@@ -72,18 +73,6 @@ final class SurfaceOutputDifferential {
         };
     }
 
-    private static Class<?> resolveRuleInterface() {
-        try {
-            return Class.forName(
-                    SurfaceRules.class.getName() + "$SurfaceRule",
-                    false,
-                    SurfaceRules.class.getClassLoader()
-            );
-        } catch (ClassNotFoundException exception) {
-            throw new ExceptionInInitializerError(exception);
-        }
-    }
-
     private record OutputComparator(Object generated, Object vanilla)
             implements InvocationHandler {
         @Override
@@ -92,7 +81,7 @@ final class SurfaceOutputDifferential {
                 return invokeObject(proxy, method, arguments);
             }
             if (method.getParameterCount() != 3 || method.getReturnType() != BlockState.class) {
-                throw new IllegalStateException("Unexpected SurfaceRule method " + method);
+                throw new IllegalStateException("Unexpected RuleEvaluator method " + method);
             }
             Point point = new Point(
                     (int) arguments[0], (int) arguments[1], (int) arguments[2]

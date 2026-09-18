@@ -55,9 +55,7 @@ final class ChunkTickPostProcessWriter {
     static void writeHeightmaps(NbtWriter writer, ChunkAccess chunk) {
         writer.startCompound(HEIGHTMAPS);
         for (java.util.Map.Entry<Heightmap.Types, Heightmap> entry : chunk.getHeightmaps()) {
-            if (chunk.getPersistedStatus().heightmapsAfter().contains(entry.getKey())) {
-                writer.putLongArray(heightmapName(entry.getKey()), entry.getValue().getRawData());
-            }
+            writer.putLongArray(heightmapName(entry.getKey()), entry.getValue().getRawData());
         }
         writer.finishCompound();
     }

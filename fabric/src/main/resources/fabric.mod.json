@@ -4,18 +4,30 @@
   "version": "${version}",
   "name": "${mod_name}",
   "description": "${mod_description}",
-  "authors": ["${mod_authors}"],
+  "authors": [
+    "${mod_authors}"
+  ],
   "license": "${mod_license}",
   "environment": "*",
-  "accessWidener": "${mod_id}.accesswidener",
+  "accessWidener": "${mod_id}.arena.accesswidener",
   "entrypoints": {
-    "main": ["com.moepus.byepregen.fabric.ByepregenFabric"]
+    "main": [
+      "com.moepus.byepregen.fabric.ArenaFabric"
+    ]
   },
-  "mixins": ["${mod_id}.mixins.json"],
+  "mixins": [
+    "${mod_id}.arena.mixins.json",
+    "${mod_id}.dfc.mixins.json",
+    "${mod_id}.features.mixins.json",
+    "${mod_id}.yalight.mixins.json",
+    "${mod_id}.worldgen.mixins.json"
+    ,"${mod_id}.runtime.mixins.json"
+    ,"${mod_id}.storage.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=${fabric_loader_version}",
     "fabric-api": "*",
-    "minecraft": "=${minecraft_version}",
+    "minecraft": "=${minecraft_fabric_version}",
     "java": ">=${java_version}"
   },
   "breaks": {

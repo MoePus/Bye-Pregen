@@ -2,6 +2,7 @@ package com.moepus.byepregen.worldgen.surface;
 
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
+import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
 
 final class SurfaceDirectTemplate extends SurfaceCompiledTemplate {
     private final SurfaceBindingLayout bindings;
@@ -20,7 +21,8 @@ final class SurfaceDirectTemplate extends SurfaceCompiledTemplate {
 
     @Override
     Object bind(Object context) throws Throwable {
-        Object[] values = this.bindings.bind(context);
+        // 26.3: the bound context is a MaterialRuleContext, produced once per buildSurface call.
+        Object[] values = this.bindings.bind((MaterialRuleContext) context);
         return this.constructor.invokeExact(context, values);
     }
 

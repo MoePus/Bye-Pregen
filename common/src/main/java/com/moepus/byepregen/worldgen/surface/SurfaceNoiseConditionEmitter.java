@@ -3,15 +3,19 @@ package com.moepus.byepregen.worldgen.surface;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
-import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.GETFIELD;
-import static org.objectweb.asm.Opcodes.IFEQ;
-import static org.objectweb.asm.Opcodes.IFNE;
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.LAND;
-import static org.objectweb.asm.Opcodes.LCMP;
+import static org.objectweb.asm.Opcodes.DCMPG;
+import static org.objectweb.asm.Opcodes.DCMPL;
+import static org.objectweb.asm.Opcodes.DLOAD;
+import static org.objectweb.asm.Opcodes.DSTORE;
+import static org.objectweb.asm.Opcodes.GOTO;
+import static org.objectweb.asm.Opcodes.IFGT;
+import static org.objectweb.asm.Opcodes.IFLT;
+import static org.objectweb.asm.Opcodes.INVOKEINTERFACE;
 
 final class SurfaceNoiseConditionEmitter {
+    private static final String SUPPLIER = "java/util/function/DoubleSupplier";
+    private static final String SUPPLIER_DESCRIPTOR = "()D";
+
     private final SurfaceEmissionContext context;
     private final SurfaceMethodLocals locals;
 
@@ -20,59 +24,40 @@ final class SurfaceNoiseConditionEmitter {
         this.locals = locals;
     }
 
+    /**
+     * 26.3: the context caches one sampler per (noise, is3d) and hands back an epoch-aware
+     * {@code DoubleSupplier}, so the condition samples inline instead of publishing a per-column
+     * noise bank. The two comparisons keep vanilla's {@code DCMPL} / {@code DCMPG} polarity so NaN
+     * still fails the condition.
+     */
     void emit(
             MethodVisitor method,
             SurfaceRulePlan.KnownCondition condition,
             boolean branchOnTrue,
             Label target
     ) {
-        SurfaceScalarLayout.NoiseCondition layout = (SurfaceScalarLayout.NoiseCondition)
+        SurfaceScalarLayout.Noise layout = (SurfaceScalarLayout.Noise)
                 this.context.layout().condition(condition);
-        this.emitCached(method, layout, branchOnTrue, target);
-    }
-
-    private void emitCached(
-            MethodVisitor method,
-            SurfaceScalarLayout.NoiseCondition layout,
-            boolean branchOnTrue,
-            Label target
-    ) {
-        int sampleBank = layout.sampleIndex() / Long.SIZE;
-        long sampleMask = 1L << (layout.sampleIndex() & (Long.SIZE - 1));
-        Label sampled = new Label();
-        this.loadMask(method, SurfaceEmissionContext.sampledField(sampleBank), sampleMask);
-        method.visitInsn(org.objectweb.asm.Opcodes.LCONST_0);
-        method.visitInsn(LCMP);
-        method.visitJumpInsn(IFNE, sampled);
-        method.visitVarInsn(ALOAD, 0);
-        this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_X);
-        this.loadContextInt(method, SurfaceRuntimeAbi.BLOCK_Z);
+        SurfaceConditionSpec.Noise spec = (SurfaceConditionSpec.Noise)
+                condition.value().spec();
+        this.context.loadBinding(method, layout.supplier());
         method.visitMethodInsn(
-                INVOKEVIRTUAL,
-                this.context.owner(),
-                SurfaceEmissionContext.noiseSampleMethod(layout.sampleIndex()),
-                "(II)V",
-                false
+                INVOKEINTERFACE, SUPPLIER, SurfaceRuntimeAbi.NOISE_VALUE, SUPPLIER_DESCRIPTOR, true
         );
-        method.visitLabel(sampled);
+        method.visitVarInsn(DSTORE, this.locals.scratchLocal());
 
-        int valueBank = layout.predicateIndex() / Long.SIZE;
-        long valueMask = 1L << (layout.predicateIndex() & (Long.SIZE - 1));
-        this.loadMask(method, SurfaceEmissionContext.valuesField(valueBank), valueMask);
-        method.visitInsn(org.objectweb.asm.Opcodes.LCONST_0);
-        method.visitInsn(LCMP);
-        method.visitJumpInsn(branchOnTrue ? IFNE : IFEQ, target);
+        Label notInRange = branchOnTrue ? new Label() : target;
+        method.visitVarInsn(DLOAD, this.locals.scratchLocal());
+        method.visitLdcInsn(spec.minimum());
+        method.visitInsn(DCMPL);
+        method.visitJumpInsn(IFLT, notInRange);
+        method.visitVarInsn(DLOAD, this.locals.scratchLocal());
+        method.visitLdcInsn(spec.maximum());
+        method.visitInsn(DCMPG);
+        method.visitJumpInsn(IFGT, notInRange);
+        if (branchOnTrue) {
+            method.visitJumpInsn(GOTO, target);
+            method.visitLabel(notInRange);
+        }
     }
-
-    private void loadMask(MethodVisitor method, String field, long mask) {
-        method.visitVarInsn(ALOAD, 0);
-        method.visitFieldInsn(GETFIELD, this.context.owner(), field, "J");
-        method.visitLdcInsn(mask);
-        method.visitInsn(LAND);
-    }
-
-    private void loadContextInt(MethodVisitor method, String accessor) {
-        this.locals.loadInt(method, this.context, accessor);
-    }
-
 }

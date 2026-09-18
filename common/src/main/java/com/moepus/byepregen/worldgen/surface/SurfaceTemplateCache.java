@@ -1,15 +1,13 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.Objects;
-import java.util.function.Function;
-import net.minecraft.world.level.levelgen.SurfaceRules;
+import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
+import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class SurfaceTemplateCache {
     private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Surface Scalar");
-    private static final boolean TERRABLENDER_LOADED = ModEnvironment.isModLoaded("terrablender");
 
     private final boolean outputDifferential;
     private volatile Entry current;
@@ -22,7 +20,7 @@ public final class SurfaceTemplateCache {
         this.outputDifferential = outputDifferential;
     }
 
-    public Object bind(SurfaceRules.RuleSource source, Object context) {
+    public Object bind(MaterialRule source, MaterialRuleContext context) {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(context, "context");
         Entry entry = this.current;
@@ -52,7 +50,7 @@ public final class SurfaceTemplateCache {
         }
     }
 
-    private Entry resolve(SurfaceRules.RuleSource source) {
+    private Entry resolve(MaterialRule source) {
         synchronized (this) {
             Entry entry = this.current;
             if (entry != null && entry.source() == source) {
@@ -63,12 +61,7 @@ public final class SurfaceTemplateCache {
         }
     }
 
-    private Entry compile(SurfaceRules.RuleSource source) {
-        SurfaceCompiledTemplate compat = this.compileCompat(source);
-        if (compat != null) {
-            LOGGER.info("Preserving TerraBlender SurfaceRule namespace dispatcher");
-            return new Entry(source, compat);
-        }
+    private Entry compile(MaterialRule source) {
         try {
             SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(source);
             SurfaceDirectTemplate template = SurfaceScalarAsmCompiler.compile(plan);
@@ -76,13 +69,13 @@ public final class SurfaceTemplateCache {
             SurfaceScalarMetrics.compiled(statistics);
             LOGGER.info(
                     "Compiled SurfaceRule: bytes={} fields/events={}/{} regions={} "
-                            + "noiseSamples/predicates={}/{}",
+                            + "noiseConditions/samples={}/{}",
                     statistics.classBytes(),
                     statistics.bindingSlots(),
                     statistics.bindingEvents(),
                     statistics.regions(),
-                    statistics.noiseSamples(),
-                    statistics.noiseOccurrences()
+                    statistics.noiseOccurrences(),
+                    statistics.noiseSamples()
             );
             LOGGER.info("SurfaceRule regions: {}", statistics.regionShape());
             return new Entry(source, template);
@@ -93,23 +86,10 @@ public final class SurfaceTemplateCache {
         }
     }
 
-    private SurfaceCompiledTemplate compileCompat(SurfaceRules.RuleSource source) {
-        if (!TERRABLENDER_LOADED) {
-            return null;
-        }
-        try {
-            return TerraBlenderCompat.compile(source);
-        } catch (LinkageError | RuntimeException exception) {
-            LOGGER.warn("Falling back from TerraBlender SurfaceRule compatibility", exception);
-            return null;
-        }
+    static Object vanillaBind(MaterialRule source, MaterialRuleContext context) {
+        return source.compile(context);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    static Object vanillaBind(SurfaceRules.RuleSource source, Object context) {
-        return ((Function) source).apply(context);
-    }
-
-    private record Entry(SurfaceRules.RuleSource source, SurfaceCompiledTemplate template) {
+    private record Entry(MaterialRule source, SurfaceCompiledTemplate template) {
     }
 }

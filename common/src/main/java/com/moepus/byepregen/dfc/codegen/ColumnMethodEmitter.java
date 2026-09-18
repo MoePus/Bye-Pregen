@@ -14,7 +14,7 @@ import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnMath;
 import java.util.IdentityHashMap;
 import java.util.Map;
-import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -24,11 +24,11 @@ import org.objectweb.asm.Type;
 /** Emits column-array helpers while retaining point helpers for conditional and terminal nodes. */
 final class ColumnMethodEmitter {
     static final String DESC = Type.getMethodDescriptor(Type.VOID_TYPE,
-            Type.getType(ColumnEvaluationContext.class), Type.getType(double[].class),
+            Type.getType(ColumnEvaluationContext.class), Type.getType(float[].class),
             Type.INT_TYPE, Type.INT_TYPE);
     private static final String CONTEXT = Type.getInternalName(ColumnEvaluationContext.class);
     private static final String COLUMN_MATH = Type.getInternalName(ColumnMath.class);
-    private static final String DENSITY_FUNCTION = Type.getInternalName(DensityFunction.class);
+    private static final String DENSITY_FUNCTION = Type.getInternalName(DensitySampler.class);
     private static final String ARRAYS = "java/util/Arrays";
 
     private final String owner;
@@ -66,19 +66,20 @@ final class ColumnMethodEmitter {
     }
 
     private void emit(AstNode node, MethodVisitor method) {
+        if (FusedColumnEmitter.tryEmit(node, method, this::call)) return;
         if (node instanceof RootNode root) this.call(method, root.next(), 2, 3, 4);
         else if (node instanceof ConstantNode constant) emitFill(method, constant.value());
         else if (node instanceof CoordinateNode coordinate) this.emitCoordinate(method, coordinate.axis());
         else if (node instanceof YClampedGradientNode gradient) this.emitGradient(method, gradient);
         else if (node instanceof Memoized2DNode memoized) this.emitMemoized(method, memoized);
-        else if (node instanceof SourceNode source && source.mode() == SourceMode.INTERPOLATED) {
+        else if (node instanceof SourceNode source) {
             this.emitInterpolated(method, source);
-        } else if (node instanceof SourceNode source && source.mode() == SourceMode.FLAT) {
-            this.emitYIndependentPoint(method, node);
-        } else if (node instanceof DelegateNode delegate && delegate.yIndependent()) {
-            this.emitYIndependentPoint(method, delegate);
+        } else if (node instanceof DelegateNode delegate) {
+            this.emitDelegate(method, delegate);
         } else if (node instanceof RangeChoiceNode range) {
             this.conditionals.emitRangeChoice(method, range);
+        } else if (node instanceof IntervalSelectNode interval) {
+            this.conditionals.emitIntervalSelect(method, interval);
         } else if (node instanceof MinShortNode min) {
             this.conditionals.emitShortBinary(method, min, min.rightMin(), false);
         } else if (node instanceof MaxShortNode max) {
@@ -101,8 +102,8 @@ final class ColumnMethodEmitter {
             method.visitVarInsn(Opcodes.ALOAD, 1);
             method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT,
                     axis == Axis.X ? "x" : "z", "()I", false);
-            method.visitInsn(Opcodes.I2D);
-            method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([DIID)V", false);
+            method.visitInsn(Opcodes.I2F);
+            method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([FIIF)V", false);
             return;
         }
         loadContextInt(method, "minY", 5);
@@ -115,8 +116,8 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 6);
         method.visitInsn(Opcodes.IMUL);
         method.visitInsn(Opcodes.IADD);
-        method.visitInsn(Opcodes.I2D);
-        method.visitInsn(Opcodes.DASTORE);
+        method.visitInsn(Opcodes.I2F);
+        method.visitInsn(Opcodes.FASTORE);
         emitLoopEnd(method, 7, loop);
     }
 
@@ -125,31 +126,22 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 3);
         method.visitVarInsn(Opcodes.ILOAD, 4);
         this.loadPointInvocation(method, node);
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([DIID)V", false);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([FIIF)V", false);
     }
 
     private void emitInterpolated(MethodVisitor method, SourceNode node) {
-        int slot = this.points.interpolationSlot(node.source());
-        this.points.ensureInterpolationToken(node.source());
-        FieldRef field = this.bindings.interpolatedField(node.source(), slot);
+        this.emitDelegate(method, new DelegateNode(node.source(), false));
+    }
+
+    private void emitDelegate(MethodVisitor method, DelegateNode node) {
+        FieldRef field = this.bindings.field(node.delegate(), DensitySampler.class);
         method.visitVarInsn(Opcodes.ALOAD, 1);
-        ColumnClassBuilder.pushInt(method, slot);
         BindingRegistry.loadField(method, this.owner, field);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 3);
         method.visitVarInsn(Opcodes.ILOAD, 4);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "copyInterpolatedColumnRange",
-                "(IL" + DENSITY_FUNCTION + ";[DII)V", false);
-    }
-
-    private void emitYIndependentPoint(MethodVisitor method, AstNode node) {
-        this.loadPointInvocation(method, node);
-        method.visitVarInsn(Opcodes.DSTORE, 5);
-        method.visitVarInsn(Opcodes.ALOAD, 2);
-        method.visitVarInsn(Opcodes.ILOAD, 3);
-        method.visitVarInsn(Opcodes.ILOAD, 4);
-        method.visitVarInsn(Opcodes.DLOAD, 5);
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([DIID)V", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "copySourceColumn",
+                "(L" + DENSITY_FUNCTION + ";[FII)V", false);
     }
 
     private void emitGradient(MethodVisitor method, YClampedGradientNode node) {
@@ -163,14 +155,14 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 6);
         method.visitInsn(Opcodes.IMUL);
         method.visitInsn(Opcodes.IADD);
-        method.visitInsn(Opcodes.I2D);
-        method.visitLdcInsn((double) node.fromY());
-        method.visitLdcInsn((double) node.toY());
+        method.visitInsn(Opcodes.I2F);
+        method.visitLdcInsn((float) node.fromY());
+        method.visitLdcInsn((float) node.toY());
         method.visitLdcInsn(node.fromValue());
         method.visitLdcInsn(node.toValue());
         method.visitMethodInsn(Opcodes.INVOKESTATIC, COLUMN_MATH, "clampedMap",
-                "(DDDDD)D", false);
-        method.visitInsn(Opcodes.DASTORE);
+                "(FFFFF)F", false);
+        method.visitInsn(Opcodes.FASTORE);
         emitLoopEnd(method, 7, loop);
     }
 
@@ -180,9 +172,9 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 5);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 5);
-        method.visitInsn(Opcodes.DALOAD);
+        method.visitInsn(Opcodes.FALOAD);
         emitUnaryOperation(method, node);
-        method.visitInsn(Opcodes.DASTORE);
+        method.visitInsn(Opcodes.FASTORE);
         emitLoopEnd(method, 5, loop);
     }
 
@@ -206,7 +198,7 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitInsn(Opcodes.ARRAYLENGTH);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "borrowDoubleArray", "(I)[D", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "borrowFloatArray", "(I)[F", false);
         method.visitVarInsn(Opcodes.ASTORE, 5);
         this.call(method, node.right(), 5, 3, 4);
         this.emitBinaryLoop(method, node, 5, 3, 4);
@@ -214,7 +206,8 @@ final class ColumnMethodEmitter {
     }
 
     private void emitConstantBinaryLoop(MethodVisitor method, BinaryNode node,
-                                        double constant, boolean constantOnLeft) {
+                                        float constant, boolean constantOnLeft) {
+        boolean multiplyByReciprocal = node instanceof DivNode && !constantOnLeft;
         Loop loop = emitLoopStart(method, 5, 3, 4);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 5);
@@ -223,10 +216,11 @@ final class ColumnMethodEmitter {
             loadArrayValue(method, 2, 5);
         } else {
             loadArrayValue(method, 2, 5);
-            method.visitLdcInsn(constant);
+            method.visitLdcInsn(multiplyByReciprocal ? 1.0F / constant : constant);
         }
-        emitBinaryOperation(method, node);
-        method.visitInsn(Opcodes.DASTORE);
+        if (multiplyByReciprocal) method.visitInsn(Opcodes.FMUL);
+        else emitBinaryOperation(method, node);
+        method.visitInsn(Opcodes.FASTORE);
         emitLoopEnd(method, 5, loop);
     }
 
@@ -237,7 +231,7 @@ final class ColumnMethodEmitter {
         loadArrayValue(method, 2, 6);
         loadArrayValue(method, scratch, 6);
         emitBinaryOperation(method, node);
-        method.visitInsn(Opcodes.DASTORE);
+        method.visitInsn(Opcodes.FASTORE);
         emitLoopEnd(method, 6, loop);
     }
 
@@ -260,7 +254,7 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.owner,
                 this.points.method(node), PointMethodEmitter.DESC, false);
-        method.visitInsn(Opcodes.DASTORE);
+        method.visitInsn(Opcodes.FASTORE);
         emitLoopEnd(method, 9, loop);
     }
 
@@ -287,32 +281,33 @@ final class ColumnMethodEmitter {
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.owner, this.method(node), DESC, false);
     }
 
-    private static void emitFill(MethodVisitor method, double value) {
+    private static void emitFill(MethodVisitor method, float value) {
         emitFill(method, 2, value, 3, 4);
     }
 
-    private static void emitFill(MethodVisitor method, int outputLocal, double value,
+    private static void emitFill(MethodVisitor method, int outputLocal, float value,
                                  int fromLocal, int toLocal) {
         method.visitVarInsn(Opcodes.ALOAD, outputLocal);
         method.visitVarInsn(Opcodes.ILOAD, fromLocal);
         method.visitVarInsn(Opcodes.ILOAD, toLocal);
         method.visitLdcInsn(value);
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([DIID)V", false);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, ARRAYS, "fill", "([FIIF)V", false);
     }
 
-    private static void emitUnaryOperation(MethodVisitor method, UnaryNode node) {
-        if (node instanceof AbsNode) invokeUnaryMath(method, "abs");
-        else if (node instanceof NegNode) method.visitInsn(Opcodes.DNEG);
+    static void emitUnaryOperation(MethodVisitor method, UnaryNode node) {
+        if (node instanceof NativeUnaryNode nativeUnary) PointMethodEmitter.emitNativeUnary(method, nativeUnary);
+        else if (node instanceof AbsNode) invokeUnaryMath(method, "abs");
+        else if (node instanceof NegNode) method.visitInsn(Opcodes.FNEG);
         else if (node instanceof SquareNode) {
-            method.visitInsn(Opcodes.DUP2);
-            method.visitInsn(Opcodes.DMUL);
+            method.visitInsn(Opcodes.DUP);
+            method.visitInsn(Opcodes.FMUL);
         } else if (node instanceof CubeNode) {
-            method.visitInsn(Opcodes.DUP2);
-            method.visitInsn(Opcodes.DUP2);
-            method.visitInsn(Opcodes.DMUL);
-            method.visitInsn(Opcodes.DMUL);
+            method.visitInsn(Opcodes.DUP);
+            method.visitInsn(Opcodes.DUP);
+            method.visitInsn(Opcodes.FMUL);
+            method.visitInsn(Opcodes.FMUL);
         } else if (node instanceof SqueezeNode) {
-            method.visitMethodInsn(Opcodes.INVOKESTATIC, COLUMN_MATH, "squeeze", "(D)D", false);
+            method.visitMethodInsn(Opcodes.INVOKESTATIC, COLUMN_MATH, "squeeze", "(F)F", false);
         } else if (node instanceof NegMulNode negMul) {
             emitNegMul(method, negMul.multiplier());
         } else {
@@ -320,33 +315,34 @@ final class ColumnMethodEmitter {
         }
     }
 
-    private static boolean supportsColumnUnary(UnaryNode node) {
-        return node instanceof AbsNode || node instanceof NegNode
+    static boolean supportsColumnUnary(UnaryNode node) {
+        return node instanceof NativeUnaryNode || node instanceof AbsNode || node instanceof NegNode
                 || node instanceof SquareNode || node instanceof CubeNode
                 || node instanceof SqueezeNode || node instanceof NegMulNode;
     }
 
-    private static void emitNegMul(MethodVisitor method, double multiplier) {
+    private static void emitNegMul(MethodVisitor method, float multiplier) {
         Label positive = new Label();
         Label end = new Label();
-        method.visitVarInsn(Opcodes.DSTORE, 10);
-        method.visitVarInsn(Opcodes.DLOAD, 10);
-        method.visitInsn(Opcodes.DCONST_0);
-        method.visitInsn(Opcodes.DCMPL);
+        method.visitVarInsn(Opcodes.FSTORE, 40);
+        method.visitVarInsn(Opcodes.FLOAD, 40);
+        method.visitInsn(Opcodes.FCONST_0);
+        method.visitInsn(Opcodes.FCMPL);
         method.visitJumpInsn(Opcodes.IFGT, positive);
-        method.visitVarInsn(Opcodes.DLOAD, 10);
+        method.visitVarInsn(Opcodes.FLOAD, 40);
         method.visitLdcInsn(multiplier);
-        method.visitInsn(Opcodes.DMUL);
+        method.visitInsn(Opcodes.FMUL);
         method.visitJumpInsn(Opcodes.GOTO, end);
         method.visitLabel(positive);
-        method.visitVarInsn(Opcodes.DLOAD, 10);
+        method.visitVarInsn(Opcodes.FLOAD, 40);
         method.visitLabel(end);
     }
 
-    private static void emitBinaryOperation(MethodVisitor method, BinaryNode node) {
-        if (node instanceof AddNode) method.visitInsn(Opcodes.DADD);
-        else if (node instanceof MulNode) method.visitInsn(Opcodes.DMUL);
-        else if (node instanceof DivNode) method.visitInsn(Opcodes.DDIV);
+    static void emitBinaryOperation(MethodVisitor method, BinaryNode node) {
+        if (node instanceof AddNode) method.visitInsn(Opcodes.FADD);
+        else if (node instanceof SubNode) { method.visitInsn(Opcodes.FNEG); method.visitInsn(Opcodes.FADD); }
+        else if (node instanceof MulNode) method.visitInsn(Opcodes.FMUL);
+        else if (node instanceof DivNode) method.visitInsn(Opcodes.FDIV);
         else if (node instanceof MinNode) invokeBinaryMath(method, "min");
         else if (node instanceof MaxNode) invokeBinaryMath(method, "max");
         else throw new IllegalArgumentException("Unsupported binary column node " + node.getClass().getName());
@@ -373,13 +369,13 @@ final class ColumnMethodEmitter {
     private static void loadArrayValue(MethodVisitor method, int arrayLocal, int indexLocal) {
         method.visitVarInsn(Opcodes.ALOAD, arrayLocal);
         method.visitVarInsn(Opcodes.ILOAD, indexLocal);
-        method.visitInsn(Opcodes.DALOAD);
+        method.visitInsn(Opcodes.FALOAD);
     }
 
     static void recycleScratch(MethodVisitor method, int local) {
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitVarInsn(Opcodes.ALOAD, local);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "recycleDoubleArray", "([D)V", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "recycleFloatArray", "([F)V", false);
     }
 
     private static void loadContextInt(MethodVisitor method, String name, int local) {
@@ -393,11 +389,11 @@ final class ColumnMethodEmitter {
     }
 
     private static void invokeUnaryMath(MethodVisitor method, String name) {
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", name, "(D)D", false);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", name, "(F)F", false);
     }
 
     private static void invokeBinaryMath(MethodVisitor method, String name) {
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", name, "(DD)D", false);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, "com/moepus/byepregen/dfc/runtime/FloatMath", name.equals("min") ? "volumeMin" : "volumeMax", "(FF)F", false);
     }
 
     private record Loop(Label start, Label end) {

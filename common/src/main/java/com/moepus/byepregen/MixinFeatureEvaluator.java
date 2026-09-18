@@ -39,8 +39,7 @@ final class MixinFeatureEvaluator {
             case NONE -> true;
             case ARENA -> config.worldgen().arena().enabled()
                     && !this.modExists.test("confluence");
-            case DFC -> config.worldgen().arena().enabled()
-                    && config.worldgen().arena().densityColumnCompiler();
+            case DFC -> config.worldgen().arena().densityColumnCompiler();
             case GC_FREE_CHUNK_SAVE -> config.chunkSaving().gcFreeWorldgen();
             case GC_FREE_RAW_CHUNK_IO -> this.rawChunkIoEnabled(config);
             case SURFACE_BIOME_CACHE -> config.worldgen().surface().biomeCache();

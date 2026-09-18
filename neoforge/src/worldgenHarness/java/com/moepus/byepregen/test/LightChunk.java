@@ -206,13 +206,7 @@ final class LightChunk {
         }
 
         private static int ceilLog2(int value) {
-            int result = 0;
-            int target = Math.max(1, value - 1);
-            while (target > 0) {
-                result++;
-                target >>>= 1;
-            }
-            return result;
+            return Integer.SIZE - Integer.numberOfLeadingZeros(Math.max(1, value - 1));
         }
     }
 }

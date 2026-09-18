@@ -117,10 +117,13 @@ public abstract class ChunkMapGcFreeSaveMixin {
 
     @Unique
     private Void byepregen$finishWrite(ChunkPos pos, Throwable throwable) {
-        if (throwable != null) {
-            this.level.getServer().reportChunkSaveFailure(throwable, this.byepregen$storageInfo(), pos);
+        try {
+            if (throwable != null) {
+                this.level.getServer().reportChunkSaveFailure(throwable, this.byepregen$storageInfo(), pos);
+            }
+        } finally {
+            this.activeChunkWrites.decrementAndGet();
         }
-        this.activeChunkWrites.decrementAndGet();
         return null;
     }
 

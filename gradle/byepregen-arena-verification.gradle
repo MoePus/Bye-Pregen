@@ -1,0 +1,87 @@
+sourceSets {
+    arenaHarness {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+loom.mods {
+    byepregen_arena_harness { sourceSet(sourceSets.arenaHarness) }
+}
+def resultDir = layout.buildDirectory.dir('arena-verification').get().asFile
+def arenaRuns = [arenaBaseline: false, arenaOptimized: true, arenaReload: true,
+                 arenaMaterialized: true, arenaVanillaReload: false, arenaFeatures: true, arenaDfc: true,
+                 arenaDfcFeatures: true]
+arenaRuns.each { name, enabled ->
+    def reload = name in ['arenaReload', 'arenaVanillaReload']
+    def runtime = name != 'arenaMaterialized'
+    def directory = name == 'arenaMaterialized' ? 'arena-materialized'
+            : name == 'arenaDfcFeatures' ? 'arena-dfc-features'
+            : name == 'arenaDfc' ? 'arena-dfc'
+            : name == 'arenaFeatures' ? 'arena-features'
+            : enabled || reload ? 'arena-optimized' : 'arena-baseline'
+    def serverDir = file("run/${directory}")
+    loom.runs.register(name) {
+        server()
+        source(sourceSets.arenaHarness)
+        ideConfigGenerated(false)
+        runDir(project.relativePath(serverDir))
+        programArgs('--nogui')
+        vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
+                // GC-free worldgen now defaults to off; keep covering the serializer these runs were built on.
+                '-Dbyepregen.testConfig.chunk-saving.gc-free-worldgen=True',
+                "-Dbyepregen.testConfig.worldgen.placed-features.enabled=${name in ['arenaFeatures', 'arenaDfcFeatures']}",
+                "-Dbyepregen.testConfig.worldgen.arena.enabled=${enabled}",
+                "-Dbyepregen.testConfig.worldgen.arena.density-column-compiler=${name in ['arenaDfc', 'arenaDfcFeatures']}",
+                "-Dbyepregen.testConfig.worldgen.arena.server-runtime=${runtime}",
+                "-Dbyepregen.arenaHarness.result=${new File(resultDir, name + '.txt').absolutePath}",
+                "-Dbyepregen.arenaHarness.reload=${reload}")
+    }
+    tasks.named('run' + name.capitalize()) {
+        group = 'verification'
+        if (name == 'arenaReload') dependsOn('runArenaOptimized')
+        if (name == 'arenaVanillaReload') dependsOn('runArenaReload')
+        doFirst {
+            if (!reload) delete(serverDir)
+            serverDir.mkdirs()
+            resultDir.mkdirs()
+            delete(new File(resultDir, name + '.txt'))
+            delete(new File(resultDir, name + '.txt.terrain'))
+            new File(serverDir, 'eula.txt').setText('eula=true\n', 'UTF-8')
+            new File(serverDir, 'server.properties').setText(
+                    'level-seed=8675309\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                    'view-distance=2\nsimulation-distance=2\nspawn-chunk-radius=0\n', 'UTF-8')
+        }
+        doLast {
+            def result = new File(resultDir, name + '.txt')
+            if (!result.isFile() || !result.getText('UTF-8').startsWith('PASS\n')) {
+                throw new GradleException("Arena runtime verification failed: ${result}")
+            }
+        }
+    }
+}
+tasks.register('testArenaRuntime') {
+    group = 'verification'
+    description = 'Compares RC2 terrain, biome palettes and validates Arena chunk reloads in all three dimensions.'
+    dependsOn('runArenaBaseline', 'runArenaMaterialized', 'runArenaVanillaReload', 'runArenaDfc')
+    doLast {
+        def baseline = new File(resultDir, 'arenaBaseline.txt.terrain').getText('UTF-8')
+        if (new File(resultDir, 'arenaOptimized.txt.terrain').getText('UTF-8') != baseline) {
+            throw new GradleException('Arena terrain differs from vanilla before features')
+        }
+        if (new File(resultDir, 'arenaMaterialized.txt.terrain').getText('UTF-8') != baseline) {
+            throw new GradleException('Materialized Arena terrain differs from vanilla')
+        }
+        // The DFC compiles the density samplers, including the six climate roots that decide biomes.
+        if (new File(resultDir, 'arenaDfc.txt.terrain').getText('UTF-8') != baseline) {
+            throw new GradleException('Compiled density differs from vanilla terrain or biomes')
+        }
+        if (new File(resultDir, 'arenaReload.txt').getText('UTF-8')
+                != new File(resultDir, 'arenaOptimized.txt').getText('UTF-8')) {
+            throw new GradleException('Arena full chunks changed during save/reload')
+        }
+        if (new File(resultDir, 'arenaVanillaReload.txt').getText('UTF-8')
+                != new File(resultDir, 'arenaOptimized.txt').getText('UTF-8')) {
+            throw new GradleException('Vanilla cannot reload Arena chunks unchanged')
+        }
+    }
+}

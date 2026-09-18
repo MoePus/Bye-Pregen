@@ -1,0 +1,59 @@
+def resultDir = layout.buildDirectory.dir('feature-verification').get().asFile
+def cases = [featureBaseline: [false, false], featureLocal: [false, true],
+             featureOptimized: [true, true], featureVanillaStorage: [true, true]]
+cases.each { name, flags ->
+    def directory = file("run/${name}")
+    def result = new File(resultDir, name + '.txt')
+    loom.runs.register(name) {
+        server()
+        source(sourceSets.arenaHarness)
+        ideConfigGenerated(false)
+        runDir(project.relativePath(directory))
+        programArgs('--nogui')
+        vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
+                '-Dbyepregen.testConfig.worldgen.arena.density-column-compiler=false',
+                "-Dbyepregen.testConfig.worldgen.arena.enabled=${name != 'featureVanillaStorage'}",
+                "-Dbyepregen.testConfig.worldgen.placed-features.enabled=${flags[0]}",
+                "-Dbyepregen.testConfig.worldgen.placed-features.local-optimizations=${flags[1]}",
+                "-Dbyepregen.featureHarness.result=${result.absolutePath}")
+    }
+    tasks.named('run' + name.capitalize()) {
+        group = 'verification'
+        doFirst {
+            directory.mkdirs()
+            resultDir.mkdirs()
+            delete(result)
+            delete(new File(resultDir, name + '.txt.trees-exact'))
+            new File(directory, 'eula.txt').setText('eula=true\n', 'UTF-8')
+            new File(directory, 'server.properties').setText(
+                    'level-seed=8675309\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                    'view-distance=2\nsimulation-distance=2\nspawn-chunk-radius=0\n', 'UTF-8')
+        }
+        doLast {
+            if (!result.isFile() || !result.getText('UTF-8').startsWith('PASS\n')) {
+                throw new GradleException("Feature verification failed: ${result}")
+            }
+        }
+    }
+}
+tasks.register('testFeatureRuntime') {
+    group = 'verification'
+    description = 'Compares RC2 features; tree cases allow live leaf distance, distance-only writes and leaf distance tick differences.'
+    dependsOn(cases.keySet().collect { 'run' + it.capitalize() })
+    dependsOn('runArenaFeatures')
+    doLast {
+        def baseline = new File(resultDir, 'featureBaseline.txt').getText('UTF-8')
+        ['featureLocal', 'featureOptimized', 'featureVanillaStorage'].each { name ->
+            if (new File(resultDir, name + '.txt').getText('UTF-8') != baseline) {
+                throw new GradleException("Features differ from vanilla: ${name}")
+            }
+        }
+        // Exact tree states and writes must still match across all optimized execution/storage modes.
+        def exactTrees = new File(resultDir, 'featureLocal.txt.trees-exact').getText('UTF-8')
+        ['featureOptimized', 'featureVanillaStorage'].each { name ->
+            if (new File(resultDir, name + '.txt.trees-exact').getText('UTF-8') != exactTrees) {
+                throw new GradleException("Tree execution/storage differs: ${name}")
+            }
+        }
+    }
+}

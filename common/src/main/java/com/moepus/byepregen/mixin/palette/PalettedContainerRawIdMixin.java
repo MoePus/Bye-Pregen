@@ -1,7 +1,7 @@
 package com.moepus.byepregen.mixin.palette;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
-import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
+import com.moepus.byepregen.palette.access.PaletteRawIds;
 import net.minecraft.world.level.chunk.Palette;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.Strategy;
@@ -23,9 +23,6 @@ public abstract class PalettedContainerRawIdMixin<T> implements BlockStateRawIdA
         PalettedContainer.Data<T> data = this.data;
         int localId = data.storage().get(this.strategy.getIndex(x, y, z));
         Palette<T> palette = data.palette();
-        if (palette instanceof PaletteRawIdAccess rawIdAccess) {
-            return rawIdAccess.byepregen$rawIdForLocalId(localId, this.strategy.globalMap());
-        }
-        throw new UnsupportedOperationException("Missing raw-id access for palette " + palette.getClass().getName());
+        return PaletteRawIds.get(palette, localId, this.strategy.globalMap());
     }
 }

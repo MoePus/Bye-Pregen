@@ -1,7 +1,6 @@
 package com.moepus.byepregen.worldgen.surface;
 
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -29,8 +28,10 @@ final class SurfaceScalarClassEmitter {
                         Type.getInternalName(SurfaceBoundedStoneDepthRule.class)
                 }
                 : new String[]{this.context.abi().ruleOwner()};
+        // 26.3: hidden classes are defined from the compiler's own lookup, so the generated class
+        // lives in this package next to its nest host instead of inside SurfaceRules.
         this.writer.visit(
-                Opcodes.V21,
+                Opcodes.V25,
                 CLASS_ACCESS,
                 this.context.owner(),
                 null,
@@ -41,42 +42,8 @@ final class SurfaceScalarClassEmitter {
         this.emitConstructor();
         this.emitRoot();
         this.emitRegions();
-        this.emitNoiseSamples();
         this.writer.visitEnd();
         return this.writer.toByteArray();
-    }
-
-    static void emitColumnReset(MethodVisitor method, SurfaceEmissionContext context) {
-        if (context.layout().noiseSampleBanks() == 0) {
-            return;
-        }
-        Label currentColumn = new Label();
-        context.loadContext(method);
-        context.invokeContext(method, SurfaceRuntimeAbi.LAST_UPDATE_XZ, "()J");
-        method.visitVarInsn(Opcodes.LSTORE, 4);
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitFieldInsn(
-                Opcodes.GETFIELD,
-                context.owner(),
-                SurfaceEmissionContext.COLUMN_EPOCH_FIELD,
-                "J"
-        );
-        method.visitVarInsn(Opcodes.LLOAD, 4);
-        method.visitInsn(Opcodes.LCMP);
-        method.visitJumpInsn(Opcodes.IFEQ, currentColumn);
-
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitVarInsn(Opcodes.LLOAD, 4);
-        method.visitFieldInsn(
-                Opcodes.PUTFIELD,
-                context.owner(),
-                SurfaceEmissionContext.COLUMN_EPOCH_FIELD,
-                "J"
-        );
-        for (int bank = 0; bank < context.layout().noiseSampleBanks(); bank++) {
-            clearLongField(method, context.owner(), SurfaceEmissionContext.sampledField(bank));
-        }
-        method.visitLabel(currentColumn);
     }
 
     private void emitFields() {
@@ -95,37 +62,6 @@ final class SurfaceScalarClassEmitter {
                     null,
                     null
             ).visitEnd();
-        }
-        this.emitCacheFields();
-    }
-
-    private void emitCacheFields() {
-        if (this.context.layout().noiseSampleBanks() != 0) {
-            this.writer.visitField(
-                    Opcodes.ACC_PRIVATE,
-                    SurfaceEmissionContext.COLUMN_EPOCH_FIELD,
-                    "J",
-                    null,
-                    null
-            ).visitEnd();
-            for (int bank = 0; bank < this.context.layout().noiseSampleBanks(); bank++) {
-                this.writer.visitField(
-                        Opcodes.ACC_PRIVATE,
-                        SurfaceEmissionContext.sampledField(bank),
-                        "J",
-                        null,
-                        null
-                ).visitEnd();
-            }
-            for (int bank = 0; bank < this.context.layout().noiseValueBanks(); bank++) {
-                this.writer.visitField(
-                        Opcodes.ACC_PRIVATE,
-                        SurfaceEmissionContext.valuesField(bank),
-                        "J",
-                        null,
-                        null
-                ).visitEnd();
-            }
         }
     }
 
@@ -215,20 +151,5 @@ final class SurfaceScalarClassEmitter {
             );
             this.rules.emitRegion(method, region);
         }
-    }
-
-    private void emitNoiseSamples() {
-        SurfaceNoiseSampleEmitter emitter = new SurfaceNoiseSampleEmitter(
-                this.context, this.writer
-        );
-        for (SurfaceScalarLayout.NoiseSample sample : this.context.layout().noiseSamples()) {
-            emitter.emit(sample);
-        }
-    }
-
-    private static void clearLongField(MethodVisitor method, String owner, String name) {
-        method.visitVarInsn(Opcodes.ALOAD, 0);
-        method.visitInsn(Opcodes.LCONST_0);
-        method.visitFieldInsn(Opcodes.PUTFIELD, owner, name, "J");
     }
 }

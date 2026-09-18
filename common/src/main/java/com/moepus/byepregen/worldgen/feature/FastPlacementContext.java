@@ -1,205 +1,141 @@
 package com.moepus.byepregen.worldgen.feature;
 
-import java.util.IdentityHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Vec3i;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
-import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
+import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.FeatureCountTracker;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 
+/** Per-call primitive work stack with RC2's collect-before-descend ordering. */
 public final class FastPlacementContext {
-    private static final int INITIAL_STACK_SIZE = 8;
-    private static final ThreadLocal<Stack> STACK = ThreadLocal.withInitial(Stack::new);
-
+    private static final int COORDINATES = 3;
+    private static final int MAX_POOLED_CONTEXTS = 8;
+    private static final ThreadLocal<ArrayDeque<FastPlacementContext>> POOL =
+            ThreadLocal.withInitial(ArrayDeque::new);
+    private final IntArrayList pending = new IntArrayList();
+    private final IntArrayList emitted = new IntArrayList();
+    private final List<BlockPos> nativePositions = new ArrayList<>();
     private final BlockPos.MutableBlockPos modifierPos = new BlockPos.MutableBlockPos();
     private PlacementContext placementContext;
     private RandomSource random;
-    private ConfiguredFeature<?, ?> feature;
+    private Feature feature;
     private List<PlacementModifier> modifiers;
-    private FastPlacementContext parent;
-    private IdentityHashMap<DiskConfiguration, KnownFalseDiskPredicateCache> nestedDiskCaches;
-    private Terminal terminal;
+    private PredicateMemoizedDiskPlacement diskPlacement;
     private boolean placed;
 
-    private FastPlacementContext() {
-    }
+    private FastPlacementContext() { }
 
-    public static FastPlacementContext acquire(
-        PlacementContext placementContext,
-        RandomSource random,
-        ConfiguredFeature<?, ?> feature,
-        List<PlacementModifier> modifiers
-    ) {
-        Stack stack = STACK.get();
-        FastPlacementContext parent = stack.current();
-        FastPlacementContext context = stack.acquire();
-        context.init(placementContext, random, feature, modifiers);
-        context.parent = parent;
-        return context;
+    public static FastPlacementContext acquire(PlacementContext context, RandomSource random,
+                                               Feature feature, List<PlacementModifier> modifiers) {
+        FastPlacementContext result = POOL.get().pollFirst();
+        if (result == null) result = new FastPlacementContext();
+        result.placementContext = context;
+        result.random = random;
+        result.feature = feature;
+        result.modifiers = modifiers;
+        return result;
     }
 
     public static void release(FastPlacementContext context) {
-        STACK.get().release(context);
+        if (context.placementContext == null) throw new IllegalStateException("Placement context is already released");
+        context.pending.clear();
+        context.emitted.clear();
+        context.nativePositions.clear();
+        context.placementContext = null;
+        context.random = null;
+        context.feature = null;
+        context.modifiers = null;
+        context.diskPlacement = null;
+        context.placed = false;
+        ArrayDeque<FastPlacementContext> pool = POOL.get();
+        if (pool.size() < MAX_POOLED_CONTEXTS) pool.addFirst(context);
     }
 
-    public static FastPlacementContext current() {
-        return STACK.get().current();
+    public boolean place(BlockPos origin, FeaturePlan plan) {
+        if (this.modifiers.isEmpty()) {
+            this.trackPlacement();
+            return this.feature.place(this.placementContext.getLevel(), this.placementContext.generator(), this.random, origin);
+        }
+        this.diskPlacement = plan.open(this);
+        this.push(origin.getX(), origin.getY(), origin.getZ(), 0);
+        while (!this.pending.isEmpty()) this.advance();
+        return this.diskPlacement == null ? this.placed : this.diskPlacement.placed();
     }
 
-    private void init(
-        PlacementContext placementContext,
-        RandomSource random,
-        ConfiguredFeature<?, ?> feature,
-        List<PlacementModifier> modifiers
-    ) {
-        this.placementContext = placementContext;
-        this.random = random;
-        this.feature = feature;
-        this.modifiers = modifiers;
-        this.nestedDiskCaches = null;
-        this.terminal = null;
-        this.placed = false;
+    private void advance() {
+        int index = this.pop();
+        int z = this.pop();
+        int y = this.pop();
+        int x = this.pop();
+        this.emitted.clear();
+        this.collect(this.modifiers.get(index), x, y, z);
+        if (index + 1 == this.modifiers.size()) {
+            this.placeEmitted();
+            return;
+        }
+        for (int offset = this.emitted.size() - COORDINATES; offset >= 0; offset -= COORDINATES) {
+            this.push(this.emitted.getInt(offset), this.emitted.getInt(offset + 1),
+                    this.emitted.getInt(offset + 2), index + 1);
+        }
     }
 
-    private void clear() {
-        this.placementContext = null;
-        this.random = null;
-        this.feature = null;
-        this.modifiers = null;
-        this.parent = null;
-        this.nestedDiskCaches = null;
-        this.terminal = null;
-        this.placed = false;
+    private void collect(PlacementModifier modifier, int x, int y, int z) {
+        if (modifier instanceof FastPlacementModifier fast) {
+            fast.byepregen$collectPositions(this, x, y, z);
+            return;
+        }
+        // Keep references until modify returns, matching vanilla even for a reused mutable position.
+        try {
+            modifier.modify(this.placementContext, this.random, new BlockPos(x, y, z), this.nativePositions::add);
+            for (BlockPos pos : this.nativePositions) this.emit(pos.getX(), pos.getY(), pos.getZ());
+        } finally {
+            this.nativePositions.clear();
+        }
     }
 
-    public boolean apply(int index, int x, int y, int z) {
-        if (index == this.modifiers.size()) {
-            if (this.terminal != null) {
-                this.terminal.accept(x, y, z);
-                return this.placed;
+    private void placeEmitted() {
+        for (int offset = 0; offset < this.emitted.size(); offset += COORDINATES) {
+            int x = this.emitted.getInt(offset);
+            int y = this.emitted.getInt(offset + 1);
+            int z = this.emitted.getInt(offset + 2);
+            if (this.diskPlacement == null) {
+                this.placed |= this.feature.place(this.placementContext.getLevel(),
+                        this.placementContext.generator(), this.random, new BlockPos(x, y, z));
+            } else {
+                this.diskPlacement.placeOrigin(x, y, z);
             }
-            BlockPos pos = new BlockPos(x, y, z);
-            if (this.feature.place(this.placementContext.getLevel(), this.placementContext.generator(), this.random, pos)) {
-                this.placed = true;
-            }
-            return this.placed;
-        }
-
-        PlacementModifier modifier = this.modifiers.get(index);
-        ((FastPlacementModifier)(Object)modifier).byepregen$collectPositions(this, x, y, z, index + 1);
-        return this.placed;
-    }
-
-    public BlockPos.MutableBlockPos modifierPos(int x, int y, int z) {
-        return this.modifierPos.set(x, y, z);
-    }
-
-    public PlacementContext placementContext() {
-        return this.placementContext;
-    }
-
-    public PlacementContext nestedPlacementContext() {
-        if (this.placementContext.topFeature().isEmpty()) {
-            return this.placementContext;
-        }
-        return STACK.get().nestedPlacementContext(this.placementContext);
-    }
-
-    public RandomSource random() {
-        return this.random;
-    }
-
-    public ConfiguredFeature<?, ?> feature() {
-        return this.feature;
-    }
-
-    public List<PlacementModifier> modifiers() {
-        return this.modifiers;
-    }
-
-    public FastPlacementContext parent() {
-        return this.parent;
-    }
-
-    KnownFalseDiskPredicateCache nestedDiskCache(
-            DiskConfiguration config,
-            Vec3i[] dependencies
-    ) {
-        if (this.nestedDiskCaches == null) {
-            this.nestedDiskCaches = new IdentityHashMap<>();
-        }
-        return this.nestedDiskCaches.computeIfAbsent(config, ignored -> new KnownFalseDiskPredicateCache(
-                dependencies,
-                this.placementContext.getLevel().getMinY(),
-                this.placementContext.getLevel().getMaxY() + 1
-        ));
-    }
-
-    public void terminal(Terminal terminal) {
-        this.terminal = terminal;
-    }
-
-    @FunctionalInterface
-    public interface Terminal {
-        void accept(int x, int y, int z);
-    }
-
-    private static final class Stack {
-        private FastPlacementContext[] contexts = new FastPlacementContext[INITIAL_STACK_SIZE];
-        private int depth;
-        private PlacementContext nestedPlacementContext;
-
-        private FastPlacementContext acquire() {
-            if (this.depth == this.contexts.length) {
-                this.grow();
-            }
-
-            FastPlacementContext context = this.contexts[this.depth];
-            if (context == null) {
-                context = new FastPlacementContext();
-                this.contexts[this.depth] = context;
-            }
-
-            this.depth++;
-            return context;
-        }
-
-        private FastPlacementContext current() {
-            return this.depth == 0 ? null : this.contexts[this.depth - 1];
-        }
-
-        private PlacementContext nestedPlacementContext(PlacementContext source) {
-            if (this.nestedPlacementContext == null) {
-                WorldGenLevel level = source.getLevel();
-                ChunkGenerator generator = source.generator();
-                this.nestedPlacementContext = new PlacementContext(level, generator, Optional.empty());
-            }
-            return this.nestedPlacementContext;
-        }
-
-        private void release(FastPlacementContext context) {
-            this.depth--;
-            if (this.contexts[this.depth] != context) {
-                throw new IllegalStateException("FastPlacementContext stack released out of order");
-            }
-            context.clear();
-            if (this.depth == 0) {
-                this.nestedPlacementContext = null;
-            }
-        }
-
-        private void grow() {
-            FastPlacementContext[] oldContexts = this.contexts;
-            FastPlacementContext[] newContexts = new FastPlacementContext[oldContexts.length * 2];
-            System.arraycopy(oldContexts, 0, newContexts, 0, oldContexts.length);
-            this.contexts = newContexts;
+            this.trackPlacement();
         }
     }
+
+    private void trackPlacement() {
+        if (SharedConstants.DEBUG_FEATURE_COUNT) {
+            FeatureCountTracker.featurePlaced(this.placementContext.getLevel().getLevel(),
+                    this.feature, this.placementContext.topFeature());
+        }
+    }
+
+    public void emit(int x, int y, int z) {
+        this.emitted.add(x);
+        this.emitted.add(y);
+        this.emitted.add(z);
+    }
+
+    private void push(int x, int y, int z, int modifierIndex) {
+        this.pending.add(x);
+        this.pending.add(y);
+        this.pending.add(z);
+        this.pending.add(modifierIndex);
+    }
+
+    private int pop() { return this.pending.removeInt(this.pending.size() - 1); }
+    public BlockPos.MutableBlockPos modifierPos(int x, int y, int z) { return this.modifierPos.set(x, y, z); }
+    public PlacementContext placementContext() { return this.placementContext; }
+    public RandomSource random() { return this.random; }
 }

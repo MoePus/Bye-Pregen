@@ -1,182 +1,165 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2021-2026 ishland
- */
-
 package com.moepus.byepregen.dfc.frontend;
 
 import com.moepus.byepregen.api.dfc.ColumnDensityFunctionRegistry;
 import com.moepus.byepregen.dfc.ast.AstNode;
 import com.moepus.byepregen.dfc.ast.AstNodes;
 import com.moepus.byepregen.dfc.ast.AstNodes.*;
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import net.minecraft.util.CubicSpline;
-import net.minecraft.world.level.levelgen.DensityFunction;
-import net.minecraft.world.level.levelgen.DensityFunctions;
+import com.moepus.byepregen.dfc.runtime.*;
+import java.util.*;
+import java.util.function.Function;
+import net.minecraft.world.level.levelgen.densityfunction.*;
+import net.minecraft.world.level.levelgen.densityfunction.generator.*;
+import net.minecraft.world.level.levelgen.densityfunction.op.*;
 
-/** Converts a seed-bound vanilla density graph to ByePregen's immutable column AST. */
+/** Converts the 26.3 graph while retaining native noise, axis slicing and extension boundaries. */
 public final class DensityFunctionFrontend {
     private final Map<DensityFunction, AstNode> memo = new IdentityHashMap<>();
+    private final DensityFunction.CompileContext context;
+    private final Function<DensityFunction, DensitySampler> boundaryCompiler;
+
+    public DensityFunctionFrontend(DensityFunction.CompileContext context,
+                                   Function<DensityFunction, DensitySampler> boundaryCompiler) {
+        this.context = context;
+        this.boundaryCompiler = boundaryCompiler;
+    }
 
     public AstNode convert(DensityFunction function) {
         AstNode existing = this.memo.get(function);
         if (existing != null) return existing;
         AstNode result = this.convertNew(function);
-        this.memo.put(function, result);
+        if (!hasOpaque(result)) this.memo.put(function, result);
         return result;
     }
 
     private AstNode convertNew(DensityFunction function) {
-        if (function instanceof DensityFunctions.HolderHolder holder) {
-            return this.convert(holder.function().value());
+        if (function instanceof DensityFunctions.HolderHolder holder) return this.convert(holder.function().value());
+        if (function instanceof ConstantFunction value) return new ConstantNode(value.value());
+        if (function instanceof BinaryFunction binary) return this.binary(binary);
+        if (function instanceof UnaryFunction unary) return this.unary(unary);
+        if (function instanceof ClampFunction clamp) return new NativeUnaryNode(this.convert(clamp.input()),
+                NativeUnaryOp.CLAMP, clamp.min(), clamp.max());
+        if (function instanceof LerpFunction lerp) return new LerpNode(this.convert(lerp.alpha()),
+                this.convert(lerp.first()), this.convert(lerp.second()));
+        if (function instanceof RangeChoiceFunction range) return this.range(range);
+        if (function instanceof IntervalSelectFunction select
+                && select.functions().size() == select.thresholds().size() + 1) {
+            return new IntervalSelectNode(this.convert(select.input()), select.thresholds(),
+                    select.functions().stream().map(this::convert).toList());
         }
-        if (function instanceof DensityFunctions.Constant constant) {
-            return new ConstantNode(constant.value());
-        }
-        if (function instanceof DensityFunctions.TwoArgumentSimpleFunction binary) {
-            return this.binary(binary);
-        }
-        if (function instanceof DensityFunctions.Mapped mapped) return this.mapped(mapped);
-        if (function instanceof DensityFunctions.Clamp clamp) return this.clamp(clamp);
-        if (function instanceof DensityFunctions.Marker marker) return this.marker(marker);
-        if (function instanceof DensityFunctions.Noise noise) return this.noise(noise);
-        if (function instanceof DensityFunctions.ShiftedNoise noise) return this.shiftedNoise(noise);
-        if (function instanceof DensityFunctions.ShiftA shift) return this.shiftA(shift);
-        if (function instanceof DensityFunctions.ShiftB shift) return this.shiftB(shift);
-        if (function instanceof DensityFunctions.Shift shift) return this.shift(shift);
-        if (function instanceof DensityFunctions.RangeChoice range) return this.range(range);
-        if (function instanceof DensityFunctions.YClampedGradient gradient) return this.gradient(gradient);
-        if (function instanceof DensityFunctions.WeirdScaledSampler weird) return this.weird(weird);
-        if (function instanceof DensityFunctions.Spline spline) return this.spline(spline);
-        if (function instanceof DensityFunctions.BlendDensity blend) return this.convert(blend.input());
-        if (function instanceof DensityFunctions.BlendAlpha) return new ConstantNode(1.0D);
-        if (function instanceof DensityFunctions.BlendOffset) return new ConstantNode(0.0D);
-        return new DelegateNode(function, ColumnDensityFunctionRegistry.isYIndependentDelegate(function));
+        if (function instanceof SplineFunction spline) return this.spline(spline);
+        if (function instanceof CacheFunction cache) return this.convert(cache.input());
+        DensitySampler sampler = this.boundaryCompiler.apply(function);
+        AstNode imported = importKnownSampler(sampler);
+        if (imported != null) return imported;
+        boolean declared2D = ColumnDensityFunctionRegistry.isYIndependentDelegate(function);
+        int axes = declared2D
+                ? function.domainAxes() & ~DensityFunction.AXIS_Y : function.domainAxes();
+        // An explicit declaration permits collapsed batches and request-local reuse; unregistered
+        // extension functions keep their original batch volume and occurrence order.
+        boolean opaque = !declared2D && !this.knownPure(function) && !knownPureSampler(sampler);
+        NativeDensitySource source = new NativeDensitySource(sampler, axes, opaque);
+        return sampler instanceof InterpolatedInput
+                ? new SourceNode(source)
+                : new DelegateNode(source, (axes & DensityFunction.AXIS_Y) == 0);
     }
 
-    private AstNode binary(DensityFunctions.TwoArgumentSimpleFunction function) {
-        AstNode left = this.convert(function.argument1());
-        AstNode right = this.convert(function.argument2());
-        DensityFunctions.TwoArgumentSimpleFunction.Type type = function.type();
-        if (type == DensityFunctions.TwoArgumentSimpleFunction.Type.ADD) return new AddNode(left, right);
-        if (type == DensityFunctions.TwoArgumentSimpleFunction.Type.MUL) return new MulNode(left, right);
-        if (type == DensityFunctions.TwoArgumentSimpleFunction.Type.MIN) {
-            double rightMin = function.argument2().minValue();
-            return function.argument1().minValue() < rightMin
-                    ? new MinShortNode(left, right, rightMin)
-                    : new MinNode(left, right);
+    private static AstNode importKnownSampler(DensitySampler sampler) {
+        if (sampler instanceof CompiledDensitySampler compiled) return compiled.root();
+        if (sampler instanceof NativeDensitySource source && !source.eager()) {
+            return new DelegateNode(source, (source.axes() & DensityFunction.AXIS_Y) == 0);
         }
-        double rightMax = function.argument2().maxValue();
-        return function.argument1().maxValue() > rightMax
-                ? new MaxShortNode(left, right, rightMax)
-                : new MaxNode(left, right);
+        if (sampler instanceof CachingDensitySampler cached) {
+            AstNode input = importKnownSampler(cached.input());
+            if (input != null && !hasOpaque(input)) return new CacheNode(cached, CacheKind.CACHE_ONCE, input);
+        }
+        return null;
     }
 
-    private AstNode mapped(DensityFunctions.Mapped function) {
-        AstNode input = this.convert(function.input());
-        DensityFunctions.Mapped.Type type = function.type();
-        if (type == DensityFunctions.Mapped.Type.ABS) return new AbsNode(input);
-        if (type == DensityFunctions.Mapped.Type.SQUARE) return new SquareNode(input);
-        if (type == DensityFunctions.Mapped.Type.CUBE) return new CubeNode(input);
-        if (type == DensityFunctions.Mapped.Type.HALF_NEGATIVE) return new NegMulNode(input, 0.5D);
-        if (type == DensityFunctions.Mapped.Type.QUARTER_NEGATIVE) return new NegMulNode(input, 0.25D);
-        return new SqueezeNode(input);
-    }
-
-    private AstNode clamp(DensityFunctions.Clamp function) {
-        AstNode input = this.convert(function.input());
-        AstNode upper = new MinNode(new ConstantNode(function.maxValue()), input);
-        return new MaxNode(new ConstantNode(function.minValue()), upper);
-    }
-
-    private AstNode marker(DensityFunctions.Marker marker) {
-        CacheKind kind = switch (marker.type()) {
-            case Cache2D -> CacheKind.CACHE_2D;
-            case CacheOnce -> CacheKind.CACHE_ONCE;
-            case CacheAllInCell -> CacheKind.CACHE_ALL_IN_CELL;
-            case FlatCache -> CacheKind.FLAT_CACHE;
-            case Interpolated -> CacheKind.INTERPOLATED;
+    private AstNode binary(BinaryFunction function) {
+        AstNode left = this.convert(function.left()), right = this.convert(function.right());
+        return switch (function.type()) {
+            case ADD -> new AddNode(left, right);
+            case SUB -> new SubNode(left, right);
+            case MUL -> new MulNode(left, right);
+            case DIV -> new DivNode(left, right);
+            case MIN -> new MinShortNode(left, right, function.right().range().min());
+            case MAX -> new MaxShortNode(left, right, function.right().range().max());
         };
-        return new CacheNode(marker, kind, this.convert(marker.wrapped()));
     }
 
-    private AstNode noise(DensityFunctions.Noise function) {
-        return new NoiseNode(
-                scaledCoordinate(Axis.X, function.xzScale()),
-                scaledCoordinate(Axis.Y, function.yScale()),
-                scaledCoordinate(Axis.Z, function.xzScale()),
-                function.noise());
+    private AstNode unary(UnaryFunction function) {
+        AstNode input = this.convert(function.input());
+        return switch (function.type()) {
+            case ABS -> new AbsNode(input);
+            case SQUARE -> new SquareNode(input);
+            case CUBE -> new CubeNode(input);
+            case NEGATE -> new NegNode(input);
+            case HALF_NEGATIVE -> new NegMulNode(input, 0.5F);
+            case QUARTER_NEGATIVE -> new NegMulNode(input, 0.25F);
+            case SQUEEZE -> new SqueezeNode(input);
+            case RECIPROCAL -> new DivNode(new ConstantNode(1), input);
+            case SQRT -> new NativeUnaryNode(input, NativeUnaryOp.SQRT, 0, 0);
+            case LOG -> new NativeUnaryNode(input, NativeUnaryOp.LOG, 0, 0);
+            case SIGN -> new NativeUnaryNode(input, NativeUnaryOp.SIGN, 0, 0);
+        };
     }
 
-    private AstNode shiftedNoise(DensityFunctions.ShiftedNoise function) {
-        return new NoiseNode(
-                add(scaledCoordinate(Axis.X, function.xzScale()), this.convert(function.shiftX())),
-                add(scaledCoordinate(Axis.Y, function.yScale()), this.convert(function.shiftY())),
-                add(scaledCoordinate(Axis.Z, function.xzScale()), this.convert(function.shiftZ())),
-                function.noise());
+    private AstNode range(RangeChoiceFunction function) {
+        // Vanilla batches the in-range branch before the selector and the other branch.
+        AstNode inside = this.convert(function.whenInRange());
+        AstNode input = this.convert(function.input());
+        return new RangeChoiceNode(input, function.minInclusive(), function.maxExclusive(),
+                inside, this.convert(function.whenOutOfRange()));
     }
 
-    private AstNode shiftA(DensityFunctions.ShiftA function) {
-        return scaledNoise(function.offsetNoise(), Axis.X, null, Axis.Z);
-    }
-
-    private AstNode shiftB(DensityFunctions.ShiftB function) {
-        return scaledNoise(function.offsetNoise(), Axis.Z, Axis.X, null);
-    }
-
-    private AstNode shift(DensityFunctions.Shift function) {
-        return scaledNoise(function.offsetNoise(), Axis.X, Axis.Y, Axis.Z);
-    }
-
-    private static AstNode scaledNoise(
-            DensityFunction.NoiseHolder noise, Axis x, Axis y, Axis z
-    ) {
-        AstNode zero = new ConstantNode(0.0D);
-        AstNode sampled = new NoiseNode(quarter(x, zero), quarter(y, zero), quarter(z, zero), noise);
-        return new MulNode(new ConstantNode(4.0D), sampled);
-    }
-
-    private AstNode range(DensityFunctions.RangeChoice function) {
-        return new RangeChoiceNode(this.convert(function.input()), function.minInclusive(),
-                function.maxExclusive(), this.convert(function.whenInRange()),
-                this.convert(function.whenOutOfRange()));
-    }
-
-    private static AstNode gradient(DensityFunctions.YClampedGradient function) {
-        return new YClampedGradientNode(function.fromY(), function.toY(),
-                function.fromValue(), function.toValue());
-    }
-
-    private AstNode weird(DensityFunctions.WeirdScaledSampler function) {
-        return new WeirdScaledNode(this.convert(function.input()), function.noise(),
-                function.rarityValueMapper());
-    }
-
-    private AstNode spline(DensityFunctions.Spline function) {
-        List<DensityFunctions.Spline.Coordinate> keys =
-                AstNodes.collectSplineCoordinates(function.spline());
+    private AstNode spline(SplineFunction function) {
+        var keys = AstNodes.collectSplineCoordinates(function.spline());
         List<AstNode> children = new ArrayList<>(keys.size());
-        for (DensityFunctions.Spline.Coordinate coordinate : keys) {
-            children.add(this.convert(coordinate.function().value()));
-        }
+        for (SplineFunction.Coordinate key : keys) children.add(this.convert(key.function()));
         return new SplineNode(function.spline(), keys, children);
     }
 
-    private static AstNode scaledCoordinate(Axis axis, double scale) {
-        AstNode coordinate = new CoordinateNode(axis);
-        return scale == 1.0D ? coordinate : new MulNode(new ConstantNode(scale), coordinate);
+    public static boolean hasOpaque(AstNode node) {
+        Set<AstNode> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        return hasOpaque(node, visited);
     }
 
-    private static AstNode quarter(Axis axis, AstNode zero) {
-        return axis == null ? zero : new MulNode(new ConstantNode(0.25D), new CoordinateNode(axis));
+    private static boolean hasOpaque(AstNode node, Set<AstNode> visited) {
+        if (!visited.add(node)) return false;
+        DensitySampler source = node instanceof DelegateNode d ? d.delegate()
+                : node instanceof SourceNode s ? s.source() : null;
+        if (source instanceof NativeDensitySource nativeSource && nativeSource.eager()) return true;
+        for (AstNode child : node.children()) if (hasOpaque(child, visited)) return true;
+        return false;
     }
 
-    private static AstNode add(AstNode left, AstNode right) {
-        return right instanceof ConstantNode constant && constant.value() == 0.0D
-                ? left : new AddNode(left, right);
+    private static boolean knownPureSampler(DensitySampler sampler) {
+        if (sampler instanceof NativeDensitySource source) return !source.eager();
+        if (sampler instanceof CompiledDensitySampler compiled) return !hasOpaque(compiled.root());
+        if (sampler instanceof CachingDensitySampler cached) return knownPureSampler(cached.input());
+        if (sampler instanceof InterpolatedInput interpolation) return knownPureSampler(interpolation.input());
+        if (sampler instanceof SliceFunction.YSampler slice) return knownPureSampler(slice.input());
+        if (sampler instanceof SliceFunction.XSampler slice) return knownPureSampler(slice.input());
+        if (sampler instanceof SliceFunction.ZSampler slice) return knownPureSampler(slice.input());
+        if (sampler instanceof SliceFunction.XzSampler slice) return knownPureSampler(slice.input());
+        return sampler instanceof ConstantFunction.Sampler || sampler instanceof NoiseFunction.Sampler;
+    }
+
+    private boolean knownPure(DensityFunction function) {
+        if (function instanceof ConstantFunction || function instanceof GradientFunction
+                || function instanceof EndIslandFunction || function instanceof DistanceToPointFunction
+                || function instanceof ShiftNoiseFunction) return true;
+        if (function instanceof NoiseFunction noise) return this.pureInput(noise.shiftX())
+                && this.pureInput(noise.shiftY()) && this.pureInput(noise.shiftZ());
+        if (function instanceof SliceFunction s) return this.pureInput(s.input());
+        if (function instanceof InterpolatedFunction i) return this.pureInput(i.input());
+        // Combinators are represented by AST children and inherit purity through hasOpaque.
+        // Unrecognized boundaries keep native behavior unless their sampler carries a proven contract.
+        return false;
+    }
+
+    private boolean pureInput(DensityFunction function) {
+        // Use the converted child's contract so prepared caches retain proven purity.
+        return !hasOpaque(this.convert(function));
     }
 }

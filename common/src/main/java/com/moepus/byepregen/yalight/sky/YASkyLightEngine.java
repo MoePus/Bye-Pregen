@@ -15,7 +15,6 @@ import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -40,12 +39,10 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
     public YASkyLightEngine(LightChunkGetter chunkGetter) {
         super(chunkGetter, null);
         this.chunkGetter = chunkGetter;
-        BlockGetter levelReader = chunkGetter.getLevel();
         this.storage = new YALightStorage(chunkGetter, chunkGetter.getLevel(), LightLayer.SKY);
         this.minLightSection = this.storage.minLightSection();
         this.maxLightSection = this.storage.maxLightSection();
-        this.blocks = new YALightBlockAccess(
-                this.sourceCache, chunkGetter, levelReader, new BlockPos.MutableBlockPos());
+        this.blocks = new YALightBlockAccess(this.sourceCache, chunkGetter);
         this.ownerTransfers = new YASkyOwnerTransfers(this::propagateTransferredEdge);
         this.sources = new YASkySourcePropagator(
                 this, this.sourceCache, chunkGetter.getLevel().getMinY() - 1);

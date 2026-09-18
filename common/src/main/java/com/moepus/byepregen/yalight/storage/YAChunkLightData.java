@@ -47,10 +47,7 @@ public final class YAChunkLightData {
 
     public YANibbleArray getVisibleSection(int sectionY) {
         int index = this.index(sectionY);
-        if (index < 0) {
-            return null;
-        }
-        return this.getVisibleSectionByIndex(index);
+        return index < 0 ? null : this.visible[index];
     }
 
     public YANibbleArray[] visibleSections() {
@@ -59,11 +56,6 @@ public final class YAChunkLightData {
 
     public int minLightSection() {
         return this.minLightSection;
-    }
-
-    public YANibbleArray getVisibleSectionByIndex(int index) {
-        YANibbleArray[] visible = this.visible;
-        return visible[index];
     }
 
     public YANibbleArray getUpdatingSectionByIndex(int index) {

@@ -1,8 +1,6 @@
 package com.moepus.byepregen.yalight.engine;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -25,19 +23,10 @@ public final class YALightBlockAccess {
 
     private final YAChunkRunCache cache;
     private final LightChunkGetter chunkGetter;
-    private final BlockGetter level;
-    private final BlockPos.MutableBlockPos mutablePos;
 
-    public YALightBlockAccess(
-            YAChunkRunCache cache,
-            LightChunkGetter chunkGetter,
-            BlockGetter level,
-            BlockPos.MutableBlockPos mutablePos
-    ) {
+    public YALightBlockAccess(YAChunkRunCache cache, LightChunkGetter chunkGetter) {
         this.cache = cache;
         this.chunkGetter = chunkGetter;
-        this.level = level;
-        this.mutablePos = mutablePos;
     }
 
     public int blockAt(int x, int y, int z) {

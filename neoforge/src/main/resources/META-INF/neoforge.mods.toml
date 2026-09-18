@@ -10,7 +10,25 @@ authors = "${mod_authors}"
 description = '''${mod_description}'''
 
 [[mixins]]
-config = "${mod_id}.mixins.json"
+config = "${mod_id}.arena.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.dfc.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.features.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.yalight.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.runtime.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.storage.mixins.json"
+
+[[mixins]]
+config = "${mod_id}.worldgen.mixins.json"
 
 ["lithium:options"]
 "mixin.world.chunk_access" = false

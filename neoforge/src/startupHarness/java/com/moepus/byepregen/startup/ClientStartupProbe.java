@@ -2,8 +2,13 @@ package com.moepus.byepregen.startup;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ErrorScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.ModLoader;
+import net.neoforged.fml.ModLoadingIssue;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.i18n.FMLTranslations;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
@@ -17,6 +22,8 @@ public final class ClientStartupProbe {
     private int ticks;
     private int stableTicks;
     private boolean finished;
+    private boolean reportedIssues;
+    private int warnings;
 
     public ClientStartupProbe() {
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
@@ -28,21 +35,49 @@ public final class ClientStartupProbe {
         }
         Minecraft minecraft = Minecraft.getInstance();
         ++this.ticks;
-        if (minecraft.getWindow() != null && minecraft.screen != null) {
-            ++this.stableTicks;
+        if (!this.reportedIssues) {
+            this.reportedIssues = true;
+            if (this.reportLoadingIssues()) {
+                this.finishWithFailure(minecraft, "Client has fatal mod loading issues");
+                return;
+            }
         }
+        if (minecraft.gui.screen() instanceof ErrorScreen) {
+            this.finishWithFailure(minecraft, "Client reached " + minecraft.gui.screen().getClass().getName());
+            return;
+        }
+        boolean ready = minecraft.getWindow() != null && minecraft.gui.overlay() == null
+                && minecraft.gui.screen() instanceof TitleScreen;
+        this.stableTicks = ready ? this.stableTicks + 1 : 0;
         if (this.stableTicks >= STABLE_TICKS) {
             this.finished = true;
-            passAndStop(minecraft);
+            this.passAndStop(minecraft);
         } else if (this.ticks >= TIMEOUT_TICKS) {
-            this.finished = true;
-            failAndStop(minecraft);
+            this.finishWithFailure(minecraft, "Client did not finish loading and reach the title screen: "
+                    + minecraft.gui.screen());
         }
     }
 
-    private static void passAndStop(Minecraft minecraft) {
+    private boolean reportLoadingIssues() {
+        boolean fatal = false;
+        for (var issue : ModLoader.getLoadingIssues()) {
+            String message = FMLTranslations.translateIssueEnglish(issue);
+            if (issue.severity() == ModLoadingIssue.Severity.ERROR) {
+                LOGGER.error("Client loading issue: {}", message);
+                fatal = true;
+            } else {
+                ++this.warnings;
+                LOGGER.warn("Client loading warning: {}", message);
+            }
+        }
+        return fatal;
+    }
+
+    private void passAndStop(Minecraft minecraft) {
         try {
-            StartupResult.pass("client", "screen=" + minecraft.screen.getClass().getName());
+            StartupResult.pass("client", "screen=" + minecraft.gui.screen().getClass().getName()
+                    + "\nresourcesLoaded=true\nstableTicks=" + this.stableTicks
+                    + "\nloadingErrors=0\nloadingWarnings=" + this.warnings);
             LOGGER.info("BYEPREGEN_STARTUP_CLIENT_PASS");
         } catch (Throwable throwable) {
             StartupResult.fail(throwable);
@@ -52,8 +87,9 @@ public final class ClientStartupProbe {
         }
     }
 
-    private static void failAndStop(Minecraft minecraft) {
-        IllegalStateException failure = new IllegalStateException("Client did not reach a stable screen");
+    private void finishWithFailure(Minecraft minecraft, String message) {
+        this.finished = true;
+        IllegalStateException failure = new IllegalStateException(message);
         StartupResult.fail(failure);
         LOGGER.error("BYEPREGEN_STARTUP_FAIL client", failure);
         minecraft.stop();

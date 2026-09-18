@@ -1,0 +1,30 @@
+accessWidener v2 official
+accessible field net/minecraft/world/level/levelgen/densityfunction/DensityBuffer values [F
+extendable class net/minecraft/nbt/CompoundTag
+accessible method net/minecraft/nbt/CompoundTag <init> (Ljava/util/Map;)V
+accessible class net/minecraft/world/level/chunk/Configuration
+accessible class net/minecraft/world/level/chunk/PalettedContainer$Data
+accessible method net/minecraft/world/level/chunk/PalettedContainer$Data <init> (Lnet/minecraft/world/level/chunk/Configuration;Lnet/minecraft/util/BitStorage;Lnet/minecraft/world/level/chunk/Palette;)V
+accessible field net/minecraft/world/level/chunk/PalettedContainer data Lnet/minecraft/world/level/chunk/PalettedContainer$Data;
+accessible method net/minecraft/world/level/chunk/PalettedContainer createOrReuseData (Lnet/minecraft/world/level/chunk/PalettedContainer$Data;I)Lnet/minecraft/world/level/chunk/PalettedContainer$Data;
+accessible class net/minecraft/world/level/biome/Climate$RTree
+accessible class net/minecraft/world/level/biome/Climate$RTree$Node
+accessible class net/minecraft/world/level/biome/Climate$RTree$Leaf
+accessible class net/minecraft/world/level/biome/Climate$RTree$SubTree
+accessible class net/minecraft/world/level/biome/Climate$DistanceMetric
+accessible field net/minecraft/world/level/biome/Climate$RTree$Node parameterSpace [Lnet/minecraft/world/level/biome/Climate$Parameter;
+accessible field net/minecraft/world/level/biome/Climate$RTree$Leaf value Ljava/lang/Object;
+accessible field net/minecraft/world/level/biome/Climate$RTree$SubTree children [Lnet/minecraft/world/level/biome/Climate$RTree$Node;
+# YA light derives from the two vanilla layer engines, which 26.3 declares final, and reads the
+# reusable positions of the sky light sources.
+accessible class net/minecraft/world/level/lighting/BlockLightEngine
+extendable class net/minecraft/world/level/lighting/BlockLightEngine
+accessible class net/minecraft/world/level/lighting/SkyLightEngine
+extendable class net/minecraft/world/level/lighting/SkyLightEngine
+accessible method net/minecraft/world/level/lighting/SkyLightEngine <init> (Lnet/minecraft/world/level/chunk/LightChunkGetter;Lnet/minecraft/world/level/lighting/SkyLightSectionStorage;)V
+accessible field net/minecraft/world/level/lighting/ChunkSkyLightSources mutablePos1 Lnet/minecraft/core/BlockPos$MutableBlockPos;
+accessible field net/minecraft/world/level/lighting/ChunkSkyLightSources mutablePos2 Lnet/minecraft/core/BlockPos$MutableBlockPos;
+# Keep in sync with the matching entries in META-INF/arena-core.cfg.
+accessible class net/minecraft/server/level/ThreadedLevelLightEngine$TaskType
+accessible method net/minecraft/server/level/ThreadedLevelLightEngine addTask (IILjava/util/function/IntSupplier;Lnet/minecraft/server/level/ThreadedLevelLightEngine$TaskType;Ljava/lang/Runnable;)V
+

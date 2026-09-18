@@ -227,26 +227,26 @@ public final class Config {
         }
     }
 
-    public record Misc(BooleanSetting flatCacheAccessSetting, BooleanSetting paletteLockSetting) {
+    public record Misc(BooleanSetting paletteLockSetting, BooleanSetting leafWorldgenTickSetting) {
         public Misc {
-            Objects.requireNonNull(flatCacheAccessSetting, "flatCacheAccessSetting");
             Objects.requireNonNull(paletteLockSetting, "paletteLockSetting");
+            Objects.requireNonNull(leafWorldgenTickSetting, "leafWorldgenTickSetting");
         }
 
-        public Misc(boolean flatCacheAccess, boolean paletteLock) {
-            this(BooleanSetting.explicit(flatCacheAccess), BooleanSetting.explicit(paletteLock));
+        public Misc(boolean paletteLock, boolean leafWorldgenTick) {
+            this(BooleanSetting.explicit(paletteLock), BooleanSetting.explicit(leafWorldgenTick));
         }
 
         public Misc() {
             this(BooleanSetting.DEFAULT, BooleanSetting.DEFAULT);
         }
 
-        public boolean flatCacheAccess() {
-            return this.flatCacheAccessSetting.resolve(true);
-        }
-
         public boolean paletteLock() {
             return this.paletteLockSetting.resolve(true);
+        }
+
+        public boolean leafWorldgenTick() {
+            return this.leafWorldgenTickSetting.resolve(true);
         }
     }
 
@@ -293,7 +293,7 @@ public final class Config {
         }
 
         public boolean gcFreeWorldgen() {
-            return this.gcFreeWorldgenSetting.resolve(true);
+            return this.gcFreeWorldgenSetting.resolve(false);
         }
 
         public boolean retainBuffer() {

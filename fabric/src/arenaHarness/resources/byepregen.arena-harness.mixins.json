@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "com.moepus.byepregen.arenatest.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "ArenaServerTestMixin",
+    "TerrainSnapshotMixin",
+    "ArenaFillProbeMixin",
+    "FeaturePlanProbeMixin",
+    "TreeSetProbeMixin",
+    "DfcSamplerProbeMixin",
+    "SurfaceBiomeProbeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

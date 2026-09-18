@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.chunkio;
 
+import com.moepus.byepregen.MixinFeature;
+import com.moepus.byepregen.MixinGate;
 import java.util.Set;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -9,6 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+@MixinGate(feature = MixinFeature.GC_FREE_CHUNK_SAVE)
 @Mixin(value = SerializableChunkData.class, remap = false)
 public abstract class ChunkSerializerLowStatusHeightmapMixin {
     @Redirect(
@@ -26,10 +29,18 @@ public abstract class ChunkSerializerLowStatusHeightmapMixin {
         }
 
         ChunkStatus status = chunk.getPersistedStatus();
-        if (status != null && status.isBefore(ChunkStatus.NOISE)) {
+        if (status != null && status.isBefore(ChunkStatus.TERRAIN) && byepregen$isEmpty(chunk)) {
             return;
         }
 
         Heightmap.primeHeightmaps(chunk, types);
+    }
+
+    private static boolean byepregen$isEmpty(ChunkAccess chunk) {
+        // Retrogen and nonstandard early chunks can already contain blocks.
+        for (var section : chunk.getSections()) {
+            if (!section.hasOnlyAir()) return false;
+        }
+        return true;
     }
 }

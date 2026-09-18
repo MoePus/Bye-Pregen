@@ -12,6 +12,18 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(value = LevelChunkSection.class, remap = false)
 public interface LevelChunkSectionAccessor {
+    @Accessor("nonEmptyBlockCount")
+    void byepregen$setNonEmptyBlockCount(short count);
+
+    @Accessor("fluidCount")
+    void byepregen$setFluidCount(short count);
+
+    @Accessor("tickingBlockCount")
+    void byepregen$setTickingBlockCount(short count);
+
+    @Accessor("tickingFluidCount")
+    void byepregen$setTickingFluidCount(short count);
+
     @Mutable
     @Accessor("states")
     void byepregen$setStates(PalettedContainer<BlockState> states);

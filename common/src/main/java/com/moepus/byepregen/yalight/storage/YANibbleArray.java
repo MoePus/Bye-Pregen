@@ -105,19 +105,7 @@ public final class YANibbleArray {
 
     public int getVisible(int x, int y, int z) {
         int state = this.visibleState;
-        if (state == STATE_NULL || state == STATE_ZERO) {
-            return 0;
-        }
-        if (state == STATE_FULL) {
-            return 15;
-        }
-        byte[] data = this.visible;
-        if (data == null) {
-            return 0;
-        }
-        int index = index(x, y, z);
-        int packed = UnsafeIntArrayAccess.get(data, index >>> 1) & 255;
-        return packed >>> ((index & 1) << 2) & 15;
+        return state == STATE_INIT ? readPacked(this.visible, index(x, y, z)) : packedDefault(state);
     }
 
     public int getUpdating(int x, int y, int z) {
@@ -126,13 +114,15 @@ public final class YANibbleArray {
 
     public int getUpdating(int index) {
         int state = this.updatingState;
-        if (state == STATE_NULL || state == STATE_ZERO) {
-            return 0;
-        }
-        if (state == STATE_FULL) {
-            return 15;
-        }
-        byte[] data = this.updating;
+        return state == STATE_INIT ? readPacked(this.updating, index) : packedDefault(state);
+    }
+
+    // Only an INIT section stores bytes; a null or zero section reads as 0 and a full one as 15.
+    private static int packedDefault(int state) {
+        return state == STATE_FULL ? 15 : 0;
+    }
+
+    private static int readPacked(byte[] data, int index) {
         if (data == null) {
             return 0;
         }
@@ -175,19 +165,11 @@ public final class YANibbleArray {
         if (!this.isDirty()) {
             return;
         }
-        int state = this.updatingState;
-        if (state == STATE_NULL || state == STATE_ZERO || state == STATE_FULL) {
-            int oldState = this.visibleState;
-            this.visibleState = state;
-            if (oldState != STATE_INIT) {
-                this.visible = null;
-            }
-        } else {
-            byte[] updatingData = this.updating;
-            this.visible = updatingData;
-            this.updating = updatingData;
-            this.visibleState = state;
-        }
+        // A publish only ever happens from STATE_INIT: dirty is set by ensureUpdating alone, and that
+        // method moves the section to INIT. Any future mutator that marks a null/zero/full section dirty
+        // has to clear the visible bytes itself, or readers keep the previous INIT snapshot.
+        this.visible = this.updating;
+        this.visibleState = this.updatingState;
         this.visibleDataLayer = null;
         this.dirty = false;
     }

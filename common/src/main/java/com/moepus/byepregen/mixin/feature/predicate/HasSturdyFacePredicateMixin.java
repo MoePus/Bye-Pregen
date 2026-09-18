@@ -8,7 +8,7 @@ import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
-import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.blockpredicates.HasSturdyFacePredicate;
 import org.spongepowered.asm.mixin.*;
@@ -29,21 +29,16 @@ public abstract class HasSturdyFacePredicateMixin implements FastDiskBlockPredic
      * @reason Use FastBlockPredicateOptimizer fast path.
      */
     @Overwrite
-    public boolean test(WorldGenLevel level, BlockPos pos) {
+    public boolean test(LevelAccessor level, BlockPos pos) {
         BlockState state = FastBlockPredicateOptimizer.getState(level, pos, this.offset);
-        BlockPos queriedPos = byepregen$isZero(this.offset) ? pos : pos.offset(this.offset);
+        BlockPos queriedPos = this.offset.equals(Vec3i.ZERO) ? pos : pos.offset(this.offset);
         return state.isFaceSturdy(level, queriedPos, this.direction);
     }
 
     @Override
     public boolean byepregen$test(FastDiskStateCursor cursor, BlockPos pos) {
         BlockState state = cursor.getState(this.offset);
-        BlockPos queriedPos = byepregen$isZero(this.offset) ? pos : pos.offset(this.offset);
+        BlockPos queriedPos = this.offset.equals(Vec3i.ZERO) ? pos : pos.offset(this.offset);
         return state.isFaceSturdy(cursor.level(), queriedPos, this.direction);
-    }
-
-    @Unique
-    private static boolean byepregen$isZero(Vec3i offset) {
-        return offset.getX() == 0 && offset.getY() == 0 && offset.getZ() == 0;
     }
 }

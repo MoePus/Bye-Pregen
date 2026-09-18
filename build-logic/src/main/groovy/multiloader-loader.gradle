@@ -43,6 +43,5 @@ tasks.named('jar', Jar) {
 
 tasks.named('sourcesJar', Jar) {
     dependsOn(configurations.commonJava, configurations.commonResources)
-    from(configurations.commonJava)
-    from(configurations.commonResources)
+    from(project(':common').sourceSets.main.allSource)
 }

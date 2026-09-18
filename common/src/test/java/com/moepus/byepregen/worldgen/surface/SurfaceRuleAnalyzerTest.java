@@ -1,22 +1,54 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import java.lang.reflect.Proxy;
+import com.mojang.serialization.MapCodec;
 import java.util.List;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderOwner;
+import net.minecraft.core.HolderSet;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.levelgen.SurfaceRules;
+import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
+import net.minecraft.world.level.levelgen.material.condition.BiomeCondition;
+import net.minecraft.world.level.levelgen.material.condition.ConditionEvaluator;
+import net.minecraft.world.level.levelgen.material.condition.HoleCondition;
+import net.minecraft.world.level.levelgen.material.condition.MaterialCondition;
+import net.minecraft.world.level.levelgen.material.condition.NotCondition;
+import net.minecraft.world.level.levelgen.material.rule.BandlandsRule;
+import net.minecraft.world.level.levelgen.material.rule.BlockRule;
+import net.minecraft.world.level.levelgen.material.rule.ConditionRule;
+import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
+import net.minecraft.world.level.levelgen.material.rule.RuleEvaluator;
+import net.minecraft.world.level.levelgen.material.rule.SequenceRule;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 26.3: the 26.2 test drove the analyzer through dynamic proxies implementing the accessor mixin
+ * interfaces. The transplanted analyzer reads the vanilla records directly, so the fixtures are the
+ * records themselves and only the "unknown shape" cases need local implementations.
+ */
 public final class SurfaceRuleAnalyzerTest {
+    private static final HolderOwner<Biome> BIOME_OWNER = new HolderOwner<>() {};
+
     private SurfaceRuleAnalyzerTest() {
+    }
+
+    @BeforeAll
+    static void bootstrap() {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @Test
     void preservesSourceOrderAndOpaqueSources() {
-        SurfaceRules.ConditionSource biome = fakeBiome();
-        SurfaceRules.RuleSource unknown = unknownRule();
-        SurfaceRules.RuleSource source = fakeSequence(List.of(
-                fakeTest(fakeNot(biome), SurfaceRules.bandlands()),
+        MaterialCondition biome = blankCondition();
+        MaterialRule unknown = unknownRule();
+        MaterialRule source = new SequenceRule(List.of(
+                new ConditionRule(new NotCondition(biome), BandlandsRule.INSTANCE),
                 unknown
         ));
 
@@ -29,9 +61,7 @@ public final class SurfaceRuleAnalyzerTest {
         SurfaceRulePlan.OpaqueCondition target = requireType(
                 not.target(), SurfaceRulePlan.OpaqueCondition.class
         );
-        requireType(
-                test.followup(), SurfaceRulePlan.Bandlands.class
-        );
+        requireType(test.followup(), SurfaceRulePlan.Bandlands.class);
         SurfaceRulePlan.OpaqueRule opaque = requireType(
                 root.rules().get(1), SurfaceRulePlan.OpaqueRule.class
         );
@@ -41,10 +71,10 @@ public final class SurfaceRuleAnalyzerTest {
 
     @Test
     void keepsUnknownSourcesAsOpaqueBarriers() {
-        SurfaceRules.ConditionSource condition = unknownCondition();
-        SurfaceRules.RuleSource source = fakeSequence(List.of(
-                fakeTest(condition, SurfaceRules.bandlands()),
-                fakeTest(condition, SurfaceRules.bandlands())
+        MaterialCondition condition = blankCondition();
+        MaterialRule source = new SequenceRule(List.of(
+                new ConditionRule(condition, BandlandsRule.INSTANCE),
+                new ConditionRule(condition, BandlandsRule.INSTANCE)
         ));
 
         SurfaceRulePlan.Sequence root = requireType(
@@ -53,8 +83,7 @@ public final class SurfaceRuleAnalyzerTest {
         SurfaceRulePlan.OpaqueCondition first = opaqueCondition(root.rules().get(0));
         SurfaceRulePlan.OpaqueCondition second = opaqueCondition(root.rules().get(1));
         assertNotEquals(first.value().id(), second.value().id(), "opaque values must be unique");
-        if (analyze(unknownRule()).root()
-                instanceof SurfaceRulePlan.OpaqueRule) {
+        if (analyze(unknownRule()).root() instanceof SurfaceRulePlan.OpaqueRule) {
             return;
         }
         throw new AssertionError("unknown root rule was not preserved as opaque");
@@ -62,9 +91,7 @@ public final class SurfaceRuleAnalyzerTest {
 
     @Test
     void recognizesSingletonIdentityWithoutMixins() {
-        SurfaceRules.RuleSource source = fakeTest(
-                SurfaceRules.hole(), SurfaceRules.bandlands()
-        );
+        MaterialRule source = new ConditionRule(HoleCondition.INSTANCE, BandlandsRule.INSTANCE);
         SurfaceRulePlan.Test test = requireType(
                 analyze(source).root(), SurfaceRulePlan.Test.class
         );
@@ -80,15 +107,50 @@ public final class SurfaceRuleAnalyzerTest {
 
     @Test
     void rejectsUnregisteredShapeImplementations() {
-        SurfaceRules.RuleSource source = fakeSequence(List.of(SurfaceRules.bandlands()));
-        requireType(SurfaceRuleAnalyzer.analyze(source).root(), SurfaceRulePlan.OpaqueRule.class);
+        MaterialRule impostor = new MaterialRule() {
+            @Override public RuleEvaluator compile(MaterialRuleContext context) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override public MapCodec<? extends MaterialRule> codec() {
+                throw new UnsupportedOperationException();
+            }
+        };
+        requireType(SurfaceRuleAnalyzer.analyze(impostor).root(), SurfaceRulePlan.OpaqueRule.class);
+        requireType(
+                SurfaceRuleAnalyzer.analyze(
+                        new SequenceRule(List.of(BandlandsRule.INSTANCE))
+                ).root(),
+                SurfaceRulePlan.Sequence.class
+        );
+    }
+
+    @Test
+    void unwrapsHolderWrappedSources() {
+        MaterialRule wrapped = new MaterialRule.HolderHolder(Holder.Reference.createIntrusive(
+                new HolderOwner<MaterialRule>() { },
+                new BlockRule(Blocks.STONE.defaultBlockState())
+        ));
+        requireType(analyze(wrapped).root(), SurfaceRulePlan.State.class);
+
+        MaterialCondition condition = new MaterialCondition.HolderHolder(
+                Holder.Reference.createIntrusive(
+                        new HolderOwner<MaterialCondition>() { },
+                        new NotCondition(HoleCondition.INSTANCE)
+                )
+        );
+        SurfaceRulePlan.Test test = requireType(
+                analyze(new ConditionRule(condition, BandlandsRule.INSTANCE)).root(),
+                SurfaceRulePlan.Test.class
+        );
+        requireType(test.condition(), SurfaceRulePlan.NotCondition.class);
     }
 
     @Test
     void canonicalizesSingletonValues() {
-        SurfaceRulePlan.Sequence root = requireType(analyze(fakeSequence(List.of(
-                fakeTest(SurfaceRules.hole(), SurfaceRules.bandlands()),
-                fakeTest(SurfaceRules.hole(), SurfaceRules.bandlands())
+        SurfaceRulePlan.Sequence root = requireType(analyze(new SequenceRule(List.of(
+                new ConditionRule(HoleCondition.INSTANCE, BandlandsRule.INSTANCE),
+                new ConditionRule(HoleCondition.INSTANCE, BandlandsRule.INSTANCE)
         ))).root(), SurfaceRulePlan.Sequence.class);
         SurfaceRulePlan.KnownCondition first = condition(root.rules().get(0));
         SurfaceRulePlan.KnownCondition second = condition(root.rules().get(1));
@@ -97,7 +159,7 @@ public final class SurfaceRuleAnalyzerTest {
 
     @Test
     void fallsBackAtAnalysisLimits() {
-        SurfaceRules.RuleSource source = fakeSequence(List.of(unknownRule(), unknownRule()));
+        MaterialRule source = new SequenceRule(List.of(unknownRule(), unknownRule()));
         SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(
                 source,
                 new SurfaceRuleAnalyzer.Limits(1, 1),
@@ -111,33 +173,41 @@ public final class SurfaceRuleAnalyzerTest {
 
     @Test
     void provesBoundedStoneDepthConservatively() {
-        SurfaceConditionSpec.StoneDepth adjacent = new SurfaceConditionSpec.StoneDepth(
-                0, false, 0, CaveSurface.CEILING
+        // 26.3: no CEILING check may appear in a plan whose stone-depth column scan is shortened,
+        // because MaterialRuleContext cannot re-answer those checks from the column.
+        assertEquals(
+                false,
+                planFor(stoneDepth(CaveSurface.CEILING, 0, false, 0)).boundedStoneDepthBelow(),
+                "ceiling check keeps the scan"
         );
-        assertEquals(true, planFor(adjacent).boundedStoneDepthBelow(), "adjacent ceiling");
-
-        SurfaceConditionSpec.StoneDepth dynamic = new SurfaceConditionSpec.StoneDepth(
-                0, true, 0, CaveSurface.CEILING
+        assertEquals(
+                false,
+                planFor(stoneDepth(CaveSurface.CEILING, 0, true, 0)).boundedStoneDepthBelow(),
+                "dynamic ceiling keeps the scan"
         );
-        assertEquals(false, planFor(dynamic).boundedStoneDepthBelow(), "dynamic ceiling");
-
-        SurfaceConditionSpec.StoneDepth secondBelow = new SurfaceConditionSpec.StoneDepth(
-                1, false, 0, CaveSurface.CEILING
+        assertEquals(
+                false,
+                planFor(stoneDepth(CaveSurface.CEILING, 1, false, 0)).boundedStoneDepthBelow(),
+                "second block below keeps the scan"
         );
-        assertEquals(false, planFor(secondBelow).boundedStoneDepthBelow(), "second block below");
-
-        SurfaceConditionSpec.StoneDepth secondary = new SurfaceConditionSpec.StoneDepth(
-                0, false, 1, CaveSurface.CEILING
+        assertEquals(
+                false,
+                planFor(stoneDepth(CaveSurface.CEILING, -1, false, 0)).boundedStoneDepthBelow(),
+                "fixed false ceiling keeps the scan"
         );
-        assertEquals(false, planFor(secondary).boundedStoneDepthBelow(), "secondary ceiling");
-
-        SurfaceConditionSpec.StoneDepth fixedFalse = new SurfaceConditionSpec.StoneDepth(
-                -1, false, 0, CaveSurface.CEILING
+        assertEquals(
+                true,
+                planFor(stoneDepth(CaveSurface.FLOOR, 0, false, 0)).boundedStoneDepthBelow(),
+                "floor checks read the depth above"
         );
-        assertEquals(true, planFor(fixedFalse).boundedStoneDepthBelow(), "fixed false ceiling");
+        assertEquals(
+                true,
+                planFor(stoneDepth(CaveSurface.FLOOR, 0, true, 1)).boundedStoneDepthBelow(),
+                "dynamic floor checks read the depth above"
+        );
 
         SurfaceRulePlan.OpaqueCondition biome = new SurfaceRulePlan.OpaqueCondition(
-                new SurfaceRuleSourceAccess.BiomeCondition() { },
+                biomeCondition(),
                 new SurfaceRulePlan.ConditionValue(
                         new SurfaceRulePlan.ValueId(0), new SurfaceConditionSpec.Opaque("biome")
                 )
@@ -157,6 +227,17 @@ public final class SurfaceRuleAnalyzerTest {
         );
     }
 
+    private static SurfaceConditionSpec.StoneDepth stoneDepth(
+            CaveSurface surface,
+            int offset,
+            boolean addSurfaceDepth,
+            int secondaryDepthRange
+    ) {
+        return new SurfaceConditionSpec.StoneDepth(
+                offset, addSurfaceDepth, secondaryDepthRange, surface
+        );
+    }
+
     private static SurfaceRulePlan planFor(SurfaceConditionSpec spec) {
         SurfaceRulePlan.KnownCondition condition = new SurfaceRulePlan.KnownCondition(
                 new Object(),
@@ -173,7 +254,7 @@ public final class SurfaceRuleAnalyzerTest {
         return new SurfaceRulePlan(rule);
     }
 
-    private static SurfaceRulePlan analyze(SurfaceRules.RuleSource source) {
+    private static SurfaceRulePlan analyze(MaterialRule source) {
         return SurfaceRuleAnalyzer.analyze(
                 source,
                 SurfaceRuleAnalyzer.DEFAULT_LIMITS,
@@ -205,99 +286,44 @@ public final class SurfaceRuleAnalyzerTest {
     }
 
     private static void assertEquals(Object expected, Object actual, String message) {
-        if (!ObjectsSupport.equals(expected, actual)) {
+        if (!java.util.Objects.equals(expected, actual)) {
             throw new AssertionError(message + ": expected " + expected + ", got " + actual);
         }
     }
 
     private static void assertNotEquals(Object first, Object second, String message) {
-        if (ObjectsSupport.equals(first, second)) {
+        if (java.util.Objects.equals(first, second)) {
             throw new AssertionError(message + ": both were " + first);
         }
     }
 
-    private static SurfaceRules.RuleSource fakeSequence(List<SurfaceRules.RuleSource> rules) {
-        return ruleProxy(
-                SurfaceRuleSourceAccess.Sequence.class,
-                (method, arguments) -> method.equals("byepregen$sequence") ? rules : null
-        );
+    private static MaterialCondition blankCondition() {
+        return new MaterialCondition() {
+            @Override public ConditionEvaluator compile(MaterialRuleContext context) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override public MapCodec<? extends MaterialCondition> codec() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
-    private static SurfaceRules.RuleSource fakeTest(
-            SurfaceRules.ConditionSource condition,
-            SurfaceRules.RuleSource followup
-    ) {
-        return ruleProxy(SurfaceRuleSourceAccess.Test.class, (method, arguments) -> switch (method) {
-            case "byepregen$condition" -> condition;
-            case "byepregen$followup" -> followup;
-            default -> null;
-        });
+    private static MaterialCondition biomeCondition() {
+        return new BiomeCondition(HolderSet.direct(
+                Holder.Reference.createStandAlone(BIOME_OWNER, Biomes.PLAINS)
+        ));
     }
 
-    private static SurfaceRules.ConditionSource fakeNot(SurfaceRules.ConditionSource target) {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.NotCondition.class,
-                (method, arguments) -> method.equals("byepregen$target") ? target : null
-        );
-    }
+    private static MaterialRule unknownRule() {
+        return new MaterialRule() {
+            @Override public RuleEvaluator compile(MaterialRuleContext context) {
+                throw new UnsupportedOperationException();
+            }
 
-    private static SurfaceRules.ConditionSource fakeBiome() {
-        return SurfaceRules.isBiome(Biomes.PLAINS);
-    }
-
-    private static SurfaceRules.RuleSource unknownRule() {
-        return ruleProxy(null, (method, arguments) -> null);
-    }
-
-    private static SurfaceRules.ConditionSource unknownCondition() {
-        return conditionProxy(null, (method, arguments) -> null);
-    }
-
-    private static SurfaceRules.RuleSource ruleProxy(
-            Class<?> access,
-            ProxyCall call
-    ) {
-        return (SurfaceRules.RuleSource) proxy(SurfaceRules.RuleSource.class, access, call);
-    }
-
-    private static SurfaceRules.ConditionSource conditionProxy(
-            Class<?> access,
-            ProxyCall call
-    ) {
-        return (SurfaceRules.ConditionSource) proxy(
-                SurfaceRules.ConditionSource.class,
-                access,
-                call
-        );
-    }
-
-    private static Object proxy(Class<?> sourceType, Class<?> access, ProxyCall call) {
-        Class<?>[] interfaces = access == null
-                ? new Class<?>[]{sourceType}
-                : new Class<?>[]{sourceType, access};
-        return Proxy.newProxyInstance(
-                SurfaceRuleAnalyzerTest.class.getClassLoader(),
-                interfaces,
-                (proxy, method, arguments) -> switch (method.getName()) {
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "equals" -> proxy == arguments[0];
-                    case "toString" -> sourceType.getSimpleName() + "TestProxy";
-                    default -> call.invoke(method.getName(), arguments);
-                }
-        );
-    }
-
-    @FunctionalInterface
-    private interface ProxyCall {
-        Object invoke(String method, Object[] arguments);
-    }
-
-    private static final class ObjectsSupport {
-        private ObjectsSupport() {
-        }
-
-        private static boolean equals(Object first, Object second) {
-            return java.util.Objects.equals(first, second);
-        }
+            @Override public MapCodec<? extends MaterialRule> codec() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 }

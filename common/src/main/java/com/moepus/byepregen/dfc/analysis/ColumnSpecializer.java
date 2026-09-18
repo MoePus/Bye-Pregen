@@ -104,9 +104,7 @@ public final class ColumnSpecializer {
             if (!(node instanceof CacheNode cache)) return node;
             return switch (cache.kind()) {
                 case CACHE_2D -> this.force2D(cache.delegate());
-                case CACHE_ONCE, CACHE_ALL_IN_CELL -> cache.delegate();
-                case FLAT_CACHE -> new SourceNode(cache.source(), SourceMode.FLAT);
-                case INTERPOLATED -> new SourceNode(cache.source(), SourceMode.INTERPOLATED);
+                case CACHE_ONCE -> cache.delegate();
             };
         }
 
@@ -173,9 +171,9 @@ public final class ColumnSpecializer {
         private boolean compute(AstNode node) {
             if (this.forced.contains(node) || node instanceof ConstantNode) return false;
             if (node instanceof CoordinateNode coordinate) return coordinate.axis() == Axis.Y;
-            if (node instanceof SourceNode source) return source.mode() == SourceMode.INTERPOLATED;
+            if (node instanceof SourceNode) return true;
             if (node instanceof DelegateNode delegate) return !delegate.yIndependent();
-            if (node instanceof YClampedGradientNode || node instanceof WeirdScaledNode) return true;
+            if (node instanceof YClampedGradientNode) return true;
             AstNode[] children = node.children();
             if (children.length == 0) return true;
             for (AstNode child : children) if (this.isYDependent(child)) return true;

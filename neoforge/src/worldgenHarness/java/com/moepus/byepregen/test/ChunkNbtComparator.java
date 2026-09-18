@@ -9,6 +9,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.util.SimpleBitStorage;
 
 final class ChunkNbtComparator {
     private static final int SECTION_BLOCK_COUNT = 16 * 16 * 16;
@@ -184,9 +185,11 @@ final class ChunkNbtComparator {
             int bits,
             String path
     ) {
+        SimpleBitStorage expectedStorage = bits == 0 ? null : new SimpleBitStorage(bits, valueCount, expectedData);
+        SimpleBitStorage actualStorage = bits == 0 ? null : new SimpleBitStorage(bits, valueCount, actualData);
         for (int index = 0; index < valueCount; ++index) {
-            int expectedId = localId(expectedData, index, bits);
-            int actualId = localId(actualData, index, bits);
+            int expectedId = expectedStorage == null ? 0 : expectedStorage.get(index);
+            int actualId = actualStorage == null ? 0 : actualStorage.get(index);
             if (expectedId >= expectedPalette.size() || actualId >= actualPalette.size()) {
                 return path + ".data[" + index + "]: palette id out of bounds, vanilla="
                         + expectedId + ", raw=" + actualId;
@@ -197,15 +200,6 @@ final class ChunkNbtComparator {
             }
         }
         return null;
-    }
-
-    private static int localId(long[] data, int index, int bits) {
-        if (bits == 0) {
-            return 0;
-        }
-        int valuesPerLong = Long.SIZE / bits;
-        long mask = (1L << bits) - 1L;
-        return (int) (data[index / valuesPerLong] >>> (index % valuesPerLong * bits) & mask);
     }
 
     private static int ceilLog2(int value) {

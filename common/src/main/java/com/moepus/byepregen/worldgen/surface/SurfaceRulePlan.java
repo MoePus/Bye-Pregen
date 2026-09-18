@@ -3,12 +3,10 @@ package com.moepus.byepregen.worldgen.surface;
 import java.util.List;
 import java.util.Objects;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.material.condition.BiomeCondition;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
 
 public final class SurfaceRulePlan {
-    // Deeper checks can cost more reads per Y than vanilla's amortized run scan.
-    private static final int MAX_LAZY_STONE_DEPTH = 1;
-
     private final Rule root;
     private final boolean boundedStoneDepthBelow;
 
@@ -41,20 +39,20 @@ public final class SurfaceRulePlan {
         return switch (condition) {
             case NotCondition not -> canBoundStoneDepthBelow(not.target());
             case OpaqueCondition opaque ->
-                    opaque.source() instanceof SurfaceRuleSourceAccess.BiomeCondition;
+                    opaque.source() instanceof BiomeCondition;
             case KnownCondition known -> canBoundStoneDepthBelow(known.value().spec());
         };
     }
 
+    /**
+     * 26.3: any CEILING check keeps the column scan intact. 26.2 answered the cheap "fixed limit
+     * &lt;= 1" form from {@code Context.chunk} instead of the shortened scan, but 26.3's
+     * {@code MaterialRuleContext} exposes no chunk or column at all, so those plans are simply not
+     * marked bounded and the scan runs unchanged.
+     */
     private static boolean canBoundStoneDepthBelow(SurfaceConditionSpec spec) {
-        if (!(spec instanceof SurfaceConditionSpec.StoneDepth stone)
-                || stone.surfaceType() != CaveSurface.CEILING) {
-            return true;
-        }
-        if (!stone.hasFixedLimit()) {
-            return false;
-        }
-        return stone.baseLimit() <= MAX_LAZY_STONE_DEPTH;
+        return !(spec instanceof SurfaceConditionSpec.StoneDepth stone)
+                || stone.surfaceType() != CaveSurface.CEILING;
     }
 
     private static int requireNonNegative(int value, String name) {

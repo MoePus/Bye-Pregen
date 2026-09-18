@@ -1,6 +1,7 @@
 package com.moepus.byepregen.palette.arena;
 
 public final class Layout {
+    public static final int SECTION_WIDTH = 16;
     public static final int SECTION_SIZE = 4096;
 
     public static final int PAGE_HEIGHT = 4;

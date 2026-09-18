@@ -9,6 +9,18 @@ public final class ClimateRTreeSearchContext<T> extends ThreadLocal<Climate.RTre
     public static final int PARAMETER_COUNT = 7;
     public static final int DEPTH_PARAMETER_INDEX = 4;
 
+    private static final java.util.concurrent.atomic.LongAdder COLUMN_SEARCHES =
+            new java.util.concurrent.atomic.LongAdder();
+
+    /** How often the depth path ran; the worldgen harness asserts it is not zero. */
+    public static void recordColumnSearch() {
+        COLUMN_SEARCHES.increment();
+    }
+
+    public static long columnSearches() {
+        return COLUMN_SEARCHES.sum();
+    }
+
     private final ThreadLocal<State<T>> state = ThreadLocal.withInitial(State::new);
 
     public State<T> context() {
@@ -37,6 +49,8 @@ public final class ClimateRTreeSearchContext<T> extends ThreadLocal<Climate.RTre
         private long[] fixedDistances = new long[0];
         private int[] fixedDistanceEpochs = new int[0];
         private int fixedDistanceEpoch;
+        private final long[] columnValues = new long[PARAMETER_COUNT];
+        private boolean columnValid;
 
         public void setTarget(final Climate.TargetPoint target) {
             this.values[0] = target.temperature();
@@ -52,18 +66,35 @@ public final class ClimateRTreeSearchContext<T> extends ThreadLocal<Climate.RTre
             System.arraycopy(target, 0, this.values, 0, PARAMETER_COUNT);
         }
 
-        public void beginDepthColumn(long[] target, int nodeCount) {
+        public void beginDepthColumn(long[] target) {
             this.setTarget(target);
-            if (this.fixedDistances.length < nodeCount) {
-                this.fixedDistances = new long[nodeCount];
-                this.fixedDistanceEpochs = new int[nodeCount];
-                this.fixedDistanceEpoch = 1;
-                return;
-            }
+            System.arraycopy(target, 0, this.columnValues, 0, PARAMETER_COUNT);
+            this.columnValid = true;
             if (++this.fixedDistanceEpoch == 0) {
                 Arrays.fill(this.fixedDistanceEpochs, 0);
                 this.fixedDistanceEpoch = 1;
             }
+        }
+
+        /**
+         * Whether the current target differs from the open column only in depth, so the six fixed
+         * distances memoized for that column still apply. 26.2 only entered the depth path when the
+         * biome column filler asked for it; the search now recognizes the column itself, which also
+         * covers the vanilla per-quart walk and structure lookups.
+         */
+        public boolean columnMatches() {
+            if (!this.columnValid) {
+                return false;
+            }
+            for (int index = 0; index < PARAMETER_COUNT; index++) {
+                if (index == DEPTH_PARAMETER_INDEX) {
+                    continue;
+                }
+                if (this.columnValues[index] != this.values[index]) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public void setDepth(long depth) {
@@ -78,6 +109,10 @@ public final class ClimateRTreeSearchContext<T> extends ThreadLocal<Climate.RTre
 
         private long fixedDistance(Climate.RTree.Node<?> node) {
             int index = ((ClimateRTreeCacheNode)(Object)node).byepregen$cacheIndex();
+            if (index >= this.fixedDistances.length) {
+                this.fixedDistances = Arrays.copyOf(this.fixedDistances, index + 1);
+                this.fixedDistanceEpochs = Arrays.copyOf(this.fixedDistanceEpochs, index + 1);
+            }
             if (this.fixedDistanceEpochs[index] != this.fixedDistanceEpoch) {
                 this.fixedDistances[index] = this.computeFixedDistance(node);
                 this.fixedDistanceEpochs[index] = this.fixedDistanceEpoch;

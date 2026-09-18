@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "accessor.chunksave.ChunkStorageAccessor",
+    "accessor.chunksave.IOWorkerPendingStoreAccessor",
+    "accessor.chunksave.RegionFileStorageAccessor",
+    "chunkio.ChunkMapGcFreeSaveMixin",
+    "chunkio.ChunkSerializerLowStatusHeightmapMixin",
+    "chunkio.ChunkSerializerWorldgenStateMixin",
+    "chunkio.ChunkStorageRawMixin",
+    "chunkio.IOWorkerRawMixin",
+    "chunkio.LevelChunkWorldgenStateMixin",
+    "chunkio.RegionFileCompressionMixin",
+    "chunkio.compat.c2me.C2MEChunkSavingCompressionMixin",
+    "chunkio.compat.c2me.C2MEReadFromDiskGcFreeSaveMixin",
+    "chunksave.compat.architectury.ArchitecturyEventImplAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,6 +1,7 @@
 package com.moepus.byepregen.mixin.palette;
 
 import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
+import com.moepus.byepregen.palette.access.PaletteRawIds;
 import net.minecraft.world.level.chunk.LinearPalette;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,11 +21,6 @@ public abstract class LinearPaletteMixin<T> implements PaletteRawIdAccess {
         if (localId < 0 || localId >= this.size) {
             return -1;
         }
-        return byepregen$getRawId(globalMap, this.values[localId]);
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static int byepregen$getRawId(net.minecraft.core.IdMap<?> globalMap, Object value) {
-        return ((net.minecraft.core.IdMap) globalMap).getId(value);
+        return PaletteRawIds.rawId(globalMap, this.values[localId]);
     }
 }

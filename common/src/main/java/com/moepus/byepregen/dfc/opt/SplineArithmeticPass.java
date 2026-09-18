@@ -15,7 +15,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.util.CubicSpline;
-import net.minecraft.world.level.levelgen.DensityFunctions;
+import net.minecraft.world.level.levelgen.densityfunction.op.SplineFunction;
 
 final class SplineArithmeticPass {
     private SplineArithmeticPass() {
@@ -42,10 +42,10 @@ final class SplineArithmeticPass {
     }
 
     private static SplineNode optimizeLocationAffine(SplineNode node) {
-        Map<DensityFunctions.Spline.Coordinate, Affine> rewrites = new IdentityHashMap<>();
+        Map<SplineFunction.Coordinate, Affine> rewrites = new IdentityHashMap<>();
         List<AstNode> coordinates = new ArrayList<>(node.coordinates().size());
         boolean changed = false;
-        for (DensityFunctions.Spline.Coordinate coordinate : node.coordinates()) {
+        for (SplineFunction.Coordinate coordinate : node.coordinates()) {
             Affine affine = extractAffine(node.coordinateNode(coordinate));
             coordinates.add(affine.base());
             if (affine.changed()) {
@@ -54,7 +54,7 @@ final class SplineArithmeticPass {
             }
         }
         if (!changed) return node;
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> rewritten =
+        CubicSpline<SplineFunction.Coordinate> rewritten =
                 rewriteLocations(node.spline(), rewrites);
         return new SplineNode(rewritten, node.coordinates(), coordinates);
     }
@@ -101,20 +101,19 @@ final class SplineArithmeticPass {
         return null;
     }
 
-    private static boolean exactNonzeroFloat(double value) {
+    private static boolean exactNonzeroFloat(float value) {
         return exactFloat(value) && (float) value != 0.0F;
     }
 
-    private static CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>
+    private static CubicSpline<SplineFunction.Coordinate>
     rewriteLocations(
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
-            Map<DensityFunctions.Spline.Coordinate, Affine> rewrites
+            CubicSpline<SplineFunction.Coordinate> spline,
+            Map<SplineFunction.Coordinate, Affine> rewrites
     ) {
-        if (!(spline instanceof CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> points)) return spline;
-        List<CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>> values =
+        if (!(spline instanceof CubicSpline.Multipoint<SplineFunction.Coordinate> points)) return spline;
+        List<CubicSpline<SplineFunction.Coordinate>> values =
                 new ArrayList<>(points.values().size());
-        for (CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> value : points.values()) {
+        for (CubicSpline<SplineFunction.Coordinate> value : points.values()) {
             values.add(rewriteLocations(value, rewrites));
         }
         float[] locations = points.locations().clone();
@@ -131,8 +130,7 @@ final class SplineArithmeticPass {
                 Collections.reverse(values);
             }
         }
-        return new CubicSpline.Multipoint<>(points.coordinate(), locations, values, derivatives,
-                points.minValue(), points.maxValue());
+        return new CubicSpline.Multipoint<>(points.coordinate(), locations, values, derivatives);
     }
 
     private static void reverse(float[] values) {
@@ -143,7 +141,7 @@ final class SplineArithmeticPass {
         }
     }
 
-    private record ConstantOperand(double constant, AstNode other) {
+    private record ConstantOperand(float constant, AstNode other) {
     }
 
     private record Affine(AstNode base, float scale, float offset) {
@@ -152,67 +150,59 @@ final class SplineArithmeticPass {
         }
     }
 
-    private static boolean exactFloat(double value) {
-        return Double.isFinite(value) && (double) (float) value == value;
+    private static boolean exactFloat(float value) {
+        return Float.isFinite(value);
     }
 
     private static SplineNode withSpline(
             SplineNode original,
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
+            CubicSpline<SplineFunction.Coordinate> spline
     ) {
         return new SplineNode(spline, original.coordinates(), List.of(original.children()));
     }
 
-    private static CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> scale(
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
+    private static CubicSpline<SplineFunction.Coordinate> scale(
+            CubicSpline<SplineFunction.Coordinate> spline,
             float factor
     ) {
-        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> constant) {
+        if (spline instanceof CubicSpline.Constant<SplineFunction.Coordinate> constant) {
             return CubicSpline.constant(constant.value() * factor);
         }
-        CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> points = multipoint(spline);
-        List<CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>> values =
+        CubicSpline.Multipoint<SplineFunction.Coordinate> points = multipoint(spline);
+        List<CubicSpline<SplineFunction.Coordinate>> values =
                 new ArrayList<>(points.values().size());
-        for (CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> value : points.values()) {
+        for (CubicSpline<SplineFunction.Coordinate> value : points.values()) {
             values.add(scale(value, factor));
         }
         float[] derivatives = points.derivatives().clone();
         for (int i = 0; i < derivatives.length; ++i) derivatives[i] *= factor;
-        float min = points.minValue() * factor;
-        float max = points.maxValue() * factor;
         return new CubicSpline.Multipoint<>(points.coordinate(), points.locations().clone(), values,
-                derivatives, Math.min(min, max), Math.max(min, max));
+                derivatives);
     }
 
-    private static CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> offset(
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
+    private static CubicSpline<SplineFunction.Coordinate> offset(
+            CubicSpline<SplineFunction.Coordinate> spline,
             float amount
     ) {
-        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> constant) {
+        if (spline instanceof CubicSpline.Constant<SplineFunction.Coordinate> constant) {
             return CubicSpline.constant(constant.value() + amount);
         }
-        CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> points = multipoint(spline);
-        List<CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate>> values =
+        CubicSpline.Multipoint<SplineFunction.Coordinate> points = multipoint(spline);
+        List<CubicSpline<SplineFunction.Coordinate>> values =
                 new ArrayList<>(points.values().size());
-        for (CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> value : points.values()) {
+        for (CubicSpline<SplineFunction.Coordinate> value : points.values()) {
             values.add(offset(value, amount));
         }
         return new CubicSpline.Multipoint<>(points.coordinate(), points.locations().clone(), values,
-                points.derivatives().clone(), points.minValue() + amount, points.maxValue() + amount);
+                points.derivatives().clone());
     }
 
     @SuppressWarnings("unchecked")
-    private static CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-            DensityFunctions.Spline.Coordinate> multipoint(
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
+    private static CubicSpline.Multipoint<SplineFunction.Coordinate> multipoint(
+            CubicSpline<SplineFunction.Coordinate> spline
     ) {
-        if (spline instanceof CubicSpline.Multipoint<?, ?> points) {
-            return (CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                    DensityFunctions.Spline.Coordinate>) points;
+        if (spline instanceof CubicSpline.Multipoint<?> points) {
+            return (CubicSpline.Multipoint<SplineFunction.Coordinate>) points;
         }
         throw new IllegalArgumentException("Unsupported spline implementation " + spline.getClass().getName());
     }

@@ -22,10 +22,16 @@ public sealed interface SurfaceConditionSpec
         TEMPERATURE
     }
 
+    /**
+     * 26.3: {@code MaterialRuleContext.getNoiseSampler(key, is3d)} picks a per-column or a
+     * per-position sampler, so the flag the 26.2 API did not carry has to travel with the spec. The
+     * key also lost its nested {@code NoiseParameters} type.
+     */
     record Noise(
-            ResourceKey<NormalNoise.NoiseParameters> noise,
+            ResourceKey<NormalNoise> noise,
             double minimum,
-            double maximum
+            double maximum,
+            boolean is3d
     ) implements SurfaceConditionSpec {
         public Noise {
             Objects.requireNonNull(noise, "noise");

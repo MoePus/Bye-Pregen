@@ -1,11 +1,11 @@
 package com.moepus.byepregen.palette.arena;
 
-import static com.moepus.byepregen.palette.arena.Layout.SECTION_SIZE;
 import static com.moepus.byepregen.palette.arena.Layout.localIndex;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
 import com.moepus.byepregen.palette.arena.codec.NetworkWriter;
 import com.moepus.byepregen.palette.arena.codec.StateImporter;
+import com.moepus.byepregen.palette.arena.materialize.ArenaSectionMaterializer;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -99,8 +99,18 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
     }
 
     @Override
+    public int bitsPerEntry() {
+        return NetworkWriter.bitsPerEntry(this);
+    }
+
+    @Override
+    public void forEachInPalette(@NotNull Consumer<BlockState> consumer) {
+        ArenaBlockStateQueries.getAll(this, consumer);
+    }
+
+    @Override
     public PalettedContainerRO.@NotNull PackedData<BlockState> pack(@NotNull Strategy<BlockState> strategy) {
-        throw new UnsupportedOperationException();
+        return ArenaSectionMaterializer.materialize(this).pack(strategy);
     }
 
     @Override
@@ -148,8 +158,17 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         return this.storage.isUniform();
     }
 
+    ArenaBlockStateStorage.Mode mode() {
+        return this.storage.mode();
+    }
+
     public boolean isFreshAirForWorldgen() {
         return this.storage.isFreshAirForWorldgen(AIR_RAW_ID, AIR);
+    }
+
+    public ArenaFreshSectionWriter beginTerrainWrite(int defaultRawId) {
+        if (!this.isFreshAirForWorldgen()) throw new IllegalStateException("Terrain writes require a fresh air section");
+        return new ArenaFreshSectionWriter(this.storage, defaultRawId);
     }
 
     public int uniformRawId() {
@@ -216,8 +235,8 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         this.storage.setUniformSection(rawId);
     }
 
-    public boolean isUniformRawId(int rawId) {
-        return this.storage.isUniformRawId(rawId);
+    public boolean alreadyUniformRawId(int rawId) {
+        return this.storage.alreadyUniformRawId(rawId);
     }
 
     public static int rawId(BlockState state) {

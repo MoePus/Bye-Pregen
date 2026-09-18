@@ -12,6 +12,7 @@ import com.moepus.byepregen.dfc.ast.AstNodes.ConstantNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MaxNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MinNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.RangeChoiceNode;
+import com.moepus.byepregen.dfc.ast.AstNodes.IntervalSelectNode;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -27,7 +28,7 @@ final class ColumnConditionalEmitter {
         this.caller = caller;
     }
 
-    void emitShortBinary(MethodVisitor method, BinaryNode node, double boundary, boolean max) {
+    void emitShortBinary(MethodVisitor method, BinaryNode node, float boundary, boolean max) {
         if (node.left() instanceof ConstantNode constant) {
             if (max ? constant.value() > boundary : constant.value() < boundary) {
                 this.caller.call(method, constant, 2, 3, 4);
@@ -107,6 +108,40 @@ final class ColumnConditionalEmitter {
         if (child != input) this.caller.call(method, child, 2, 6, 5);
     }
 
+    void emitIntervalSelect(MethodVisitor method, IntervalSelectNode node) {
+        this.caller.call(method, node.input(), 2, 3, 4);
+        method.visitVarInsn(Opcodes.ILOAD, 3);
+        method.visitVarInsn(Opcodes.ISTORE, 5);
+        Label scan = new Label(), run = new Label(), dispatch = new Label(), done = new Label();
+        method.visitLabel(scan);
+        jumpIfAtEnd(method, 5, done);
+        storeRunStart(method);
+        selectIntervalAt(method, node, 7);
+        method.visitLabel(run);
+        method.visitIincInsn(5, 1);
+        jumpIfAtEnd(method, 5, dispatch);
+        selectIntervalAt(method, node, 8);
+        method.visitVarInsn(Opcodes.ILOAD, 7);
+        method.visitVarInsn(Opcodes.ILOAD, 8);
+        method.visitJumpInsn(Opcodes.IF_ICMPEQ, run);
+        method.visitLabel(dispatch);
+        Label[] branches = IntervalSelectEmitter.labels(node.branches().size());
+        method.visitVarInsn(Opcodes.ILOAD, 7);
+        method.visitTableSwitchInsn(0, branches.length - 1, branches[branches.length - 1], branches);
+        for (int i = 0; i < branches.length; ++i) {
+            method.visitLabel(branches[i]);
+            this.callUnlessInput(method, node.branches().get(i), node.input());
+            method.visitJumpInsn(Opcodes.GOTO, scan);
+        }
+        method.visitLabel(done);
+    }
+
+    private static void selectIntervalAt(MethodVisitor method, IntervalSelectNode node, int indexLocal) {
+        loadArrayValue(method, 2, 5);
+        method.visitVarInsn(Opcodes.FSTORE, 9);
+        IntervalSelectEmitter.index(method, node.thresholds(), 9, indexLocal);
+    }
+
     private static void emitMergeLoop(MethodVisitor method, int scratch, int from, int to,
                                       String operation) {
         method.visitVarInsn(Opcodes.ILOAD, from);
@@ -121,17 +156,17 @@ final class ColumnConditionalEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 8);
         loadArrayValue(method, 2, 8);
         loadArrayValue(method, scratch, 8);
-        method.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", operation, "(DD)D", false);
-        method.visitInsn(Opcodes.DASTORE);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, "com/moepus/byepregen/dfc/runtime/FloatMath", operation.equals("min") ? "volumeMin" : "volumeMax", "(FF)F", false);
+        method.visitInsn(Opcodes.FASTORE);
         incrementAndJump(method, 8, loop);
         method.visitLabel(done);
     }
 
-    private static void emitShortedJump(MethodVisitor method, int index, double boundary,
+    private static void emitShortedJump(MethodVisitor method, int index, float boundary,
                                         boolean max, Label shorted) {
         loadArrayValue(method, 2, index);
         method.visitLdcInsn(boundary);
-        method.visitInsn(max ? Opcodes.DCMPL : Opcodes.DCMPG);
+        method.visitInsn(max ? Opcodes.FCMPL : Opcodes.FCMPG);
         method.visitJumpInsn(max ? Opcodes.IFGT : Opcodes.IFLT, shorted);
     }
 
@@ -139,11 +174,11 @@ final class ColumnConditionalEmitter {
                                         RangeChoiceNode node, Label outside) {
         loadArrayValue(method, 2, index);
         method.visitLdcInsn(node.minInclusive());
-        method.visitInsn(Opcodes.DCMPL);
+        method.visitInsn(Opcodes.FCMPL);
         method.visitJumpInsn(Opcodes.IFLT, outside);
         loadArrayValue(method, 2, index);
         method.visitLdcInsn(node.maxExclusive());
-        method.visitInsn(Opcodes.DCMPG);
+        method.visitInsn(Opcodes.FCMPG);
         method.visitJumpInsn(Opcodes.IFGE, outside);
     }
 
@@ -152,11 +187,11 @@ final class ColumnConditionalEmitter {
         Label outside = new Label();
         loadArrayValue(method, 2, index);
         method.visitLdcInsn(node.minInclusive());
-        method.visitInsn(Opcodes.DCMPL);
+        method.visitInsn(Opcodes.FCMPL);
         method.visitJumpInsn(Opcodes.IFLT, outside);
         loadArrayValue(method, 2, index);
         method.visitLdcInsn(node.maxExclusive());
-        method.visitInsn(Opcodes.DCMPG);
+        method.visitInsn(Opcodes.FCMPG);
         method.visitJumpInsn(Opcodes.IFLT, inside);
         method.visitLabel(outside);
     }
@@ -165,7 +200,7 @@ final class ColumnConditionalEmitter {
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitInsn(Opcodes.ARRAYLENGTH);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "borrowDoubleArray", "(I)[D", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "borrowFloatArray", "(I)[F", false);
         method.visitVarInsn(Opcodes.ASTORE, local);
     }
 
@@ -188,7 +223,7 @@ final class ColumnConditionalEmitter {
     private static void loadArrayValue(MethodVisitor method, int array, int index) {
         method.visitVarInsn(Opcodes.ALOAD, array);
         method.visitVarInsn(Opcodes.ILOAD, index);
-        method.visitInsn(Opcodes.DALOAD);
+        method.visitInsn(Opcodes.FALOAD);
     }
 
     @FunctionalInterface

@@ -44,13 +44,13 @@ final class CorePasses {
         return node;
     }
 
-    private static AstNode foldUnary(UnaryNode node, double value) {
+    private static AstNode foldUnary(UnaryNode node, float value) {
         if (node instanceof AbsNode) return new ConstantNode(Math.abs(value));
         if (node instanceof NegNode) return new ConstantNode(-value);
         if (node instanceof SquareNode) return new ConstantNode(value * value);
         if (node instanceof CubeNode) return new ConstantNode(value * value * value);
         if (node instanceof NegMulNode neg) {
-            return new ConstantNode(value > 0.0D ? value : value * neg.multiplier());
+            return new ConstantNode(value > 0.0F ? value : value * neg.multiplier());
         }
         if (node instanceof SqueezeNode) {
             return new ConstantNode(ColumnMath.squeeze(value));
@@ -63,6 +63,10 @@ final class CorePasses {
     }
 
     private static AstNode reduceNode(AstNode node) {
+        if (node instanceof DivNode div && div.right() instanceof ConstantNode c
+                && c.value() != 0 && Float.isFinite(c.value()) && Float.isFinite(1.0F / c.value())) {
+            return new MulNode(new ConstantNode(1.0F / c.value()), div.left());
+        }
         if (node instanceof MulNode mul) {
             if (mul.left() == mul.right() || mul.left().equals(mul.right())) {
                 return new SquareNode(mul.left());
@@ -73,7 +77,7 @@ final class CorePasses {
             if (mul.right() instanceof SquareNode square && square.operand().equals(mul.left())) {
                 return new CubeNode(mul.left());
             }
-            if (mul.left() instanceof ConstantNode c && c.value() == -1.0D) {
+            if (mul.left() instanceof ConstantNode c && c.value() == -1.0F) {
                 return new NegNode(mul.right());
             }
         }
@@ -94,8 +98,8 @@ final class CorePasses {
         if (node instanceof MulNode mul) return simplifyMul(mul);
         if (node instanceof NegNode neg && neg.operand() instanceof NegNode inner) return inner.operand();
         if (node instanceof AbsNode abs && abs.operand() instanceof AbsNode) return abs.operand();
-        if (node instanceof NegMulNode neg && neg.multiplier() == 1.0D) return neg.operand();
-        if (node instanceof NegMulNode neg && neg.multiplier() == -1.0D) return new AbsNode(neg.operand());
+        if (node instanceof NegMulNode neg && neg.multiplier() == 1.0F) return neg.operand();
+        if (node instanceof NegMulNode neg && neg.multiplier() == -1.0F) return new AbsNode(neg.operand());
         if (node instanceof AbsNode abs && abs.operand() instanceof CubeNode cube) {
             return new CubeNode(new AbsNode(cube.operand()));
         }
@@ -103,7 +107,12 @@ final class CorePasses {
     }
 
     private static AstNode simplifyAdd(AddNode node) {
-        if (isConstant(node.left(), 0.0D)) return node.right();
+        if (node.left() instanceof MulNode a && node.right() instanceof MulNode b
+                && a.left() instanceof ConstantNode ca && b.left() instanceof ConstantNode cb
+                && a.right().equals(b.right())) {
+            return new MulNode(new ConstantNode(ca.value() + cb.value()), a.right());
+        }
+        if (isConstant(node.left(), 0.0F)) return node.right();
         if (node.left() instanceof ConstantNode outer && node.right() instanceof AddNode inner
                 && inner.left() instanceof ConstantNode nested) {
             return new AddNode(new ConstantNode(outer.value() + nested.value()), inner.right());
@@ -112,8 +121,8 @@ final class CorePasses {
     }
 
     private static AstNode simplifyMul(MulNode node) {
-        if (isConstant(node.left(), 0.0D)) return new ConstantNode(0.0D);
-        if (isConstant(node.left(), 1.0D)) return node.right();
+        if (isConstant(node.left(), 0.0F) && definitelyFinite(node.right())) return new ConstantNode(0.0F);
+        if (isConstant(node.left(), 1.0F)) return node.right();
         if (node.left() instanceof ConstantNode outer && node.right() instanceof MulNode inner
                 && inner.left() instanceof ConstantNode nested) {
             return new MulNode(new ConstantNode(outer.value() * nested.value()), inner.right());
@@ -189,12 +198,22 @@ final class CorePasses {
         return node.left().equals(target) || node.right().equals(target);
     }
 
-    private static boolean nonNegative(AstNode node) {
-        return node instanceof SquareNode || node instanceof AbsNode
-                || node instanceof ConstantNode value && value.value() >= 0.0D;
+    private static boolean definitelyFinite(AstNode node) {
+        if (node instanceof ConstantNode c) return Float.isFinite(c.value());
+        if (node instanceof CoordinateNode) return true;
+        if (node instanceof YClampedGradientNode g) return Float.isFinite(g.fromValue()) && Float.isFinite(g.toValue());
+        if (node instanceof AbsNode || node instanceof NegNode || node instanceof SqueezeNode) {
+            return definitelyFinite(((UnaryNode) node).operand());
+        }
+        return false;
     }
 
-    private static boolean isConstant(AstNode node, double value) {
+    private static boolean nonNegative(AstNode node) {
+        return node instanceof SquareNode || node instanceof AbsNode
+                || node instanceof ConstantNode value && value.value() >= 0.0F;
+    }
+
+    private static boolean isConstant(AstNode node, float value) {
         return node instanceof ConstantNode constant && constant.value() == value;
     }
 }

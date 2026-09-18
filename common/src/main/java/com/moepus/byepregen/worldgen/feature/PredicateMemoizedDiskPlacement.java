@@ -2,8 +2,7 @@ package com.moepus.byepregen.worldgen.feature;
 
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
+import net.minecraft.world.level.levelgen.feature.DiskFeature;
 
 public final class PredicateMemoizedDiskPlacement {
     private final FastDiskPlacement placement;
@@ -11,52 +10,40 @@ public final class PredicateMemoizedDiskPlacement {
 
     private PredicateMemoizedDiskPlacement(
             FastPlacementContext context,
-            DiskConfiguration config,
+            DiskFeature config,
+            FastRuleBasedBlockStateProvider stateProvider,
+            WorldGenRegionSectionCache sectionCache,
             KnownFalseDiskPredicateCache knownFalse
     ) {
-        WorldGenRegionSectionCache cache = (WorldGenRegionSectionCache) context.placementContext().getLevel();
+        WorldGenLevel level = context.placementContext().getLevel();
         this.placement = new FastDiskPlacement(
                 config,
-                context.placementContext().getLevel(),
+                stateProvider,
+                level,
                 context.random(),
-                new FastDiskStateCursor(context.placementContext().getLevel(), cache),
+                new FastDiskStateCursor(level, sectionCache),
                 knownFalse,
-                PredicateMemoizedDiskPlacement::placeFallbackColumn
+                column -> ((FastDiskFeature) (Object) config).byepregen$placeColumn(column)
         );
     }
 
     static PredicateMemoizedDiskPlacement open(
             FastPlacementContext context,
-            DiskConfiguration config,
+            DiskFeature config,
+            FastRuleBasedBlockStateProvider stateProvider,
             Vec3i[] dependencies,
             boolean repeatingPlacement
     ) {
-        if (!(context.placementContext().getLevel() instanceof WorldGenRegionSectionCache)) {
+        WorldGenLevel level = context.placementContext().getLevel();
+        if (!repeatingPlacement || !(level instanceof WorldGenRegionSectionCache sectionCache)) {
             return null;
         }
-        KnownFalseDiskPredicateCache cache = createCache(
+        return new PredicateMemoizedDiskPlacement(
                 context,
                 config,
-                dependencies,
-                repeatingPlacement
-        );
-        return cache == null ? null : new PredicateMemoizedDiskPlacement(context, config, cache);
-    }
-
-    private static KnownFalseDiskPredicateCache createCache(
-            FastPlacementContext context,
-            DiskConfiguration config,
-            Vec3i[] dependencies,
-            boolean repeatingPlacement
-    ) {
-        if (!repeatingPlacement) {
-            return null;
-        }
-        WorldGenLevel level = context.placementContext().getLevel();
-        return new KnownFalseDiskPredicateCache(
-                dependencies,
-                level.getMinY(),
-                level.getMaxY() + 1
+                stateProvider,
+                sectionCache,
+                new KnownFalseDiskPredicateCache(dependencies, level.getMinY(), level.getMaxY() + 1)
         );
     }
 
@@ -68,7 +55,4 @@ public final class PredicateMemoizedDiskPlacement {
         return this.placed;
     }
 
-    private static boolean placeFallbackColumn(FastDiskFeature.ColumnContext context) {
-        return ((FastDiskFeature) (Object) Feature.DISK).byepregen$placeColumn(context);
-    }
 }

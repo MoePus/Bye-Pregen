@@ -1,16 +1,15 @@
 package com.moepus.byepregen.worldgen.biome;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
-class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
+class SurfaceBiomeLookup implements BiomeResolver {
     static final int QUARTS_PER_CHUNK = 4;
     static final int INTERIOR_QUART_CUBES = QUARTS_PER_CHUNK - 1;
 
@@ -19,7 +18,7 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
     private static final int BLOCKS_PER_QUART = 4;
     private static final int MAX_QUART_HEIGHT = 1024;
 
-    private final BiomeManager.NoiseBiomeSource delegate;
+    private final BiomeResolver delegate;
     protected final int minQuartX;
     protected final int minQuartZ;
     private final int minBlockX;
@@ -42,19 +41,19 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
         this.certificates = SurfaceBiomeCertificateBuilder.build(this.flatBiomes, this.quartHeight);
     }
 
-    static SurfaceBiomeLookup fromChunk(BiomeManager.NoiseBiomeSource delegate, ChunkAccess chunk) {
+    static SurfaceBiomeLookup fromChunk(BiomeResolver delegate, ChunkAccess chunk) {
         return new SurfaceBiomeLookup(inputFromChunk(delegate, chunk));
     }
 
     static SurfaceBiomeLookup fromSource(
-            BiomeManager.NoiseBiomeSource source,
+            BiomeResolver source,
             ChunkPos center,
             LevelHeightAccessor heightAccessor
     ) {
         return new SurfaceBiomeLookup(new LookupInput(source, center, heightAccessor, source::getNoiseBiome));
     }
 
-    static LookupInput inputFromChunk(BiomeManager.NoiseBiomeSource delegate, ChunkAccess chunk) {
+    static LookupInput inputFromChunk(BiomeResolver delegate, ChunkAccess chunk) {
         LevelChunkSection[] sections = chunk.getSections();
         FlatBiomeReader reader = (x, y, z) -> {
             int sectionIndex = chunk.getSectionIndex(QuartPos.toBlock(y));
@@ -75,24 +74,26 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
         return this.flatBiomes[this.flatIndex(localX, localY, localZ)];
     }
 
-    final Holder<Biome> uniformBiome(BlockPos pos) {
-        int localBlockX = pos.getX() - this.minBlockX;
-        int localBlockZ = pos.getZ() - this.minBlockZ;
+    // Not final: ProfiledSurfaceBiomeLookup counts the queries the manager makes through this method,
+    // which is the only place the cache's fast path is decided.
+    Holder<Biome> uniformBiome(int x, int y, int z) {
+        int localBlockX = x - this.minBlockX;
+        int localBlockZ = z - this.minBlockZ;
         if (!insideInterior(localBlockX) || !insideInterior(localBlockZ)) {
             return null;
         }
 
         int cubeX = (localBlockX - MIN_INTERIOR_BLOCK) >> 2;
         int cubeZ = (localBlockZ - MIN_INTERIOR_BLOCK) >> 2;
-        int baseQuartY = (pos.getY() - MIN_INTERIOR_BLOCK) >> 2;
+        int baseQuartY = (y - MIN_INTERIOR_BLOCK) >> 2;
         int cubeY = Math.clamp(baseQuartY - this.minQuartY + 1, 0, this.quartHeight);
         int certificate = this.certificates.at(cubeX, cubeY, cubeZ);
         return certificate == SurfaceBiomeCertificates.NON_UNIFORM ? null : this.flatBiomes[certificate];
     }
 
-    final boolean isInterior(BlockPos pos) {
-        return insideInterior(pos.getX() - this.minBlockX)
-                && insideInterior(pos.getZ() - this.minBlockZ);
+    final boolean isInterior(int x, int z) {
+        return insideInterior(x - this.minBlockX)
+                && insideInterior(z - this.minBlockZ);
     }
 
     boolean containsQuart(int x, int z) {
@@ -170,7 +171,7 @@ class SurfaceBiomeLookup implements BiomeManager.NoiseBiomeSource {
     }
 
     record LookupInput(
-            BiomeManager.NoiseBiomeSource delegate,
+            BiomeResolver delegate,
             ChunkPos center,
             LevelHeightAccessor heightAccessor,
             FlatBiomeReader reader

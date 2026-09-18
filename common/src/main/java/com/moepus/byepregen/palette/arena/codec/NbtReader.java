@@ -7,6 +7,7 @@ import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -15,8 +16,9 @@ import net.minecraft.world.level.block.state.properties.Property;
 public final class NbtReader {
     private static final String PALETTE = "palette";
     private static final String DATA = "data";
-    private static final String NAME = "Name";
-    private static final String PROPERTIES = "Properties";
+    private static final String NAME = "id";
+    private static final String PROPERTIES = "properties";
+    private static final String WRAPPER = "";
 
     private NbtReader() {
     }
@@ -42,7 +44,7 @@ public final class NbtReader {
     private static int[] readPaletteRawIds(ListTag paletteTag, PaletteReadCache cache) {
         int[] rawIds = new int[paletteTag.size()];
         for (int i = 0; i < rawIds.length; ++i) {
-            BlockState state = paletteTag.getCompound(i).map(tag -> readState(tag, cache)).orElse(null);
+            BlockState state = readEntry(paletteTag, i, cache);
             if (state == null) {
                 return null;
             }
@@ -54,6 +56,27 @@ public final class NbtReader {
             rawIds[i] = rawId;
         }
         return rawIds;
+    }
+
+    private static BlockState readEntry(ListTag palette, int index, PaletteReadCache cache) {
+        if (palette.get(index) instanceof StringTag name) {
+            return readShortEntry(name, cache);
+        }
+        CompoundTag entry = palette.getCompound(index).orElse(null);
+        if (entry == null) {
+            return null;
+        }
+        // ListTag writes a mixed palette with element type compound and wraps every other element as
+        // {"": value}, which is how a shortened block state appears next to a full one.
+        if (entry.size() == 1 && entry.get(WRAPPER) instanceof StringTag wrapped) {
+            return readShortEntry(wrapped, cache);
+        }
+        return readState(entry, cache);
+    }
+
+    private static BlockState readShortEntry(StringTag name, PaletteReadCache cache) {
+        Block block = cache.readBlock(name.value());
+        return block == null ? null : block.defaultBlockState();
     }
 
     private static BlockState readState(CompoundTag stateTag, PaletteReadCache cache) {

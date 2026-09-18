@@ -17,61 +17,38 @@ final class ArenaBlockStateQueries {
     }
 
     static void getAll(ArenaBlockStatePalettedContainer container, Consumer<BlockState> consumer) {
-        if (container.isUniform()) {
-            consumer.accept(Block.stateById(container.uniformRawId()));
-            return;
-        }
-
-        if (container.hasPagePalettes()) {
-            getAllPagePaletteStates(container, consumer);
-            return;
-        }
-
-        // denseRawIdCounts() is null whenever denseIds is null, which also covers the page-palette
-        // state. Reaching here means the storage is neither uniform nor page-palette based, so it
-        // must have dense ids and this branch always runs. The check is kept because it costs one
-        // field read, keeps getAll consistent with maybeHas/count above (which test the same flag),
-        // and fails closed instead of throwing if that storage invariant is ever broken.
-        if (container.hasDenseIds()) {
-            for (int rawId : container.denseRawIdCounts().keySet()) {
-                consumer.accept(Block.stateById(rawId));
+        switch (container.mode()) {
+            case UNIFORM -> consumer.accept(Block.stateById(container.uniformRawId()));
+            case PAGE_PALETTE -> getAllPagePaletteStates(container, consumer);
+            case DENSE -> {
+                for (int rawId : container.denseRawIdCounts().keySet()) {
+                    consumer.accept(Block.stateById(rawId));
+                }
             }
         }
     }
 
     static boolean maybeHas(ArenaBlockStatePalettedContainer container, Predicate<BlockState> predicate) {
-        if (container.isUniform()) {
-            return predicate.test(Block.stateById(container.uniformRawId()));
-        }
-
-        if (container.hasPagePalettes()) {
-            return maybeHasPagePaletteState(container, predicate);
-        }
-
-        for (int rawId : container.denseRawIdCounts().keySet()) {
-            if (predicate.test(Block.stateById(rawId))) {
-                return true;
-            }
-        }
-        return false;
+        return switch (container.mode()) {
+            case UNIFORM -> predicate.test(Block.stateById(container.uniformRawId()));
+            case PAGE_PALETTE -> maybeHasPagePaletteState(container, predicate);
+            case DENSE -> maybeHasDenseRawId(container, predicate);
+        };
     }
 
     static void count(
             ArenaBlockStatePalettedContainer container, PalettedContainer.CountConsumer<BlockState> consumer) {
-        if (container.isUniform()) {
-            consumer.accept(Block.stateById(container.uniformRawId()), SECTION_SIZE);
-            return;
-        }
-
-        if (container.hasDenseIds()) {
-            container.denseRawIdCounts().int2IntEntrySet().forEach(
+        switch (container.mode()) {
+            case UNIFORM -> consumer.accept(Block.stateById(container.uniformRawId()), SECTION_SIZE);
+            case DENSE -> container.denseRawIdCounts().int2IntEntrySet().forEach(
                     entry -> consumer.accept(Block.stateById(entry.getIntKey()), entry.getIntValue()));
-            return;
+            case PAGE_PALETTE -> {
+                Int2IntOpenHashMap counts = new Int2IntOpenHashMap();
+                countRawIds(container, counts);
+                counts.int2IntEntrySet().forEach(
+                        entry -> consumer.accept(Block.stateById(entry.getIntKey()), entry.getIntValue()));
+            }
         }
-
-        Int2IntOpenHashMap counts = new Int2IntOpenHashMap();
-        countRawIds(container, counts);
-        counts.int2IntEntrySet().forEach(entry -> consumer.accept(Block.stateById(entry.getIntKey()), entry.getIntValue()));
     }
 
     static void forEachRawId(ArenaBlockStatePalettedContainer container, RawIdConsumer consumer) {
@@ -81,17 +58,16 @@ final class ArenaBlockStateQueries {
     }
 
     static void countRawIds(ArenaBlockStatePalettedContainer container, Int2IntOpenHashMap counts) {
-        if (container.hasDenseIds()) {
-            container.denseRawIdCounts().int2IntEntrySet().forEach(
+        switch (container.mode()) {
+            case DENSE -> container.denseRawIdCounts().int2IntEntrySet().forEach(
                     entry -> counts.addTo(entry.getIntKey(), entry.getIntValue()));
-            return;
+            case UNIFORM -> forEachRawId(container, (sectionIndex, rawId) -> counts.addTo(rawId, 1));
+            case PAGE_PALETTE -> countPagePaletteRawIds(container, counts);
         }
+    }
 
-        if (!container.hasPagePalettes()) {
-            forEachRawId(container, (sectionIndex, rawId) -> counts.addTo(rawId, 1));
-            return;
-        }
-
+    private static void countPagePaletteRawIds(
+            ArenaBlockStatePalettedContainer container, Int2IntOpenHashMap counts) {
         int[] paletteCounts = new int[PAGE_PALETTE_SIZE];
         for (int page = 0; page < PAGE_COUNT; ++page) {
             Arrays.fill(paletteCounts, 0);
@@ -155,6 +131,16 @@ final class ArenaBlockStateQueries {
                 if (rawId >= 0 && seen.add(rawId) && predicate.test(Block.stateById(rawId))) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    private static boolean maybeHasDenseRawId(
+            ArenaBlockStatePalettedContainer container, Predicate<BlockState> predicate) {
+        for (int rawId : container.denseRawIdCounts().keySet()) {
+            if (predicate.test(Block.stateById(rawId))) {
+                return true;
             }
         }
         return false;

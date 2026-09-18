@@ -1,37 +1,45 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
-import net.minecraft.world.level.levelgen.SurfaceRules;
-import net.minecraft.world.level.levelgen.SurfaceSystem;
-import net.minecraft.world.level.levelgen.VerticalAnchor;
-import net.minecraft.world.level.levelgen.WorldGenerationContext;
-import net.minecraft.world.level.levelgen.synth.NormalNoise;
+import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
+import net.minecraft.world.level.levelgen.material.condition.ConditionEvaluator;
+import net.minecraft.world.level.levelgen.material.rule.RuleEvaluator;
 import org.objectweb.asm.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+/**
+ * Names the 26.3 runtime members the generated rules call.
+ *
+ * <p>The context getters cannot be called by their production names: Minecraft's remapped
+ * namespaces rename them, and they cannot be found by shape either because several share {@code ()I}.
+ * The compiler therefore reads them through the accessors {@code MaterialRuleContextAccessMixin}
+ * injects, whose names live in this mod's own namespace and survive remapping - exactly how 26.2 read
+ * its context. The public getter names stay as a fallback for plain-JVM tests, where no mixin runs;
+ * in that case the mixin is also what gates the compiler, so a production namespace cannot end up
+ * here.</p>
+ */
 final class SurfaceRuntimeAbi {
-    static final String BLOCK_X = "byepregen$blockX";
-    static final String BLOCK_Y = "byepregen$blockY";
-    static final String BLOCK_Z = "byepregen$blockZ";
-    static final String LAST_UPDATE_XZ = "byepregen$lastUpdateXZ";
-    static final String MIN_SURFACE_LEVEL = "byepregen$getMinSurfaceLevel";
-    static final String STONE_ABOVE = "byepregen$stoneDepthAbove";
-    static final String STONE_BELOW = "byepregen$stoneDepthBelow";
-    static final String STONE_BELOW_AT_MOST_ONE = "byepregen$isStoneDepthBelowAtMostOne";
-    static final String SURFACE_DEPTH = "byepregen$surfaceDepth";
-    static final String SURFACE_SECONDARY = "byepregen$getSurfaceSecondary";
-    static final String SURFACE_SYSTEM = "byepregen$surfaceSystem";
-    static final String WATER_HEIGHT = "byepregen$waterHeight";
-    static final String WORLD_CONTEXT = "byepregen$worldGenerationContext";
-    static final String BAND = "byepregen$getBand";
+    static volatile String BLOCK_X = "blockX";
+    static volatile String BLOCK_Y = "blockY";
+    static volatile String BLOCK_Z = "blockZ";
+    static volatile String SURFACE_DEPTH = "surfaceDepth";
+    static volatile String WATER_HEIGHT = "waterHeight";
+    static volatile String STONE_ABOVE = "stoneDepthAbove";
+    static volatile String STONE_BELOW = "stoneDepthBelow";
+    static volatile String SURFACE_SECONDARY = "getSurfaceSecondary";
+    static volatile String MIN_SURFACE_LEVEL = "getMinSurfaceLevel";
+    static final String BAND = "getBand";
+    static final String NOISE_VALUE = "getAsDouble";
 
-    private final MethodHandles.Lookup lookup;
+    private static final Logger LOGGER = LoggerFactory.getLogger("ByePregen Surface Scalar");
+    private static volatile boolean contextNamesResolved;
+
     private final Class<?> contextClass;
     private final Class<?> conditionClass;
     private final Class<?> ruleClass;
@@ -40,72 +48,85 @@ final class SurfaceRuntimeAbi {
     private final String ruleOwner;
     private final String conditionTest;
     private final String ruleTryApply;
-    private final String noiseGetValue;
     private final String randomAt;
     private final String randomNextFloat;
-    private final String anchorResolveY;
     private final String mathMap;
 
-    private SurfaceRuntimeAbi(MethodHandles.Lookup lookup) throws ReflectiveOperationException {
-        this.lookup = lookup;
-        ClassLoader loader = SurfaceRules.class.getClassLoader();
-        this.contextClass = Class.forName(SurfaceRules.class.getName() + "$Context", false, loader);
-        this.conditionClass = Class.forName(SurfaceRules.class.getName() + "$Condition", false, loader);
-        this.ruleClass = Class.forName(SurfaceRules.class.getName() + "$SurfaceRule", false, loader);
+    private SurfaceRuntimeAbi() throws SurfaceCompileException {
+        this.contextClass = MaterialRuleContext.class;
+        this.conditionClass = ConditionEvaluator.class;
+        this.ruleClass = RuleEvaluator.class;
         this.contextOwner = Type.getInternalName(this.contextClass);
         this.conditionOwner = Type.getInternalName(this.conditionClass);
         this.ruleOwner = Type.getInternalName(this.ruleClass);
-        this.conditionTest = methodName(this.conditionClass, "test", boolean.class);
-        this.ruleTryApply = methodName(
-                this.ruleClass, "tryApply", BlockState.class, int.class, int.class, int.class
-        );
-        this.noiseGetValue = methodName(
-                NormalNoise.class, "getValue", double.class,
-                double.class, double.class, double.class
-        );
-        this.randomAt = methodName(
-                PositionalRandomFactory.class,
-                "at",
-                RandomSource.class,
-                int.class,
-                int.class,
-                int.class
-        );
-        this.randomNextFloat = methodName(RandomSource.class, "nextFloat", float.class);
-        this.anchorResolveY = methodName(
-                VerticalAnchor.class, "resolveY", int.class, WorldGenerationContext.class
-        );
-        this.mathMap = methodName(
-                Mth.class,
-                "map",
-                double.class,
-                double.class,
-                double.class,
-                double.class,
-                double.class,
-                double.class
-        );
-        this.preflightInjectedMethods();
+        try {
+            this.conditionTest = methodName(this.conditionClass, "test", boolean.class);
+            this.ruleTryApply = methodName(
+                    this.ruleClass, "tryApply", BlockState.class, int.class, int.class, int.class
+            );
+            this.randomAt = methodName(
+                    PositionalRandomFactory.class,
+                    "at",
+                    RandomSource.class,
+                    int.class,
+                    int.class,
+                    int.class
+            );
+            this.randomNextFloat = methodName(RandomSource.class, "nextFloat", float.class);
+            this.mathMap = methodName(
+                    Mth.class,
+                    "map",
+                    double.class,
+                    double.class,
+                    double.class,
+                    double.class,
+                    double.class,
+                    double.class
+            );
+        } catch (NoSuchMethodException exception) {
+            throw new SurfaceCompileException("Cannot resolve the SurfaceRule runtime ABI", exception);
+        }
+        this.resolveContextNames();
+        this.preflightContextGetters();
     }
 
     static SurfaceRuntimeAbi resolve() throws SurfaceCompileException {
-        try {
-            Method method = Arrays.stream(SurfaceRules.class.getDeclaredMethods())
-                    .filter(candidate -> Modifier.isStatic(candidate.getModifiers()))
-                    .filter(candidate -> candidate.getParameterCount() == 0)
-                    .filter(candidate -> candidate.getReturnType() == MethodHandles.Lookup.class)
-                    .filter(candidate -> candidate.getName().startsWith("byepregen$lookup"))
-                    .findFirst()
-                    .orElseThrow();
-            method.setAccessible(true);
-            return new SurfaceRuntimeAbi((MethodHandles.Lookup) method.invoke(null));
-        } catch (ReflectiveOperationException | RuntimeException exception) {
-            throw new SurfaceCompileException("Cannot resolve SurfaceRules runtime ABI", exception);
+        return new SurfaceRuntimeAbi();
+    }
+
+    /**
+     * Prefers this mod's injected accessors, whose names survive remapping, and only falls back to
+     * the public getter names when no mixin is applied (plain-JVM tests). Resolution happens once per
+     * process because the names are shared by every emitter.
+     */
+    private void resolveContextNames() {
+        if (contextNamesResolved) return;
+        boolean[] injected = {true};
+        BLOCK_X = pick("byepregen$blockX", BLOCK_X, int.class, injected);
+        BLOCK_Y = pick("byepregen$blockY", BLOCK_Y, int.class, injected);
+        BLOCK_Z = pick("byepregen$blockZ", BLOCK_Z, int.class, injected);
+        SURFACE_DEPTH = pick("byepregen$surfaceDepth", SURFACE_DEPTH, int.class, injected);
+        WATER_HEIGHT = pick("byepregen$waterHeight", WATER_HEIGHT, int.class, injected);
+        STONE_ABOVE = pick("byepregen$stoneDepthAbove", STONE_ABOVE, int.class, injected);
+        STONE_BELOW = pick("byepregen$stoneDepthBelow", STONE_BELOW, int.class, injected);
+        SURFACE_SECONDARY = pick("byepregen$getSurfaceSecondary", SURFACE_SECONDARY, double.class, injected);
+        MIN_SURFACE_LEVEL = pick("byepregen$getMinSurfaceLevel", MIN_SURFACE_LEVEL, int.class, injected);
+        contextNamesResolved = true;
+        if (injected[0]) {
+            LOGGER.info("Surface ABI reads the context through the injected accessors");
+        } else {
+            LOGGER.warn("Surface ABI fell back to the public context getters: the accessor mixin is not applied");
         }
     }
 
-    MethodHandles.Lookup lookup() {
-        return this.lookup;
+    private String pick(String accessor, String fallback, Class<?> returnType, boolean[] injected) {
+        try {
+            requireMethod(this.contextClass, accessor, returnType);
+            return accessor;
+        } catch (NoSuchMethodException missing) {
+            injected[0] = false;
+            return fallback;
+        }
     }
 
     Class<?> contextClass() {
@@ -132,20 +153,12 @@ final class SurfaceRuntimeAbi {
         return this.ruleTryApply;
     }
 
-    String noiseGetValue() {
-        return this.noiseGetValue;
-    }
-
     String randomAt() {
         return this.randomAt;
     }
 
     String randomNextFloat() {
         return this.randomNextFloat;
-    }
-
-    String anchorResolveY() {
-        return this.anchorResolveY;
     }
 
     String mathMap() {
@@ -162,21 +175,27 @@ final class SurfaceRuntimeAbi {
         return Type.getDescriptor(kind.fieldType());
     }
 
-    private void preflightInjectedMethods() throws ReflectiveOperationException {
-        requireMethod(this.contextClass, BLOCK_X, int.class);
-        requireMethod(this.contextClass, BLOCK_Y, int.class);
-        requireMethod(this.contextClass, BLOCK_Z, int.class);
-        requireMethod(this.contextClass, SURFACE_DEPTH, int.class);
-        requireMethod(this.contextClass, WATER_HEIGHT, int.class);
-        requireMethod(this.contextClass, STONE_ABOVE, int.class);
-        requireMethod(this.contextClass, STONE_BELOW, int.class);
-        requireMethod(this.contextClass, STONE_BELOW_AT_MOST_ONE, boolean.class);
-        requireMethod(this.contextClass, LAST_UPDATE_XZ, long.class);
-        requireMethod(this.contextClass, SURFACE_SYSTEM, SurfaceSystem.class);
-        requireMethod(this.contextClass, WORLD_CONTEXT, WorldGenerationContext.class);
-        requireMethod(this.contextClass, SURFACE_SECONDARY, double.class);
-        requireMethod(this.contextClass, MIN_SURFACE_LEVEL, int.class);
-        requireMethod(SurfaceSystem.class, BAND, BlockState.class, int.class, int.class, int.class);
+    /**
+     * The 26.3 context getters all share a few signatures, so they cannot be discovered by shape;
+     * their mapped names have to be present verbatim or the compiler declines to generate code.
+     */
+    private void preflightContextGetters() throws SurfaceCompileException {
+        try {
+            requireMethod(this.contextClass, BLOCK_X, int.class);
+            requireMethod(this.contextClass, BLOCK_Y, int.class);
+            requireMethod(this.contextClass, BLOCK_Z, int.class);
+            requireMethod(this.contextClass, SURFACE_DEPTH, int.class);
+            requireMethod(this.contextClass, WATER_HEIGHT, int.class);
+            requireMethod(this.contextClass, STONE_ABOVE, int.class);
+            requireMethod(this.contextClass, STONE_BELOW, int.class);
+            requireMethod(this.contextClass, SURFACE_SECONDARY, double.class);
+            requireMethod(this.contextClass, MIN_SURFACE_LEVEL, int.class);
+            requireMethod(this.contextClass, BAND, BlockState.class, int.class, int.class, int.class);
+        } catch (NoSuchMethodException exception) {
+            throw new SurfaceCompileException(
+                    "Cannot resolve the MaterialRuleContext ABI", exception
+            );
+        }
     }
 
     private static void requireMethod(

@@ -4,10 +4,8 @@ import static com.moepus.byepregen.palette.arena.Layout.*;
 
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.util.BitStorage;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.Palette;
-import net.minecraft.world.level.chunk.PalettedContainer;
 
 public final class StateImporter {
     private static final int MAX_LOCAL_PALETTE_BITS = 8;
@@ -50,30 +48,6 @@ public final class StateImporter {
 
         container.tryPromoteFullUniformSection();
         return true;
-    }
-
-    static void importData(ArenaBlockStatePalettedContainer container, PalettedContainer.Data<BlockState> data) {
-        container.releaseRawIds();
-
-        Palette<BlockState> palette = data.palette();
-        BitStorage storage = data.storage();
-        int bits = storage.getBits();
-        if (bits == 0) {
-            container.setUniformSection(ArenaBlockStatePalettedContainer.rawId(palette.valueFor(0)));
-            return;
-        }
-
-        int[] localToRaw = new int[1 << bits];
-        int[] pageRawIds = new int[PAGE_PALETTE_SIZE + 1];
-        RawIdSource source = index -> rawIdForLocal(palette, localToRaw, storage.get(index));
-        for (int page = 0; page < PAGE_COUNT; ++page) {
-            if (!importPage(container, page, source, pageRawIds)) {
-                importPagesToDense(container, page, source);
-                return;
-            }
-        }
-
-        container.tryPromoteFullUniformSection();
     }
 
     public static void importNetworkData(ArenaBlockStatePalettedContainer container, FriendlyByteBuf buffer) {
@@ -225,7 +199,7 @@ public final class StateImporter {
         }
 
         int defaultRawId = pageRawIds[0];
-        if (uniqueCount == 1 && container.isUniformRawId(defaultRawId)) {
+        if (uniqueCount == 1 && container.alreadyUniformRawId(defaultRawId)) {
             return true;
         }
 

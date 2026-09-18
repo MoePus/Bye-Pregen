@@ -1,7 +1,5 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import net.minecraft.world.level.levelgen.SurfaceSystem;
-import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
@@ -11,7 +9,6 @@ import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 
 final class SurfaceEmissionContext {
     static final String CONTEXT_FIELD = "context";
-    static final String COLUMN_EPOCH_FIELD = "columnEpoch";
 
     private final String owner;
     private final SurfaceRuntimeAbi abi;
@@ -79,35 +76,5 @@ final class SurfaceEmissionContext {
     void loadContextInt(MethodVisitor method, String accessor) {
         this.loadContext(method);
         this.invokeContext(method, accessor, "()I");
-    }
-
-    void loadWorldGenerationContext(MethodVisitor method) {
-        this.loadContext(method);
-        this.invokeContext(
-                method,
-                SurfaceRuntimeAbi.WORLD_CONTEXT,
-                Type.getMethodDescriptor(Type.getType(WorldGenerationContext.class))
-        );
-    }
-
-    void loadSurfaceSystem(MethodVisitor method) {
-        this.loadContext(method);
-        this.invokeContext(
-                method,
-                SurfaceRuntimeAbi.SURFACE_SYSTEM,
-                Type.getMethodDescriptor(Type.getType(SurfaceSystem.class))
-        );
-    }
-
-    static String sampledField(int bank) {
-        return "columnSampled$" + bank;
-    }
-
-    static String valuesField(int bank) {
-        return "columnValues$" + bank;
-    }
-
-    static String noiseSampleMethod(int sample) {
-        return "sampleNoise$" + sample;
     }
 }

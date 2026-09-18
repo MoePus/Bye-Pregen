@@ -1,6 +1,7 @@
 package com.moepus.byepregen.api.dfc;
 
-import net.minecraft.world.level.levelgen.DensityFunction;
+// 26.3: DensityFunction moved into the densityfunction subpackage.
+import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
 import org.junit.jupiter.api.Test;
 
 public final class ColumnDensityFunctionRegistryTest {

@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "feature.disk.DiskFeatureMixin",
+    "feature.disk.RuleBasedStateProviderMixin",
+    "feature.placement.CountOnEveryLayerPlacementMixin",
+    "feature.placement.EnvironmentScanPlacementMixin",
+    "feature.placement.FeaturePlacerMixin",
+    "feature.placement.FixedPlacementMixin",
+    "feature.placement.HeightmapPlacementMixin",
+    "feature.placement.HeightRangePlacementMixin",
+    "feature.placement.InSquarePlacementMixin",
+    "feature.placement.OffsetPlacementMixin",
+    "feature.placement.PlacedFeatureMixin",
+    "feature.placement.PlacementFilterMixin",
+    "feature.placement.RepeatingPlacementMixin",
+    "feature.predicate.AllOfPredicateMixin",
+    "feature.predicate.AnyOfPredicateMixin",
+    "feature.predicate.HasSturdyFacePredicateMixin",
+    "feature.predicate.MatchingBlocksPredicateMixin",
+    "feature.predicate.NotPredicateMixin",
+    "feature.predicate.StateTestingPredicateMixin",
+    "worldgen.feature.ChunkStatusTasksDebugDisableFeaturesMixin",
+    "worldgen.feature.LeavesBlockWorldgenTickMixin",
+    "worldgen.cache.WorldGenRegionSectionCacheMixin",
+    "feature.tree.TreeFeatureFastSetMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

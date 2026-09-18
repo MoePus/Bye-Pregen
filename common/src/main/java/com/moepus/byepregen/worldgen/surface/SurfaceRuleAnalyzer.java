@@ -4,31 +4,47 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.SurfaceRules;
+import net.minecraft.world.level.levelgen.material.condition.AbovePreliminarySurfaceCondition;
+import net.minecraft.world.level.levelgen.material.condition.HoleCondition;
+import net.minecraft.world.level.levelgen.material.condition.MaterialCondition;
+import net.minecraft.world.level.levelgen.material.condition.NoiseThresholdCondition;
+import net.minecraft.world.level.levelgen.material.condition.NotCondition;
+import net.minecraft.world.level.levelgen.material.condition.SteepCondition;
+import net.minecraft.world.level.levelgen.material.condition.StoneDepthCondition;
+import net.minecraft.world.level.levelgen.material.condition.TemperatureCondition;
+import net.minecraft.world.level.levelgen.material.condition.VerticalGradientCondition;
+import net.minecraft.world.level.levelgen.material.condition.WaterCondition;
+import net.minecraft.world.level.levelgen.material.condition.YCondition;
+import net.minecraft.world.level.levelgen.material.rule.BandlandsRule;
+import net.minecraft.world.level.levelgen.material.rule.BlockRule;
+import net.minecraft.world.level.levelgen.material.rule.ConditionRule;
+import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
+import net.minecraft.world.level.levelgen.material.rule.SequenceRule;
 
+/**
+ * 26.3: the surface tree is walked through the public condition/rule records instead of the 26.2
+ * {@code SurfaceRules$*Source} accessor mixins.
+ */
 public final class SurfaceRuleAnalyzer {
     public static final Limits DEFAULT_LIMITS = new Limits(4096, 256);
 
-    private static final SurfaceRules.RuleSource BANDLANDS = SurfaceRules.bandlands();
-    private static final SurfaceRules.ConditionSource ABOVE_PRELIMINARY =
-            SurfaceRules.abovePreliminarySurface();
-    private static final SurfaceRules.ConditionSource HOLE = SurfaceRules.hole();
-    private static final SurfaceRules.ConditionSource STEEP = SurfaceRules.steep();
-    private static final SurfaceRules.ConditionSource TEMPERATURE = SurfaceRules.temperature();
+    private static final String RULE_PACKAGE = "net.minecraft.world.level.levelgen.material.rule";
+    private static final String CONDITION_PACKAGE =
+            "net.minecraft.world.level.levelgen.material.condition";
 
     private SurfaceRuleAnalyzer() {
     }
 
-    public static SurfaceRulePlan analyze(SurfaceRules.RuleSource root) {
+    public static SurfaceRulePlan analyze(MaterialRule root) {
         return analyze(root, DEFAULT_LIMITS);
     }
 
-    public static SurfaceRulePlan analyze(SurfaceRules.RuleSource root, Limits limits) {
+    public static SurfaceRulePlan analyze(MaterialRule root, Limits limits) {
         return analyze(root, limits, SurfaceRuleAnalyzer::isVanillaSource);
     }
 
     static SurfaceRulePlan analyze(
-            SurfaceRules.RuleSource root,
+            MaterialRule root,
             Limits limits,
             Predicate<Object> trustedSources
     ) {
@@ -42,7 +58,7 @@ public final class SurfaceRuleAnalyzer {
     }
 
     private static SurfaceRulePlan.Rule analyzeRule(
-            SurfaceRules.RuleSource source,
+            MaterialRule source,
             SurfaceRuleAnalysisBuilder state,
             int depth
     ) {
@@ -51,20 +67,26 @@ public final class SurfaceRuleAnalyzer {
             return state.opaqueRule(identity);
         }
         try {
-            if (source == BANDLANDS) {
+            if (source == BandlandsRule.INSTANCE) {
                 return new SurfaceRulePlan.Bandlands();
             }
             if (!state.isTrusted(source)) {
                 return state.opaqueRule(source);
             }
-            if (source instanceof SurfaceRuleSourceAccess.Block access) {
-                return analyzeState(source, access, state);
+            if (source instanceof MaterialRule.HolderHolder holder) {
+                MaterialRule value = holder.holder().value();
+                return value == null
+                        ? state.opaqueRule(source)
+                        : analyzeRule(value, state, depth + 1);
             }
-            if (source instanceof SurfaceRuleSourceAccess.Sequence access) {
-                return analyzeSequence(source, access, state, depth);
+            if (source instanceof BlockRule block) {
+                return analyzeState(source, block, state);
             }
-            if (source instanceof SurfaceRuleSourceAccess.Test access) {
-                return analyzeTest(source, access, state, depth);
+            if (source instanceof SequenceRule sequence) {
+                return analyzeSequence(source, sequence, state, depth);
+            }
+            if (source instanceof ConditionRule condition) {
+                return analyzeTest(source, condition, state, depth);
             }
             return state.opaqueRule(source);
         } finally {
@@ -73,11 +95,11 @@ public final class SurfaceRuleAnalyzer {
     }
 
     private static SurfaceRulePlan.Rule analyzeState(
-            SurfaceRules.RuleSource source,
-            SurfaceRuleSourceAccess.Block access,
+            MaterialRule source,
+            BlockRule access,
             SurfaceRuleAnalysisBuilder state
     ) {
-        BlockState result = access.byepregen$resultState();
+        BlockState result = access.resultState();
         if (result == null) {
             return state.opaqueRule(source);
         }
@@ -85,30 +107,30 @@ public final class SurfaceRuleAnalyzer {
     }
 
     private static SurfaceRulePlan.Rule analyzeSequence(
-            SurfaceRules.RuleSource source,
-            SurfaceRuleSourceAccess.Sequence access,
+            MaterialRule source,
+            SequenceRule access,
             SurfaceRuleAnalysisBuilder state,
             int depth
     ) {
-        List<SurfaceRules.RuleSource> sources = copyRules(access.byepregen$sequence());
+        List<MaterialRule> sources = copyRules(access.sequence());
         if (sources == null || !state.canExpand(sources.size())) {
             return state.opaqueRule(source);
         }
         List<SurfaceRulePlan.Rule> rules = new java.util.ArrayList<>(sources.size());
-        for (SurfaceRules.RuleSource child : sources) {
+        for (MaterialRule child : sources) {
             rules.add(analyzeRule(child, state, depth + 1));
         }
         return new SurfaceRulePlan.Sequence(rules);
     }
 
     private static SurfaceRulePlan.Rule analyzeTest(
-            SurfaceRules.RuleSource source,
-            SurfaceRuleSourceAccess.Test access,
+            MaterialRule source,
+            ConditionRule access,
             SurfaceRuleAnalysisBuilder state,
             int depth
     ) {
-        SurfaceRules.ConditionSource conditionSource = access.byepregen$condition();
-        SurfaceRules.RuleSource followupSource = access.byepregen$followup();
+        MaterialCondition conditionSource = access.ifTrue();
+        MaterialRule followupSource = access.thenRun();
         if (conditionSource == null || followupSource == null || !state.canExpand(2)) {
             return state.opaqueRule(source);
         }
@@ -118,7 +140,7 @@ public final class SurfaceRuleAnalyzer {
     }
 
     private static SurfaceRulePlan.Condition analyzeCondition(
-            SurfaceRules.ConditionSource source,
+            MaterialCondition source,
             SurfaceRuleAnalysisBuilder state,
             int depth
     ) {
@@ -134,8 +156,14 @@ public final class SurfaceRuleAnalyzer {
             if (!state.isTrusted(source)) {
                 return state.opaqueCondition(source);
             }
-            if (source instanceof SurfaceRuleSourceAccess.NotCondition access) {
-                return analyzeNot(source, access, state, depth);
+            if (source instanceof MaterialCondition.HolderHolder holder) {
+                MaterialCondition value = holder.holder().value();
+                return value == null
+                        ? state.opaqueCondition(source)
+                        : analyzeCondition(value, state, depth + 1);
+            }
+            if (source instanceof NotCondition not) {
+                return analyzeNot(source, not, state, depth);
             }
             return analyzeKnownCondition(source, state);
         } finally {
@@ -144,12 +172,12 @@ public final class SurfaceRuleAnalyzer {
     }
 
     private static SurfaceRulePlan.Condition analyzeNot(
-            SurfaceRules.ConditionSource source,
-            SurfaceRuleSourceAccess.NotCondition access,
+            MaterialCondition source,
+            NotCondition access,
             SurfaceRuleAnalysisBuilder state,
             int depth
     ) {
-        SurfaceRules.ConditionSource targetSource = access.byepregen$target();
+        MaterialCondition targetSource = access.target();
         if (targetSource == null || !state.canExpand(1)) {
             return state.opaqueCondition(source);
         }
@@ -158,77 +186,91 @@ public final class SurfaceRuleAnalyzer {
     }
 
     private static SurfaceRulePlan.Condition analyzeKnownCondition(
-            SurfaceRules.ConditionSource source,
+            MaterialCondition source,
             SurfaceRuleAnalysisBuilder state
     ) {
-        if (source instanceof SurfaceRuleSourceAccess.NoiseCondition access) {
+        if (source instanceof NoiseThresholdCondition access) {
             return state.knownCondition(source, noiseSpec(access));
         }
-        if (source instanceof SurfaceRuleSourceAccess.StoneDepthCondition access) {
+        if (source instanceof StoneDepthCondition access) {
             return state.knownCondition(source, stoneSpec(access));
         }
-        if (source instanceof SurfaceRuleSourceAccess.VerticalGradientCondition access) {
+        if (source instanceof VerticalGradientCondition access) {
             return state.knownCondition(source, gradientSpec(access));
         }
-        if (source instanceof SurfaceRuleSourceAccess.WaterCondition access) {
+        if (source instanceof WaterCondition access) {
             return state.knownCondition(source, waterSpec(access));
         }
-        if (source instanceof SurfaceRuleSourceAccess.YCondition access) {
+        if (source instanceof YCondition access) {
             return state.knownCondition(source, ySpec(access));
         }
         return state.opaqueCondition(source);
     }
 
-    private static SurfaceConditionSpec noiseSpec(SurfaceRuleSourceAccess.NoiseCondition access) {
+    private static SurfaceConditionSpec noiseSpec(NoiseThresholdCondition access) {
         return new SurfaceConditionSpec.Noise(
-                access.byepregen$noise(), access.byepregen$minimum(), access.byepregen$maximum()
+                access.noise(), access.minThreshold(), access.maxThreshold(), access.is3d()
         );
     }
 
-    private static SurfaceConditionSpec.StoneDepth stoneSpec(
-            SurfaceRuleSourceAccess.StoneDepthCondition access
-    ) {
+    private static SurfaceConditionSpec.StoneDepth stoneSpec(StoneDepthCondition access) {
         return new SurfaceConditionSpec.StoneDepth(
-                access.byepregen$offset(), access.byepregen$addSurfaceDepth(),
-                access.byepregen$secondaryDepthRange(), access.byepregen$surfaceType()
+                access.offset(), access.addSurfaceDepth(),
+                access.secondaryDepthRange(), access.surfaceType()
         );
     }
 
-    private static SurfaceConditionSpec gradientSpec(
-            SurfaceRuleSourceAccess.VerticalGradientCondition access
-    ) {
+    private static SurfaceConditionSpec gradientSpec(VerticalGradientCondition access) {
         return new SurfaceConditionSpec.VerticalGradient(
-                access.byepregen$randomName(), access.byepregen$trueAtAndBelow(),
-                access.byepregen$falseAtAndAbove()
+                access.randomName(), access.trueAtAndBelow(), access.falseAtAndAbove()
         );
     }
 
-    private static SurfaceConditionSpec waterSpec(SurfaceRuleSourceAccess.WaterCondition access) {
+    private static SurfaceConditionSpec waterSpec(WaterCondition access) {
         return new SurfaceConditionSpec.Water(
-                access.byepregen$offset(), access.byepregen$surfaceDepthMultiplier(),
-                access.byepregen$addStoneDepth()
+                access.offset(), access.surfaceDepthMultiplier(), access.addStoneDepth()
         );
     }
 
-    private static SurfaceConditionSpec ySpec(SurfaceRuleSourceAccess.YCondition access) {
+    private static SurfaceConditionSpec ySpec(YCondition access) {
         return new SurfaceConditionSpec.YAbove(
-                access.byepregen$anchor(), access.byepregen$surfaceDepthMultiplier(),
-                access.byepregen$addStoneDepth()
+                access.anchor(), access.surfaceDepthMultiplier(), access.addStoneDepth()
         );
     }
 
-    private static SurfaceConditionSpec.Singleton singleton(SurfaceRules.ConditionSource source) {
-        if (source == ABOVE_PRELIMINARY) return SurfaceConditionSpec.Singleton.ABOVE_PRELIMINARY_SURFACE;
-        if (source == HOLE) return SurfaceConditionSpec.Singleton.HOLE;
-        if (source == STEEP) return SurfaceConditionSpec.Singleton.STEEP;
-        return source == TEMPERATURE ? SurfaceConditionSpec.Singleton.TEMPERATURE : null;
+    private static SurfaceConditionSpec.Singleton singleton(MaterialCondition source) {
+        if (source instanceof AbovePreliminarySurfaceCondition) {
+            return SurfaceConditionSpec.Singleton.ABOVE_PRELIMINARY_SURFACE;
+        }
+        if (source instanceof HoleCondition) {
+            return SurfaceConditionSpec.Singleton.HOLE;
+        }
+        if (source instanceof SteepCondition) {
+            return SurfaceConditionSpec.Singleton.STEEP;
+        }
+        return source instanceof TemperatureCondition
+                ? SurfaceConditionSpec.Singleton.TEMPERATURE
+                : null;
     }
 
+    /**
+     * 26.3: vanilla rules and conditions are plain records in two dedicated packages, so the nest
+     * host test of 26.2 becomes a package test plus the two holder wrappers.
+     */
     private static boolean isVanillaSource(Object source) {
-        return source != null && source.getClass().getNestHost() == SurfaceRules.class;
+        if (source == null) {
+            return false;
+        }
+        Class<?> type = source.getClass();
+        if (type == MaterialRule.HolderHolder.class
+                || type == MaterialCondition.HolderHolder.class) {
+            return true;
+        }
+        String name = type.getPackageName();
+        return RULE_PACKAGE.equals(name) || CONDITION_PACKAGE.equals(name);
     }
 
-    private static List<SurfaceRules.RuleSource> copyRules(List<SurfaceRules.RuleSource> rules) {
+    private static List<MaterialRule> copyRules(List<MaterialRule> rules) {
         if (rules == null) {
             return null;
         }

@@ -11,6 +11,12 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
+/**
+ * The two access inputs that ship have to widen the same members: the NeoForge access transformer
+ * and the Fabric access widener are maintained by hand, and 26.3 already drifted once (the YA light
+ * task type was widened in the retired monolith transformer only, which the Fabric side then read
+ * without an entry). This keeps them in step.
+ */
 final class AccessRulesParityTest {
     @Test
     void accessTransformerAndWidenerTargetTheSameMembers() throws Exception {
@@ -19,7 +25,7 @@ final class AccessRulesParityTest {
 
     private static Set<Rule> readAccessTransformer() throws IOException, URISyntaxException {
         Set<Rule> rules = new LinkedHashSet<>();
-        for (String line : read("/META-INF/accesstransformer.cfg")) {
+        for (String line : read("/META-INF/arena-core.cfg")) {
             String[] parts = line.split("\\s+");
             if (parts.length < 2) continue;
             String owner = parts[1].replace('.', '/');
@@ -36,7 +42,7 @@ final class AccessRulesParityTest {
 
     private static Set<Rule> readAccessWidener() throws IOException, URISyntaxException {
         Set<Rule> rules = new LinkedHashSet<>();
-        for (String line : read("/byepregen.accesswidener")) {
+        for (String line : read("/byepregen.arena.accesswidener")) {
             String[] parts = line.split("\\s+");
             if (parts.length < 3 || (!parts[0].equals("accessible") && !parts[0].equals("extendable"))) continue;
             if (parts[1].equals("class")) {

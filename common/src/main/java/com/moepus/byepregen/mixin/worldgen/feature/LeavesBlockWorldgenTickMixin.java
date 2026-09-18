@@ -1,5 +1,7 @@
 package com.moepus.byepregen.mixin.worldgen.feature;
 
+import com.moepus.byepregen.ConfigFlag;
+import com.moepus.byepregen.MixinGate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.WorldGenRegion;
@@ -13,7 +15,8 @@ import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(value = LeavesBlock.class,remap = false, priority = 500)
+@MixinGate(config = ConfigFlag.LEAF_WORLDGEN_TICK)
+@Mixin(value = LeavesBlock.class, remap = false, priority = 500)
 public abstract class LeavesBlockWorldgenTickMixin {
     @InjectLite(method = "updateShape", at = @At("HEAD"), cancel = true, cancelOnNonNull = true)
     private BlockState byepregen$skipStableWorldgenLeafTick(

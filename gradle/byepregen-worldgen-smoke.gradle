@@ -11,16 +11,11 @@ def worldGenConfig = [
         yaLight: byepregenProp('byepregenTestWorldGenYALight', 'true'),
         surfaceBiomeCache: byepregenProp('byepregenTestSurfaceBiomeCache', 'true'),
         surfaceScalar: byepregenProp('byepregenTestSurfaceScalar', 'true'),
-        surfaceOutputDifferential: providers.gradleProperty('byepregenTestSurfaceOutputDifferential')
-                .orElse(providers.gradleProperty('byepregenTestSurfaceDifferential'))
-                .orElse('false')
-                .get(),
         noFeatures: byepregenProp('byepregenTestWorldGenNoFeatures', 'false'),
         densityColumnCompiler: byepregenProp('byepregenTestDensityColumnCompiler', 'true'),
         enableMemoizedDiskPlan: byepregenProp('byepregenTestEnableMemoizedDiskPlan', 'true'),
         placedFeatureLocalOptimizations: byepregenProp(
                 'byepregenTestPlacedFeatureLocalOptimizations', 'true'),
-        flatCacheAccess: byepregenProp('byepregenTestFlatCacheAccess', 'true'),
         verifyDfcColumn: byepregenProp('byepregenTestVerifyDfcColumn', 'false'),
         c2meDfc: providers.gradleProperty('byepregenTestC2meDfc').orNull,
         levelType: byepregenProp('byepregenTestWorldGenLevelType', 'minecraft:normal'),
@@ -89,7 +84,6 @@ def defaultWorldGenLabel = "gc${worldGenConfig.gcFree}" +
         "-scalar${worldGenConfig.surfaceScalar}" +
         "-cache${worldGenConfig.surfaceBiomeCache}" +
         "-noFeatures${worldGenConfig.noFeatures}" +
-        "-outputDiff${worldGenConfig.surfaceOutputDifferential}" +
         "-biomeProfile${worldGenConfig.surfaceBiomeProfile}"
 worldGenConfig.label = byepregenProp('byepregenTestWorldGenLabel', defaultWorldGenLabel)
 worldGenConfig.jfr = file(
@@ -181,12 +175,10 @@ neoForge {
                     jfrRepository: worldGenConfig.jfrRepository,
                     surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
                     surfaceScalar: worldGenConfig.surfaceScalar,
-                    surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
                     verifyDfcColumn: worldGenConfig.verifyDfcColumn,
                     enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,
                     placedFeatureLocalOptimizations: worldGenConfig.placedFeatureLocalOptimizations,
-                    flatCacheAccess: worldGenConfig.flatCacheAccess,
                     compilationLog: worldGenConfig.logCompilation ? worldGenConfig.compilationLog : null,
             ])
         }
@@ -297,7 +289,6 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                     : 'byepregen:wwoo_single_biome',
             enablePlacedFeatureMixin  : worldGenConfig.enablePlacedFeatureMixin,
             placedFeatureLocalOptimizations: worldGenConfig.placedFeatureLocalOptimizations,
-            flatCacheAccess           : worldGenConfig.flatCacheAccess,
             initialEnabledPacks       : worldGenConfig.initialEnabledPacks,
             clearWorld                : true,
     ]

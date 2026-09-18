@@ -4,10 +4,7 @@ import com.moepus.byepregen.ConfigFlag;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.mixin.accessor.server.tick.ServerChunkCacheTickAccessor;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.QuartPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -27,6 +24,8 @@ public abstract class ServerLevelWeatherTickMixin {
     private LevelChunk byepregen$enterTickChunk(LevelChunk chunk) {
         ServerLevel level = (ServerLevel) (Object) this;
         ServerChunkCacheTickAccessor cache = (ServerChunkCacheTickAccessor) level.getChunkSource();
+        // Keep native BiomeManager's jittered selection, including neighboring-chunk reads.
+        cache.byepregen$storeInCache(chunk.getPos().pack(), chunk, ChunkStatus.BIOMES);
         cache.byepregen$storeInCache(chunk.getPos().pack(), chunk, ChunkStatus.FULL);
 
         LevelChunk previous = this.byepregen$currentTickChunk;
@@ -58,28 +57,6 @@ public abstract class ServerLevelWeatherTickMixin {
         }
         int height = chunk.getHeight(type, pos.getX() & 15, pos.getZ() & 15) + 1;
         return new BlockPos(pos.getX(), height, pos.getZ());
-    }
-
-    @Redirect(
-            method = "tickPrecipitation",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/server/level/ServerLevel;getBiome(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/core/Holder;"
-            ),
-            require = 1,
-            allow = 1
-    )
-    private Holder<Biome> byepregen$getCurrentChunkBiome(
-            ServerLevel level,
-            BlockPos pos) {
-        LevelChunk chunk = this.byepregen$currentChunkAt(pos);
-        if (chunk == null) {
-            return level.getBiome(pos);
-        }
-        return chunk.getNoiseBiome(
-                QuartPos.fromBlock(pos.getX()),
-                QuartPos.fromBlock(pos.getY()),
-                QuartPos.fromBlock(pos.getZ()));
     }
 
     @Unique

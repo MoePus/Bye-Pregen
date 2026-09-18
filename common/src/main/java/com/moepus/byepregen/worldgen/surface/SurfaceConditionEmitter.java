@@ -3,8 +3,6 @@ package com.moepus.byepregen.worldgen.surface;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
-import net.minecraft.world.level.levelgen.VerticalAnchor;
-import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -99,17 +97,15 @@ final class SurfaceConditionEmitter {
             Label target
     ) {
         int baseLimit = stone.baseLimit();
+        // stoneDepthAbove/Below are at least one, so a fixed limit at or below zero never holds.
         if (stone.hasFixedLimit() && baseLimit <= 0) {
             if (!branchOnTrue) {
                 method.visitJumpInsn(GOTO, target);
             }
             return;
         }
-        if (stone.surfaceType() == CaveSurface.CEILING
-                && this.context.layout().plan().boundedStoneDepthBelow()) {
-            this.emitAdjacentStoneDepthBelow(method, branchOnTrue, target);
-            return;
-        }
+        // 26.3: a CEILING check always reads the exact stone depth below; such plans are simply not
+        // marked bounded, because MaterialRuleContext cannot re-answer the check from a column.
         this.loadContextInt(
                 method,
                 stone.surfaceType() == CaveSurface.CEILING
@@ -126,16 +122,6 @@ final class SurfaceConditionEmitter {
             method.visitInsn(IADD);
         }
         method.visitJumpInsn(branchOnTrue ? IF_ICMPLE : IF_ICMPGT, target);
-    }
-
-    private void emitAdjacentStoneDepthBelow(
-            MethodVisitor method,
-            boolean branchOnTrue,
-            Label target
-    ) {
-        this.context.loadContext(method);
-        this.context.invokeContext(method, SurfaceRuntimeAbi.STONE_BELOW_AT_MOST_ONE, "()Z");
-        method.visitJumpInsn(branchOnTrue ? IFNE : IFEQ, target);
     }
 
     private void emitSecondaryDepth(MethodVisitor method, int range) {
@@ -267,18 +253,8 @@ final class SurfaceConditionEmitter {
         if (layout instanceof SurfaceScalarLayout.AbsoluteY absolute) {
             pushInt(method, absolute.y());
         } else if (layout instanceof SurfaceScalarLayout.BoundY bound) {
+            // 26.3: the anchor was resolved while binding, so the field already holds the plain int.
             this.context.loadBinding(method, bound.anchor());
-            this.context.loadWorldGenerationContext(method);
-            method.visitMethodInsn(
-                    INVOKEINTERFACE,
-                    Type.getInternalName(VerticalAnchor.class),
-                    this.context.abi().anchorResolveY(),
-                    Type.getMethodDescriptor(
-                            Type.INT_TYPE,
-                            Type.getType(WorldGenerationContext.class)
-                    ),
-                    true
-            );
         } else {
             throw new IllegalStateException("Unexpected Y layout " + layout);
         }

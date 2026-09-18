@@ -122,12 +122,12 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
 
     private static byte[][] packetSections(int count, ClientboundLightUpdatePacketData packet) {
         byte[][] sections = new byte[count][];
-        BitSet updates = packet.getSkyYMask();
-        BitSet empty = packet.getEmptySkyYMask();
+        BitSet updates = packet.skyYMask();
+        BitSet empty = packet.emptySkyYMask();
         int updateIndex = 0;
         for (int i = 0; i < count; ++i) {
             if (updates.get(i)) {
-                sections[i] = packet.getSkyUpdates().get(updateIndex++);
+                sections[i] = packet.skyUpdates().get(updateIndex++);
             } else if (empty.get(i)) {
                 sections[i] = new byte[0];
             }

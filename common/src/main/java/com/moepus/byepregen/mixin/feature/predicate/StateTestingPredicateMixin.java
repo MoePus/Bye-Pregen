@@ -8,7 +8,7 @@ import com.moepus.byepregen.worldgen.feature.FastDiskStateCursor;
 import com.moepus.byepregen.worldgen.feature.FastStateTestingPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
-import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.blockpredicates.StateTestingPredicate;
 import org.spongepowered.asm.mixin.Final;
@@ -41,7 +41,7 @@ public abstract class StateTestingPredicateMixin implements FastDiskBlockPredica
      * @reason Avoid allocating BlockPos instances while reading predicate target states during worldgen.
      */
     @Overwrite
-    public final boolean test(final WorldGenLevel level, final BlockPos pos) {
+    public final boolean test(final LevelAccessor level, final BlockPos pos) {
         return this.test(FastBlockPredicateOptimizer.getState(level, pos, this.offset));
     }
 }

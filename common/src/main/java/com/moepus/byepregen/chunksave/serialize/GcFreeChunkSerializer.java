@@ -12,6 +12,8 @@ import com.moepus.byepregen.chunksave.storage.RawChunkData;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkType;
 
 public final class GcFreeChunkSerializer {
@@ -36,6 +38,9 @@ public final class GcFreeChunkSerializer {
     }
 
     private static void writeRaw(ServerLevel level, ChunkAccess chunk, NbtWriter writer) {
+        if (!chunk.canBeSerialized()) {
+            throw new IllegalArgumentException("Chunk cannot be serialized: " + chunk);
+        }
         writer.startRootCompound();
         ChunkDataSerializer.write(level, chunk, writer);
         writer.finishCompound();
@@ -45,13 +50,17 @@ public final class GcFreeChunkSerializer {
     }
 
     public static boolean shouldUseGcFree(ChunkAccess chunk) {
-        if (!ChunkSaveHookGate.CAN_USE_RAW_SAVE) {
+        if (!ChunkSaveHookGate.CAN_USE_RAW_SAVE || !chunk.canBeSerialized()) {
             return false;
         }
         return isEligible(chunk);
     }
 
     private static boolean isEligible(ChunkAccess chunk) {
+        // Unknown chunk subclasses may contribute additional serialization data.
+        if (chunk.getClass() != ProtoChunk.class && chunk.getClass() != LevelChunk.class) {
+            return false;
+        }
         ChunkType chunkType = chunk.getPersistedStatus().getChunkType();
         if (chunkType == ChunkType.PROTOCHUNK) {
             return true;

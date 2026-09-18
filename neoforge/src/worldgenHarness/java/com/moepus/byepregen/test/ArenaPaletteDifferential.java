@@ -3,13 +3,22 @@ package com.moepus.byepregen.test;
 import com.moepus.byepregen.harness.HarnessResultFile;
 import com.moepus.byepregen.harness.HarnessServerLifecycle;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
+import com.moepus.byepregen.palette.arena.codec.NbtReader;
+import com.moepus.byepregen.palette.arena.codec.StateCodec;
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.Unpooled;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Block;
@@ -67,15 +76,49 @@ final class ArenaPaletteDifferential {
         });
     }
 
-    private static void assertScenario(int distinctStates) {
+    private static void assertScenario(int distinctStates) throws Exception {
         Pair pair = createPair(distinctStates);
         assertContents(pair.vanilla(), pair.arena(), "initial " + distinctStates);
         assertQueries(pair.vanilla(), pair.arena(), distinctStates);
         assertNetworkRoundTrip(pair.vanilla(), pair.arena(), distinctStates);
+        assertNbtRoundTrip(pair.vanilla(), pair.arena(), distinctStates);
         mutate(pair, distinctStates);
         assertContents(pair.vanilla(), pair.arena(), "mutated " + distinctStates);
         assertQueries(pair.vanilla(), pair.arena(), distinctStates);
         assertCopyIsolation(pair.arena());
+    }
+
+    /**
+     * Encodes the Arena container through the block-state codec, writes the tag to NBT bytes and reads it
+     * back, so the palette element encoding is checked the way a chunk file would be.
+     */
+    private static void assertNbtRoundTrip(
+            PalettedContainer<BlockState> vanilla,
+            ArenaBlockStatePalettedContainer arena,
+            int distinctStates
+    ) throws Exception {
+        var blockStates = PalettedContainer.codecRW(
+                BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),
+                Blocks.AIR.defaultBlockState());
+        var codec = new StateCodec(blockStates);
+        CompoundTag tag = (CompoundTag) codec.encodeStart(NbtOps.INSTANCE, arena).getOrThrow();
+        assertContents(arena, NbtReader.read(tag), "nbt direct " + distinctStates);
+
+        CompoundTag reloaded;
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream output = new DataOutputStream(bytes)) {
+            NbtIo.write(tag, output);
+        }
+        try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+            reloaded = NbtIo.read(input);
+        }
+        assertContents(arena, blockStates.parse(NbtOps.INSTANCE, reloaded).getOrThrow(),
+                "nbt bytes " + distinctStates);
+
+        // The vanilla container must serialize to a tag our reader understands, which is the other half
+        // of the bidirectional check the block-state codec switch demands.
+        CompoundTag vanillaTag = (CompoundTag) blockStates.encodeStart(NbtOps.INSTANCE, vanilla).getOrThrow();
+        assertContents(arena, NbtReader.read(vanillaTag), "nbt vanilla " + distinctStates);
     }
 
     private static Pair createPair(int distinctStates) {

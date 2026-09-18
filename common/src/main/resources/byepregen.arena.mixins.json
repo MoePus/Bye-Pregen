@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "accessor.arena.LevelChunkSectionAccessor",
+    "arena.ChunkAccessArenaMixin",
+    "arena.ChunkSerializerArenaReadMixin",
+    "arena.compat.voxy.VoxyWorldConversionFactoryMixin",
+    "arena.PalettedContainerFactoryArenaCodecMixin",
+    "arena.LevelChunkArenaMixin",
+    "arena.NoiseBasedChunkGeneratorArenaMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

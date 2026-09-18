@@ -2,8 +2,8 @@ package com.moepus.byepregen.mixin.palette.compat.lithium;
 
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.palette.access.PaletteRawIdAccess;
+import com.moepus.byepregen.palette.access.PaletteRawIds;
 import net.minecraft.core.IdMap;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
@@ -22,11 +22,6 @@ public abstract class LithiumHashPaletteMixin<T> implements PaletteRawIdAccess {
             return -1;
         }
         T value = this.entries[localId];
-        return value == null ? -1 : byepregen$getRawId(globalMap, value);
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static int byepregen$getRawId(IdMap<?> globalMap, Object value) {
-        return ((IdMap) globalMap).getId(value);
+        return value == null ? -1 : PaletteRawIds.rawId(globalMap, value);
     }
 }

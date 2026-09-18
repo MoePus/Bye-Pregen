@@ -38,6 +38,10 @@ sourceSets {
     }
     worldgenHarness {
         java.setSrcDirs(['src/worldgenHarness/java', project(':common').file('src/harnessCommon/java')])
+        // The density column and climate column probes were written against the removed per-column
+        // codegen; the float sampler port replaces them with the Fabric-side DFC verification.
+        java.exclude('**/test/DensityColumn*.java')
+        java.exclude('**/test/ClimateRTreeColumnProbe.java')
         resources.setSrcDirs(['src/worldgenHarness/resources'])
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
@@ -74,7 +78,7 @@ neoForge {
         version = neoforge_version
         disableRecompilation = true
     }
-    def accessTransformer = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    def accessTransformer = project(':common').file('src/main/resources/META-INF/arena-core.cfg')
     if (accessTransformer.exists()) {
         accessTransformers.from(accessTransformer.absolutePath)
     }
@@ -86,12 +90,10 @@ neoForge {
         byepregen_startup_harness {
             sourceSet(sourceSets.startupHarness)
         }
-        byepregen_surface_test {
-            sourceSet(sourceSets.surfaceTest)
-        }
         byepregen_worldgen_harness {
             sourceSet(sourceSets.worldgenHarness)
         }
+        // TODO(26.3): Register the surface test mod after its TerraBlender and light dependencies migrate.
     }
     runs {
         configureEach {
@@ -141,15 +143,20 @@ dependencies {
     implementation("org.mixinlite:mixinlite:${mixinlite_version}")
     annotationProcessor("org.mixinlite:mixinlite:${mixinlite_version}")
     jarJar("org.mixinlite:mixinlite:${mixinlite_version}")
-    compileOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}")
+    // TODO(26.3): Restore after the mod and its compatibility code support this version.
+    // compileOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}")
 
     if (optionalRuntimeEnabled) {
-        runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_neoforge_version}")
         runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_neoforge_version}")
         runtimeOnly("maven.modrinth:lithium:${lithium_neoforge_version}")
-        runtimeOnly("maven.modrinth:sodium:${sodium_neoforge_version}")
         runtimeOnly("maven.modrinth:architectury-api:${architectury_neoforge_version}")
         runtimeOnly("maven.modrinth:chunky:${chunky_neoforge_version}")
+        // Sodium ships a 26.3 build, so the palette contract surface is exercised against it again.
+        runtimeOnly("maven.modrinth:sodium:${sodium_neoforge_version}")
+        // TODO(26.3): Restore FastNoise and TerraBlender compatibility when they update.
+        // FastNoise is runtime-only here (never a compile input): enable this line to run the runtime
+        // checks with it installed, once a build for this Minecraft version exists.
+        // runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_neoforge_version}")
     } else if (worldgenValidationRequested) {
         runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_neoforge_version}")
         runtimeOnly("maven.modrinth:chunky:${chunky_neoforge_version}")
@@ -158,26 +165,52 @@ dependencies {
         }
     }
 
-    if (providers.gradleProperty('byepregen.enableConnectorRuntime').map(String::toBoolean).orElse(false).get()) {
-        implementation("org.sinytra.launchpad:launchpad:${launchpad_version}")
-        implementation("org.sinytra.forgified-fabric-api:forgified-fabric-api:${forgified_fabric_api_version}")
-        implementation("org.sinytra:connector:${connector_version}")
-        runtimeOnly("maven.modrinth:voxy:${voxy_fabric_version}")
-    }
 }
 
 apply from: rootProject.file('gradle/byepregen-test-config.gradle')
 apply from: rootProject.file('gradle/byepregen-server-fixtures.gradle')
 apply from: rootProject.file('gradle/byepregen-worldgen-run-support.gradle')
 apply from: rootProject.file('gradle/byepregen-startup-verification.gradle')
-apply from: rootProject.file('gradle/byepregen-packaged-surface-linkage.gradle')
 apply from: rootProject.file('gradle/byepregen-worldgen-smoke.gradle')
 apply from: rootProject.file('gradle/byepregen-light-verification.gradle')
 
+// GC-free saving is off by default; opt the startup check into it so the NeoForge save gate and the
+// C2ME raw-IO branch are exercised when the optional runtime mods are installed.
+if (providers.gradleProperty('byepregen.startupGcFreeWorldgen').map(String::toBoolean).orElse(false).get()) {
+    neoForge.runs.named('startupServer') {
+        systemProperty 'byepregen.testConfig.chunk-saving.gc-free-worldgen', 'True'
+    }
+}
+// The Arena client palette and the retained server-side Arena storage are both off by default, so the
+// ordinary startup checks never load their mixins; these switches let them do so on demand.
+if (providers.gradleProperty('byepregen.startupClientArena').map(String::toBoolean).orElse(false).get()) {
+    neoForge.runs.named('startupClient') {
+        systemProperty 'byepregen.testConfig.worldgen.arena.client', 'True'
+    }
+}
+if (providers.gradleProperty('byepregen.startupServerArena').map(String::toBoolean).orElse(false).get()) {
+    neoForge.runs.named('startupServer') {
+        systemProperty 'byepregen.testConfig.worldgen.arena.server-runtime', 'True'
+    }
+}
+// YA light is off by default; the start-up checks can load its mixins, including the client-side ones.
+if (providers.gradleProperty('byepregen.startupYaLight').map(String::toBoolean).orElse(false).get()) {
+    neoForge.runs.named('startupServer') {
+        systemProperty 'byepregen.testConfig.lighting.ya.enabled', 'True'
+    }
+    neoForge.runs.named('startupClient') {
+        systemProperty 'byepregen.testConfig.lighting.ya.enabled', 'True'
+    }
+}
+// The packaged-surface verification script is gone: it asserted 26.2 class names that no longer
+// exist. Rewrite it with the material-rule compiler work before re-registering the surface harness.
+
 def runtimeCheck = tasks.register('runtimeCheck') {
     group = 'verification'
-    description = 'Runs packaged Surface, fast tick, and radius-16 worldgen smoke checks.'
-    dependsOn('runSurfacePackagedLinkage', 'testSurfaceOpaqueRuntime', 'runTestWorldGen', 'testFastTickRuntime')
+    description = 'Runs the Arena palette, chunk NBT parity, fast tick and radius-16 worldgen checks.'
+    // TODO(26.3): Add the packaged Surface checks back with that harness.
+    dependsOn('testArenaPaletteDifferential', 'testChunkNbtParity', 'testFastTickRuntime',
+            'runTestWorldGen')
 }
 
 tasks.register('ciCheck') {

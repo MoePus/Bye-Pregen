@@ -9,6 +9,7 @@ public final class SurfaceScalarMetrics {
     private static final LongAdder BIND_FAILURES = new LongAdder();
     private static final LongAdder OUTPUT_COMPARISONS = new LongAdder();
     private static final LongAdder OUTPUT_MISMATCHES = new LongAdder();
+    private static final LongAdder BOUNDED = new LongAdder();
     private static volatile SurfaceDirectTemplate.Statistics latest;
 
     private SurfaceScalarMetrics() {
@@ -40,6 +41,11 @@ public final class SurfaceScalarMetrics {
         OUTPUT_MISMATCHES.increment();
     }
 
+    /** How many generated templates never ask for the stone depth below, so their scan can stop early. */
+    static void bounded() {
+        BOUNDED.increment();
+    }
+
     public static Snapshot snapshot() {
         SurfaceDirectTemplate.Statistics statistics = latest;
         return new Snapshot(
@@ -49,6 +55,7 @@ public final class SurfaceScalarMetrics {
                 BIND_FAILURES.sum(),
                 OUTPUT_COMPARISONS.sum(),
                 OUTPUT_MISMATCHES.sum(),
+                BOUNDED.sum(),
                 statistics == null ? 0 : statistics.classBytes(),
                 statistics == null ? 0 : statistics.regions()
         );
@@ -61,6 +68,7 @@ public final class SurfaceScalarMetrics {
             long bindFailures,
             long outputComparisons,
             long outputMismatches,
+            long bounded,
             int latestClassBytes,
             int latestRegions
     ) {

@@ -38,10 +38,6 @@ public final class YAFreshLightRequest extends CompletableFuture<ChunkAccess> {
         this.state |= FAILED;
     }
 
-    public void cancel() {
-        this.markFailed();
-    }
-
     public YAFreshLightRequest nextQueued(LightLayer layer) {
         return layer == LightLayer.BLOCK ? this.nextBlockQueue : this.nextSkyQueue;
     }

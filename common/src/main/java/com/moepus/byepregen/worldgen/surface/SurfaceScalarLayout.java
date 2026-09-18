@@ -1,31 +1,25 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
-import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 final class SurfaceScalarLayout {
     private final SurfaceRulePlan plan;
     private final SurfaceBindingLayout bindings;
     private final IdentityHashMap<SurfaceRulePlan.Rule, SurfaceRulePlan.BindingSlotId> ruleSlots;
     private final IdentityHashMap<SurfaceRulePlan.Condition, ConditionLayout> conditions;
-    private final List<NoiseSample> noiseSamples;
-    private final int noisePredicates;
+    private final int noiseConditions;
+    private final Map<SurfaceConditionSpec.Noise, SurfaceRulePlan.BindingSlotId> noiseSlots;
 
     private SurfaceScalarLayout(SurfaceRulePlan plan, Builder builder) {
         this.plan = plan;
         this.bindings = builder.bindings.build();
         this.ruleSlots = builder.ruleSlots;
         this.conditions = builder.conditions;
-        this.noiseSamples = builder.noiseSamples.stream()
-                .map(MutableNoiseSample::freeze)
-                .toList();
-        this.noisePredicates = builder.nextNoisePredicate;
+        this.noiseConditions = builder.noiseConditions;
+        this.noiseSlots = builder.noiseSlots;
     }
 
     static SurfaceScalarLayout lower(SurfaceRulePlan plan) throws SurfaceCompileException {
@@ -54,24 +48,16 @@ final class SurfaceScalarLayout {
         return layout;
     }
 
-    List<NoiseSample> noiseSamples() {
-        return this.noiseSamples;
-    }
-
     int noiseOccurrences() {
-        return this.noisePredicates;
+        return this.noiseConditions;
     }
 
-    int noiseValueBanks() {
-        return bankCount(this.noisePredicates);
-    }
-
-    int noiseSampleBanks() {
-        return bankCount(this.noiseSamples.size());
+    int noiseSamples() {
+        return this.noiseSlots.size();
     }
 
     sealed interface ConditionLayout
-            permits Inline, Delegate, NoiseCondition, Gradient, AbsoluteY, BoundY {
+            permits Inline, Delegate, Noise, Gradient, AbsoluteY, BoundY {
     }
 
     enum Inline implements ConditionLayout {
@@ -81,10 +67,11 @@ final class SurfaceScalarLayout {
     record Delegate(SurfaceRulePlan.BindingSlotId slot) implements ConditionLayout {
     }
 
-    record NoiseCondition(
-            int sampleIndex,
-            int predicateIndex
-    ) implements ConditionLayout {
+    /**
+     * 26.3: the noise condition reads its already-cached {@code DoubleSupplier} through a bound
+     * field, so there is no sample bank, no range mask and no column epoch to keep.
+     */
+    record Noise(SurfaceRulePlan.BindingSlotId supplier) implements ConditionLayout {
     }
 
     record Gradient(
@@ -100,30 +87,6 @@ final class SurfaceScalarLayout {
     record BoundY(SurfaceRulePlan.BindingSlotId anchor) implements ConditionLayout {
     }
 
-    record NoiseSample(
-            int index,
-            SurfaceRulePlan.BindingSlotId noiseSlot,
-            List<NoiseRange> ranges
-    ) {
-        NoiseSample {
-            ranges = List.copyOf(ranges);
-        }
-
-        long mask() {
-            return 1L << (this.index & (Long.SIZE - 1));
-        }
-    }
-
-    record NoiseRange(int predicateIndex, double minimum, double maximum) {
-        long mask() {
-            return 1L << (this.predicateIndex & (Long.SIZE - 1));
-        }
-    }
-
-    private static int bankCount(int values) {
-        return (values + Long.SIZE - 1) / Long.SIZE;
-    }
-
     private static final class Builder {
         private final SurfaceBindingLayout.Builder bindings = new SurfaceBindingLayout.Builder();
         private final IdentityHashMap<SurfaceRulePlan.Rule, SurfaceRulePlan.BindingSlotId> ruleSlots =
@@ -132,11 +95,9 @@ final class SurfaceScalarLayout {
                 new IdentityHashMap<>();
         private final IdentityHashMap<SurfaceRulePlan.Condition, ConditionLayout> conditions =
                 new IdentityHashMap<>();
-        private final Map<ResourceKey<NormalNoise.NoiseParameters>, MutableNoiseSample> samples =
+        private final Map<SurfaceConditionSpec.Noise, SurfaceRulePlan.BindingSlotId> noiseSlots =
                 new LinkedHashMap<>();
-        private final List<MutableNoiseSample> noiseSamples = new ArrayList<>();
-        private final Map<SurfaceRulePlan.ValueId, Integer> noisePredicates = new LinkedHashMap<>();
-        private int nextNoisePredicate;
+        private int noiseConditions;
 
         private void lowerRule(SurfaceRulePlan.Rule rule) throws SurfaceCompileException {
             switch (rule) {
@@ -184,7 +145,7 @@ final class SurfaceScalarLayout {
                 throws SurfaceCompileException {
             SurfaceConditionSpec spec = condition.value().spec();
             ConditionLayout layout = switch (spec) {
-                case SurfaceConditionSpec.Noise noise -> this.lowerNoise(condition, noise);
+                case SurfaceConditionSpec.Noise noise -> this.lowerNoise(noise);
                 case SurfaceConditionSpec.StoneDepth ignored -> Inline.INSTANCE;
                 case SurfaceConditionSpec.VerticalGradient gradient -> this.lowerGradient(gradient);
                 case SurfaceConditionSpec.Water ignored -> Inline.INSTANCE;
@@ -198,38 +159,14 @@ final class SurfaceScalarLayout {
             this.conditions.put(condition, layout);
         }
 
-        private NoiseCondition lowerNoise(
-                SurfaceRulePlan.KnownCondition condition,
-                SurfaceConditionSpec.Noise noise
-        ) {
-            MutableNoiseSample sample = this.samples.get(noise.noise());
-            if (sample == null) {
-                SurfaceRulePlan.BindingSlotId slot = this.bindings.add(
-                        SurfaceBindingLayout.Kind.NOISE, noise.noise()
-                );
-                sample = new MutableNoiseSample(this.noiseSamples.size(), slot);
-                this.samples.put(noise.noise(), sample);
-                this.noiseSamples.add(sample);
-            } else {
-                this.bindings.addDiscarded(SurfaceBindingLayout.Kind.NOISE, noise.noise());
+        private Noise lowerNoise(SurfaceConditionSpec.Noise noise) {
+            this.noiseConditions++;
+            SurfaceRulePlan.BindingSlotId slot = this.noiseSlots.get(noise);
+            if (slot == null) {
+                slot = this.bindings.add(SurfaceBindingLayout.Kind.NOISE, noise);
+                this.noiseSlots.put(noise, slot);
             }
-            Integer existing = this.noisePredicates.get(condition.value().id());
-            int predicate = existing == null
-                    ? this.addNoisePredicate(noise, sample)
-                    : existing;
-            if (existing == null) {
-                this.noisePredicates.put(condition.value().id(), predicate);
-            }
-            return new NoiseCondition(sample.index, predicate);
-        }
-
-        private int addNoisePredicate(
-                SurfaceConditionSpec.Noise noise,
-                MutableNoiseSample sample
-        ) {
-            int predicate = this.nextNoisePredicate++;
-            sample.ranges.add(new NoiseRange(predicate, noise.minimum(), noise.maximum()));
-            return predicate;
+            return new Noise(slot);
         }
 
         private Gradient lowerGradient(SurfaceConditionSpec.VerticalGradient gradient) {
@@ -249,8 +186,10 @@ final class SurfaceScalarLayout {
             if (yAbove.anchor() instanceof VerticalAnchor.Absolute absolute) {
                 return new AbsoluteY(absolute.y());
             }
+            // 26.3: the anchor is resolved while binding (the context resolves it for us), so the
+            // generated rule only loads the resulting int.
             return new BoundY(this.bindings.add(
-                    SurfaceBindingLayout.Kind.Y_ANCHOR, yAbove.anchor()
+                    SurfaceBindingLayout.Kind.RESOLVED_ANCHOR, yAbove.anchor()
             ));
         }
 
@@ -260,21 +199,6 @@ final class SurfaceScalarLayout {
 
         private static SurfaceCompileException unexpectedSpec(SurfaceConditionSpec spec) {
             return new SurfaceCompileException("Unexpected known condition: " + spec);
-        }
-    }
-
-    private static final class MutableNoiseSample {
-        private final int index;
-        private final SurfaceRulePlan.BindingSlotId noiseSlot;
-        private final List<NoiseRange> ranges = new ArrayList<>();
-
-        private MutableNoiseSample(int index, SurfaceRulePlan.BindingSlotId noiseSlot) {
-            this.index = index;
-            this.noiseSlot = noiseSlot;
-        }
-
-        private NoiseSample freeze() {
-            return new NoiseSample(this.index, this.noiseSlot, this.ranges);
         }
     }
 }

@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Spliterator;
 
-/** HashSet-compatible view backed by fastutil's open-addressed object set. */
+/** Internal adapter for TreeFeature factory calls; tree code uses only Set operations. */
 public final class FastObjectHashSet<E> extends HashSet<E> {
     private final ObjectOpenHashSet<E> delegate = new ObjectOpenHashSet<>();
 

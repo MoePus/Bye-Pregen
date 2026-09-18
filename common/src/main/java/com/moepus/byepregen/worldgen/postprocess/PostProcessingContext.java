@@ -5,8 +5,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -97,13 +99,35 @@ abstract class PostProcessingContext {
             BlockState neighborState = getBlockState(neighborPos);
             FluidState neighborFluid = neighborState.getFluidState();
             if (!neighborFluid.getType().isSame(fluidState.getType()) || !neighborFluid.isSource()) {
-                if (!neighborState.blocksMotion()) {
+                if (!blocksFluid(neighborState, fluidState.getType())) {
                     return false;
                 }
             }
         }
 
         return true;
+    }
+
+    /**
+     * Whether the neighbour keeps this fluid out.
+     *
+     * <p>26.2 asked {@code BlockState.blocksMotion()}, which 26.3 removed. The replacement only
+     * reports a blocker when nothing could let the fluid through: the state is solid, is not a fluid
+     * container, is not in vanilla's {@code WASHED_AWAY_BY_FLUIDS} tag and cannot be replaced by this
+     * fluid. Every uncertain case answers "no blocker", so a fluid tick is deferred rather than
+     * dropped.</p>
+     */
+    private static boolean blocksFluid(BlockState state, Fluid fluid) {
+        if (state.isAir() || !state.isSolid()) {
+            return false;
+        }
+        if (state.getBlock() instanceof LiquidBlockContainer) {
+            return false;
+        }
+        if (state.is(BlockTags.WASHED_AWAY_BY_FLUIDS)) {
+            return false;
+        }
+        return !state.canBeReplaced(fluid);
     }
 
     private static final class PreNorm extends PostProcessingContext {

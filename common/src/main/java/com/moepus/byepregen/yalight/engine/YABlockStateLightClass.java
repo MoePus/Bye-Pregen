@@ -1,8 +1,5 @@
 package com.moepus.byepregen.yalight.engine;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -83,7 +80,7 @@ public final class YABlockStateLightClass {
     }
 
     private static boolean needsStateLightColor(BlockState state) {
-        return state.getLightEmission() != 0
-                || state.emissiveRendering(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        // 26.3 evaluates emissive rendering per state instead of per position.
+        return state.getLightEmission() != 0 || state.emissiveRendering();
     }
 }

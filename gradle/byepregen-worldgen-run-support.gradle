@@ -61,11 +61,6 @@ ext.byepregenWorldgenTestConfig = { Map options ->
                                     : true,
                             'biome-cache'  : surfaceBiomeCache,
                     ],
-                    misc             : [
-                            'flat-cache-access': options.containsKey('flatCacheAccess')
-                                    ? options.flatCacheAccess
-                                    : true,
-                    ],
             ],
             server        : [
                     'fast-chunk-ticking': [enabled: options.containsKey('fastTick')
@@ -121,10 +116,6 @@ ext.byepregenConfigureWorldgenRun = { run, Map options ->
     run.systemProperty(
             'byepregen.testWorldGen.runResult',
             byepregenWorldgenResult(options.dir).absolutePath
-    )
-    run.systemProperty(
-            'byepregen.surfaceOutputDifferential',
-            options.surfaceOutputDifferential ?: 'false'
     )
     run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
     run.systemProperty('byepregen.verifyDfcColumn', options.verifyDfcColumn ?: 'false')

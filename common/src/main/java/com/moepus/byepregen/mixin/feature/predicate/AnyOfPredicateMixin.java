@@ -5,7 +5,7 @@ import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.worldgen.feature.FastCombiningPredicate;
 import java.util.List;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import org.mixinlite.injector.InjectLite;
 import org.spongepowered.asm.mixin.Mixin;
@@ -39,7 +39,7 @@ public abstract class AnyOfPredicateMixin extends CombiningPredicate implements 
      * @reason Avoid allocating ListItr in hot worldgen predicate checks.
      */
     @Overwrite
-    public boolean test(final WorldGenLevel level, final BlockPos pos) {
+    public boolean test(final LevelAccessor level, final BlockPos pos) {
         final List<BlockPredicate> predicates = this.predicates;
         for (int i = 0, size = predicates.size(); i < size; i++) {
             if (predicates.get(i).test(level, pos)) {

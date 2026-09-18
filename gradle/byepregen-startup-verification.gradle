@@ -42,6 +42,16 @@ neoForge {
 
 def validateStartup = { String side, File root, File result ->
     String outcome = byepregenAssertPassResult(result, "${side} startup")
+    if (side == 'Client') {
+        def fields = new Properties()
+        fields.load(new StringReader(outcome))
+        if (fields.getProperty('screen') != 'net.minecraft.client.gui.screens.TitleScreen'
+                || fields.getProperty('resourcesLoaded') != 'true'
+                || fields.getProperty('loadingErrors') != '0'
+                || (fields.getProperty('stableTicks', '0') as int) < 5) {
+            throw new GradleException("Client startup did not reach a fully loaded title screen:\n${outcome}")
+        }
+    }
     byepregenAssertNoTestConfigFile(root)
     File log = file("${root}/logs/latest.log")
     if (!log.isFile()) {
@@ -101,11 +111,17 @@ tasks.matching { it.name == 'runStartupServer' }.configureEach {
 
 tasks.matching { it.name == 'runStartupClient' }.configureEach {
     group = 'verification'
-    description = 'Starts an ordinary client with ByePregen and exits after the first stable client tick.'
+    description = 'Starts a client with ByePregen and verifies a fully loaded, stable title screen.'
     notCompatibleWithConfigurationCache('Prepares and validates a disposable startup client')
     doFirst {
         delete(clientStartupRoot)
         clientStartupRoot.mkdirs()
+        new File(clientStartupRoot, 'options.txt').setText('onboardAccessibility:false\n', 'UTF-8')
+        def fixtureConfig = new File(clientStartupRoot, 'config')
+        fixtureConfig.mkdirs()
+        // The disposable client proceeds past warning-only prompts (e.g. Chunky's deprecated logoFile).
+        // NeoForge and the probe still log every issue; errors and unfinished startup cannot pass.
+        new File(fixtureConfig, 'neoforge-client.toml').setText('showLoadWarnings=false\n', 'UTF-8')
     }
     doLast { validateStartup('Client', clientStartupRoot, clientStartupResult) }
 }

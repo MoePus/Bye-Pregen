@@ -6,11 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
+import com.moepus.byepregen.dfc.runtime.ColumnTestFrames;
 import org.junit.jupiter.api.Test;
 
 final class ColumnEvaluationContextTest {
-    private static final long SENTINEL_BITS = 0x7ffd_db97_2d48_6a4fL;
-    private static final double SENTINEL = Double.longBitsToDouble(SENTINEL_BITS);
+    // 26.3: the lazy memo sentinel moved from a double payload to the float payload declared by
+    // ColumnEvaluationContext.MEMO_MISS_BITS, paired with a per-slot "ready" flag.
+    private static final int SENTINEL_BITS = 0x7fc1_6a4f;
+    private static final float SENTINEL = Float.intBitsToFloat(SENTINEL_BITS);
 
     @Test
     void actualSentinelPayloadCanBeMarkedReady() {
@@ -21,7 +24,7 @@ final class ColumnEvaluationContextTest {
             context.setMemoizedValue(0, SENTINEL);
             assertFalse(context.memoizedValueMiss(0));
             assertEquals(SENTINEL_BITS,
-                    Double.doubleToRawLongBits(context.memoizedValue(0)));
+                    Float.floatToRawIntBits(context.memoizedValue(0)));
         } finally {
             context.clear();
         }
@@ -32,7 +35,9 @@ final class ColumnEvaluationContextTest {
         ColumnEvaluationContext context = activeContext();
         try {
             context.prepareMemoizedCount(1);
-            context.setMemoizedValue(0, Double.longBitsToDouble(0x7ff8_0000_0000_0001L));
+            // 26.3: a miss is the raw sentinel bits with the ready flag cleared, so any other
+            // NaN payload is a stored result rather than a miss.
+            context.setMemoizedValue(0, Float.intBitsToFloat(0x7f80_0001));
             assertFalse(context.memoizedValueMiss(0), "a non-canonical NaN is a valid result");
         } finally {
             context.clear();
@@ -43,22 +48,21 @@ final class ColumnEvaluationContextTest {
     void scratchArraysAreReusedInLifoOrder() {
         ColumnEvaluationContext context = activeContext();
         try {
-            double[] first = context.borrowDoubleArray(4);
-            double[] second = context.borrowDoubleArray(8);
-            context.recycleDoubleArray(second);
-            context.recycleDoubleArray(first);
-            assertSame(first, context.borrowDoubleArray(4));
-            assertSame(second, context.borrowDoubleArray(8));
-            context.recycleDoubleArray(second);
-            context.recycleDoubleArray(first);
+            // 26.3: the column scratch pool is float based (borrow/recycleFloatArray).
+            float[] first = context.borrowFloatArray(4);
+            float[] second = context.borrowFloatArray(8);
+            context.recycleFloatArray(second);
+            context.recycleFloatArray(first);
+            assertSame(first, context.borrowFloatArray(4));
+            assertSame(second, context.borrowFloatArray(8));
+            context.recycleFloatArray(second);
+            context.recycleFloatArray(first);
         } finally {
             context.clear();
         }
     }
 
     private static ColumnEvaluationContext activeContext() {
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(new double[1], 0, 0, 0, 1, source -> new double[1]);
-        return context;
+        return ColumnTestFrames.prepared(new float[1], 0, 0, 0, 1);
     }
 }

@@ -116,8 +116,8 @@ public final class ConfigLoader {
                         source.apply(ConfigOption.SURFACE_RULE_COMPILER),
                         source.apply(ConfigOption.SURFACE_BIOME_CACHE)),
                 new Config.Misc(
-                        source.apply(ConfigOption.FLAT_CACHE_ACCESS),
-                        source.apply(ConfigOption.PALETTE_LOCK))
+                        source.apply(ConfigOption.PALETTE_LOCK),
+                        source.apply(ConfigOption.LEAF_WORLDGEN_TICK))
         );
     }
 
@@ -192,8 +192,9 @@ public final class ConfigLoader {
                 "Default: True\nStores section block states in compact page-based palettes and batches terrain\n"
                         + "writes directly into them. Mods that directly access vanilla palettes may malfunction.");
         option(arena, "density-column-compiler", value.arena().densityColumnCompilerSetting(),
-                "Default: True\nCompiles final-density graphs into JVM code that evaluates complete vertical\n"
-                        + "columns at once. The first use adds compilation work and creates generated JVM classes.");
+                "Default: True\nCompiles density arithmetic for terrain, biomes and aquifers into JVM code.\n"
+                        + "Algebraic simplification may change float rounding. Works with either Arena or vanilla storage.\n"
+                        + "The first use adds compilation work and creates generated JVM classes.");
         option(arena, "server-runtime", value.arena().runtime().serverSetting(),
                 "Default: False\nKeeps Arena block storage after chunks finish generation instead of converting\n"
                         + "it to vanilla storage. Server mods that directly access vanilla palettes may malfunction.");
@@ -211,13 +212,14 @@ public final class ConfigLoader {
                         + "uniform areas. Uses additional temporary memory while the chunk surface is generated.");
 
         CommentedConfig misc = table(worldgen, "misc", "Independent world-generation optimizations.");
-        option(misc, "flat-cache-access", value.misc().flatCacheAccessSetting(),
-                "Default: True\nLets compiled density columns read NoiseChunk flat-cache values directly.\n"
-                        + "When disabled, density functions are evaluated through their standard compute method.");
         option(misc, "palette-lock", value.misc().paletteLockSetting(),
                 "Default: True\nRemoves the internal lock of PalettedContainer, whose acquire/release bookkeeping is redundant\n"
                         + "If you installed Lithium and disabled its chunk.no_locking option, disable this option too;\n"
                         + "otherwise the two sides would disagree about whether palette locking is still required.");
+        option(misc, "leaf-worldgen-tick", value.misc().leafWorldgenTickSetting(),
+                "Default: True\nSkips LeavesBlock neighbour updates while a chunk is still being generated, where the\n"
+                        + "distance values are rewritten by the tree feature anyway; waterlogged leaves still schedule\n"
+                        + "their fluid tick. Disable to let vanilla update every leaf during generation.");
     }
 
     private static void addServer(CommentedConfig root, Config.Server value) {
@@ -232,8 +234,9 @@ public final class ConfigLoader {
     private static void addChunkSaving(CommentedConfig root, Config.ChunkSaving value) {
         CommentedConfig saving = table(root, "chunk-saving", "Chunk serialization and storage options.");
         option(saving, "gc-free-worldgen", value.gcFreeWorldgenSetting(),
-                "Default: True\nSerializes eligible chunks directly to compressed NBT bytes instead of building\n"
-                        + "an intermediate NBT object tree. Mods that inspect chunk NBT during saving may be affected.");
+                "Default: False\nSerializes eligible chunks directly to compressed NBT bytes instead of building\n"
+                        + "an intermediate NBT object tree. Disabled until the third-party save hooks are ported;\n"
+                        + "mods that inspect or rewrite chunk NBT during saving may otherwise corrupt chunks.");
         option(saving, "retain-buffer", value.retainBufferSetting(),
                 "Default: True\nReuses one NBT writer and compressor per saving worker thread, releasing buffers\n"
                         + "larger than 512 KiB. Reduces allocation churn but retains memory on each worker thread.");

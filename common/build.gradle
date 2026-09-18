@@ -16,7 +16,7 @@ neoForge {
         neoFormVersion = neo_form_version
         disableRecompilation = true
     }
-    def accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+    def accessTransformer = file('src/main/resources/META-INF/arena-core.cfg')
     if (accessTransformer.exists()) {
         accessTransformers.from(accessTransformer.absolutePath)
     }
@@ -50,14 +50,25 @@ dependencies {
 
     compileOnly('com.electronwill.night-config:core:3.8.3')
     compileOnly('com.electronwill.night-config:toml:3.8.3')
-    compileOnly('com.ibm.async:asyncutil:0.1.0')
-    compileOnly("curse.maven:tectonic-686836:8366293")
-    compileOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
-    compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}")
+    compileOnly("maven.modrinth:c2me-fabric:${c2me_fabric_version}") {
+        // C2ME ships its module API inside nested jars; c2meCompileJars extracts them below.
+        transitive = false
+    }
     add('c2meCompileBundle', "maven.modrinth:c2me-fabric:${c2me_fabric_version}")
     compileOnly(c2meCompileJars)
-    compileOnly("maven.modrinth:voxy:${voxy_fabric_version}")
-    compileOnly("maven.modrinth:architectury-api:${architectury_fabric_version}")
+    compileOnly("maven.modrinth:architectury-api:${architectury_fabric_version}") {
+        transitive = false
+    }
+    // TODO(26.3): Restore asyncutil and TerraBlender with their compatibility code.
+    // compileOnly('com.ibm.async:asyncutil:0.1.0')
+    compileOnly("maven.modrinth:tectonic:${tectonic_neoforge_version}")
+    // compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}")
+    // Voxy has no 26.3 build yet: compile against the 26.2 NeoForge artifact vendored in libs/. The mixin
+    // targets Minecraft classes whose shape did not change, so the 26.2 method signatures still line up.
+    compileOnly files(rootProject.file('libs/voxy-0.2.15-beta+1.21.1-neoforge.jar'))
+    // FastNoise stays runtime-only by design: the arena OpenCL mixin names its buffer class in a string
+    // under @Pseudo, so there is no compile input and no module gate, and the mixin stays inert while the
+    // class is absent. Add a runtimeOnly dependency only once a build for this Minecraft version exists.
 
     testImplementation(platform('org.junit:junit-bom:5.11.3'))
     testImplementation('org.junit.jupiter:junit-jupiter')
@@ -94,9 +105,19 @@ configurations {
     }
 }
 
+// The loader modules consume this as a directory, so publish the resource copy rather than the raw
+// source directory. The split mixin configs, byepregen.arena.accesswidener and META-INF/arena-core.cfg
+// are the only access/mixin inputs that ship; the retired monolith config, access widener and access
+// transformer are gone (see doc/restore-list-26.3.md for what they used to register).
+def commonResourcesDir = layout.buildDirectory.dir('common-resources')
+def prepareCommonResources = tasks.register('prepareCommonResources', Sync) {
+    from sourceSets.main.resources
+    into commonResourcesDir
+}
+
 artifacts {
     commonJava(sourceSets.main.java.sourceDirectories.singleFile)
-    commonResources(sourceSets.main.resources.sourceDirectories.singleFile)
+    commonResources(commonResourcesDir) { builtBy prepareCommonResources }
 }
 
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
@@ -112,3 +133,7 @@ sourceSets.configureEach {
         }
     }
 }
+
+apply from: rootProject.file('gradle/byepregen-arena-core.gradle')
+apply from: rootProject.file('gradle/byepregen-runtime-core.gradle')
+apply from: rootProject.file('gradle/byepregen-storage-core.gradle')

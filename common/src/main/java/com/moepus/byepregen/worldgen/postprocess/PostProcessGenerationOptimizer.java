@@ -37,7 +37,12 @@ import net.minecraft.world.level.chunk.LevelChunk;
  */
 public final class PostProcessGenerationOptimizer {
     private static final Direction[] UP_ONLY = {Direction.UP};
-    private static final Direction[] UP_DOWN_ONLY = {Direction.UP, Direction.DOWN};
+    /**
+     * 26.2 listed UP before DOWN. Vanilla's {@code UPDATE_SHAPE_ORDER} runs DOWN before UP, and a
+     * cave vines body turns into a head on DOWN, so the reversed order changes the final state and
+     * the random values consumed. The worldgen harness compares both against vanilla.
+     */
+    private static final Direction[] DOWN_UP_ONLY = {Direction.DOWN, Direction.UP};
     private static final ClassValue<Boolean> HAS_CUSTOM_UPDATE_SHAPE = new ClassValue<>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
@@ -68,7 +73,9 @@ public final class PostProcessGenerationOptimizer {
                 return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
             }
             case CactusBlock ignored -> {
-                return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
+                // Cactus schedules a tick from every direction, so it needs the native walk;
+                // 26.2's DOWN-only shortcut dropped five of them (caught by the worldgen harness).
+                return Block.updateFromNeighbourShapes(state, level, pos);
             }
             case SnowyBlock ignored -> {
                 return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
@@ -80,10 +87,10 @@ public final class PostProcessGenerationOptimizer {
                 return updateFromNeighbourShape(state, level, pos, state.getValue(CocoaBlock.FACING));
             }
             case CaveVinesBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
+                return updateFromNeighbourShapes(state, level, pos, DOWN_UP_ONLY);
             }
             case CaveVinesPlantBlock ignored -> {
-                return updateFromNeighbourShapes(state, level, pos, UP_DOWN_ONLY);
+                return updateFromNeighbourShapes(state, level, pos, DOWN_UP_ONLY);
             }
             default -> {
             }
@@ -175,3 +182,4 @@ public final class PostProcessGenerationOptimizer {
     }
 
 }
+

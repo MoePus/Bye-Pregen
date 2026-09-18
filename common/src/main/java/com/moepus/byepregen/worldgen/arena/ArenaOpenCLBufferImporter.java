@@ -3,6 +3,9 @@ package com.moepus.byepregen.worldgen.arena;
 import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.palette.arena.Layout;
 import it.unimi.dsi.fastutil.shorts.ShortList;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import net.minecraft.util.StaticCache2D;
@@ -14,8 +17,16 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 
+/* The batched buffer import is an idea from Fast Noise (zfastnoise). */
+
+// TODO(26.3): Port the import and terrain completion contract before enabling this integration. The
+// OpenCL module (c2me-opts-accel-opencl) hands the buffer over in
+// CLServerBatchedBiomeNoiseContext.writeBlocks, which C2MEOclArenaMixin takes over; the status named
+// below is ChunkStatus.TERRAIN here, since 26.3 folded NOISE, SURFACE and CARVERS into it.
 public final class ArenaOpenCLBufferImporter {
+    private static final MethodHandle WRITE_HANDLE = lookupWriteHandle();
     private static final int CHUNK_WIDTH = 16;
     private static final int BLOCK_STATE_MASK = 0x7F;
     private static final int POSTPROCESSING_MASK = 0x80;
@@ -36,17 +47,69 @@ public final class ArenaOpenCLBufferImporter {
         }
     }
 
+    /**
+     * The OpenCL module's write step in its own argument shape, so it can also be bound as a method
+     * handle in place of the provider implementation the module looks up.
+     */
+    public static void copyIntoChunks(
+            StaticCache2D<ProtoChunk> chunks,
+            BlockState[] blockStateMappings,
+            int verticalSize,
+            NoiseGeneratorSettings settings,
+            int horizontalSize,
+            ByteBuffer blockBuffer,
+            ChunkPos startingPos,
+            int batchSize
+    ) {
+        copy(new Request(
+                chunks,
+                blockStateMappings,
+                verticalSize,
+                settings.noiseSettings().minY(),
+                horizontalSize,
+                blockBuffer,
+                startingPos,
+                batchSize
+        ));
+    }
+
+    public static MethodHandle writeHandle() {
+        return WRITE_HANDLE;
+    }
+
+    private static MethodHandle lookupWriteHandle() {
+        try {
+            return MethodHandles.lookup().findStatic(
+                    ArenaOpenCLBufferImporter.class,
+                    "copyIntoChunks",
+                    MethodType.methodType(
+                            void.class,
+                            StaticCache2D.class,
+                            BlockState[].class,
+                            int.class,
+                            NoiseGeneratorSettings.class,
+                            int.class,
+                            ByteBuffer.class,
+                            ChunkPos.class,
+                            int.class
+                    )
+            );
+        } catch (NoSuchMethodException | IllegalAccessException exception) {
+            throw new ExceptionInInitializerError(exception);
+        }
+    }
+
     private static void copyChunk(Request request, int chunkOffsetX, int chunkOffsetZ) {
         ProtoChunk chunk = request.chunks().get(
                 request.startingPos().x() + chunkOffsetX,
                 request.startingPos().z() + chunkOffsetZ
         );
-        if (chunk.getPersistedStatus().isOrAfter(ChunkStatus.NOISE)) {
+        if (chunk.getPersistedStatus().isOrAfter(ChunkStatus.TERRAIN)) {
             return;
         }
 
         new ChunkImportState(request, chunk).copy();
-        chunk.setPersistedStatus(ChunkStatus.NOISE);
+        chunk.setPersistedStatus(ChunkStatus.TERRAIN);
     }
 
     public record Request(

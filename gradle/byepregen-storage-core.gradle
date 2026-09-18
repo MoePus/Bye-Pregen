@@ -1,0 +1,16 @@
+// Native RC2 storage plus the C2ME raw-IO and Architectury save-hook bridges. YA remains deferred.
+def rootPackage = 'com/moepus/byepregen/'
+sourceSets.main.java {
+    include(rootPackage + 'chunksave/**')
+    include(rootPackage + 'integration/c2me/**')
+    include(rootPackage + 'mixin/chunkio/*.java')
+    include(rootPackage + 'mixin/chunkio/compat/c2me/**')
+    include(rootPackage + 'mixin/chunksave/compat/architectury/**')
+    include(rootPackage + 'mixin/accessor/chunksave/ChunkStorageAccessor.java')
+    include(rootPackage + 'mixin/accessor/chunksave/IOWorkerPendingStoreAccessor.java')
+    include(rootPackage + 'mixin/accessor/chunksave/RegionFileStorageAccessor.java')
+}
+sourceSets.test.java {
+    include(rootPackage + 'chunksave/**')
+    include(rootPackage + 'integration/c2me/**')
+}

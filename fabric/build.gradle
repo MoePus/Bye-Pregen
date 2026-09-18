@@ -37,7 +37,7 @@ dependencies {
     minecraft("com.mojang:minecraft:${minecraft_version}")
     implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}")
-    compileOnly("curse.maven:tectonic-686836:8360833")
+    compileOnly("maven.modrinth:tectonic:${tectonic_fabric_version}")
     implementation("org.mixinlite:mixinlite:${mixinlite_version}")
     include("org.mixinlite:mixinlite:${mixinlite_version}")
 
@@ -47,20 +47,25 @@ dependencies {
     include('com.electronwill.night-config:toml:3.8.3')
 
     if (providers.gradleProperty('byepregen.enableOptionalRuntime').map(String::toBoolean).orElse(false).get()) {
-        runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
         runtimeOnly("maven.modrinth:c2me-fabric:${c2me_fabric_version}")
-        runtimeOnly("maven.modrinth:voxy:${voxy_fabric_version}")
         runtimeOnly("maven.modrinth:lithium:${lithium_fabric_version}")
-        runtimeOnly("maven.modrinth:sodium:${sodium_fabric_version}")
         runtimeOnly("maven.modrinth:architectury-api:${architectury_fabric_version}")
         runtimeOnly("maven.modrinth:chunky:${chunky_fabric_version}")
+        // Sodium and Lithium no longer remove the palette lock behind our back: the palette-lock option
+        // covers the no-Lithium case and Lithium's own chunk.no_locking wins when it is installed.
+        runtimeOnly("maven.modrinth:sodium:${sodium_fabric_version}")
+        // TODO(26.3): Restore FastNoise and TerraBlender compatibility when they update.
+        // FastNoise is runtime-only here (never a compile input): enable this line to run the runtime
+        // checks with it installed, once a build for this Minecraft version exists.
+        // runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
+        runtimeOnly("maven.modrinth:voxy:${voxy_fabric_version}")
     } else if (attachmentValidationRequested) {
         runtimeOnly("maven.modrinth:c2me-fabric:${c2me_fabric_version}")
     }
 }
 
 loom {
-    def accessWidener = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    def accessWidener = project(':common').file("src/main/resources/${mod_id}.arena.accesswidener")
     if (accessWidener.exists()) {
         accessWidenerPath.set(accessWidener)
     }
@@ -183,3 +188,16 @@ sourceSets.configureEach {
         }
     }
 }
+
+sourceSets.main.java {
+    include('com/moepus/byepregen/fabric/ArenaFabric.java')
+    include('com/moepus/byepregen/fabric/ArenaPlatformBridge.java')
+    include('com/moepus/byepregen/fabric/FabricChunkAttachments.java')
+    include('com/moepus/byepregen/fabric/FabricChunkSaveHookGate.java')
+}
+
+apply from: rootProject.file('gradle/byepregen-arena-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-harness-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-feature-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-dfc-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-worldgen-verification.gradle')

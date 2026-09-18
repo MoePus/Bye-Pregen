@@ -10,7 +10,7 @@ final class ConfigTestBuilder {
     private boolean clientArena;
     private boolean surfaceRuleCompiler = true;
     private boolean surfaceBiomeCache = true;
-    private boolean gcFreeWorldgen = true;
+    private boolean gcFreeWorldgen;
     private boolean yaLight;
 
     ConfigTestBuilder placedFeatures(boolean value) {

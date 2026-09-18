@@ -1,26 +1,45 @@
 package com.moepus.byepregen.worldgen.surface;
 
-import java.lang.reflect.Proxy;
+import com.mojang.serialization.MapCodec;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderOwner;
+import net.minecraft.core.HolderSet;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.Noises;
-import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
+import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
+import net.minecraft.world.level.levelgen.material.condition.BiomeCondition;
+import net.minecraft.world.level.levelgen.material.condition.ConditionEvaluator;
+import net.minecraft.world.level.levelgen.material.condition.MaterialCondition;
+import net.minecraft.world.level.levelgen.material.condition.NoiseThresholdCondition;
+import net.minecraft.world.level.levelgen.material.condition.StoneDepthCondition;
+import net.minecraft.world.level.levelgen.material.condition.VerticalGradientCondition;
+import net.minecraft.world.level.levelgen.material.condition.WaterCondition;
+import net.minecraft.world.level.levelgen.material.condition.YCondition;
+import net.minecraft.world.level.levelgen.material.rule.BandlandsRule;
+import net.minecraft.world.level.levelgen.material.rule.ConditionRule;
+import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
+import net.minecraft.world.level.levelgen.material.rule.RuleEvaluator;
+import net.minecraft.world.level.levelgen.material.rule.SequenceRule;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import org.junit.jupiter.api.Test;
 
 public final class SurfaceBindingLayoutTest {
+    private static final HolderOwner<Biome> BIOME_OWNER = new HolderOwner<>() {};
+
     private SurfaceBindingLayoutTest() {
     }
 
     @Test
     void eventsFollowSourceOrderAndStopOnFailure() {
-        SurfaceRules.RuleSource source = sequence(List.of(
+        MaterialRule source = sequence(List.of(
                 test(unknownCondition(), unknownRule()),
                 unknownRule(),
                 test(unknownCondition(), unknownRule())
@@ -47,7 +66,7 @@ public final class SurfaceBindingLayoutTest {
     ) {
         List<SurfaceBindingLayout.Kind> trace = new ArrayList<>();
         try {
-            bindings.bindForTest(fakeContext(), (event, raw, context) -> {
+            bindings.bindForTest(null, (event, context) -> {
                 trace.add(event.kind());
                 if (trace.size() == 3) {
                     throw new TestException();
@@ -65,20 +84,22 @@ public final class SurfaceBindingLayoutTest {
         VerticalAnchor lower = new TestAnchor(-8);
         VerticalAnchor upper = new TestAnchor(32);
         VerticalAnchor lazy = new TestAnchor(80);
-        SurfaceRules.RuleSource source = sequence(List.of(
-                test(gradient(lower, upper), SurfaceRules.bandlands()),
-                test(yAbove(lazy), SurfaceRules.bandlands())
+        MaterialRule source = sequence(List.of(
+                test(gradient(lower, upper), BandlandsRule.INSTANCE),
+                test(yAbove(lazy), BandlandsRule.INSTANCE)
         ));
         List<SurfaceBindingLayout.BindEvent> events = lower(source).bindings().events();
+        // 26.3: the context resolves every anchor while binding, so the lazy Y anchor is another
+        // resolved-anchor slot instead of a stored VerticalAnchor.
         assertEquals(
                 List.of(
                         SurfaceBindingLayout.Kind.RESOLVED_ANCHOR,
                         SurfaceBindingLayout.Kind.RESOLVED_ANCHOR,
                         SurfaceBindingLayout.Kind.RANDOM_FACTORY,
-                        SurfaceBindingLayout.Kind.Y_ANCHOR
+                        SurfaceBindingLayout.Kind.RESOLVED_ANCHOR
                 ),
                 events.stream().map(SurfaceBindingLayout.BindEvent::kind).toList(),
-                "gradient eager and Y lazy binding order"
+                "gradient and Y anchor binding order"
         );
         assertSame(lazy, events.get(3).source(), "Y anchor must stay unresolved in the layout");
     }
@@ -86,12 +107,15 @@ public final class SurfaceBindingLayoutTest {
     @Test
     void canonicalizesNoiseStorageWithoutSkippingBindingEvents() {
         SurfaceScalarLayout layout = lower(sequence(List.of(
-                test(noise(Noises.SURFACE, -1.0D, 0.0D), SurfaceRules.bandlands()),
-                test(noise(Noises.SURFACE, 0.0D, 1.0D), SurfaceRules.bandlands()),
-                test(noise(Noises.SURFACE, -1.0D, 0.0D), SurfaceRules.bandlands()),
+                test(noise(Noises.SURFACE, -1.0D, 0.0D, false), BandlandsRule.INSTANCE),
+                test(noise(Noises.SURFACE, 0.0D, 1.0D, false), BandlandsRule.INSTANCE),
+                test(noise(Noises.SURFACE, -1.0D, 0.0D, false), BandlandsRule.INSTANCE),
+                test(noise(Noises.SURFACE, -1.0D, 0.0D, true), BandlandsRule.INSTANCE),
                 unknownRule()
         )));
         SurfaceBindingLayout bindings = layout.bindings();
+        // 26.3: one bound DoubleSupplier per distinct (noise, thresholds, is3d); the repeated spec
+        // reuses its slot instead of publishing a discarded event.
         assertEquals(
                 List.of(
                         SurfaceBindingLayout.Kind.NOISE,
@@ -103,40 +127,36 @@ public final class SurfaceBindingLayoutTest {
                 "noise binding events"
         );
         assertEquals(
-                List.of(SurfaceBindingLayout.Kind.NOISE, SurfaceBindingLayout.Kind.RULE),
+                List.of(
+                        SurfaceBindingLayout.Kind.NOISE,
+                        SurfaceBindingLayout.Kind.NOISE,
+                        SurfaceBindingLayout.Kind.NOISE,
+                        SurfaceBindingLayout.Kind.RULE
+                ),
                 bindings.storedSlots().stream().map(SurfaceBindingLayout.Slot::kind).toList(),
-                "canonical generated storage"
+                "generated storage"
         );
-        if (!(bindings.events().get(1) instanceof SurfaceBindingLayout.Discarded)
-                || !(bindings.events().get(2) instanceof SurfaceBindingLayout.Discarded)) {
-            throw new AssertionError("duplicate noise binds must be explicit discarded events");
-        }
         SurfaceBindingLayout.Slot trailing = (SurfaceBindingLayout.Slot)
                 bindings.events().get(3);
-        assertEquals(1, trailing.id().value(), "stored IDs must stay dense across discarded events");
-        assertEquals(1, layout.noiseSamples().size(), "canonical noise samples");
-        assertEquals(2, layout.noiseOccurrences(), "canonical noise predicates");
-        assertEquals(
-                2,
-                layout.noiseSamples().getFirst().ranges().size(),
-                "ranges sharing one noise sample"
-        );
+        assertEquals(3, trailing.id().value(), "stored IDs must stay dense");
+        assertEquals(4, layout.noiseOccurrences(), "noise conditions lowered");
+        assertEquals(3, layout.noiseSamples(), "distinct bound noise samplers");
         List<SurfaceBindingLayout.Kind> trace = new ArrayList<>();
-        Object[] values = bindings.bindForTest(fakeContext(), (event, raw, context) -> {
+        Object[] values = bindings.bindForTest(null, (event, context) -> {
             trace.add(event.kind());
             return "event-" + trace.size();
         });
         assertEquals(4, trace.size(), "all binding events must execute");
-        assertEquals(2, values.length, "only stored bindings enter the constructor array");
+        assertEquals(4, values.length, "only stored bindings enter the constructor array");
         assertEquals("event-1", values[0], "first noise result must back canonical storage");
-        assertEquals("event-4", values[1], "later stored slot index");
+        assertEquals("event-4", values[3], "later stored slot index");
     }
 
     @Test
     void delegatesBiomePredicates() {
         SurfaceScalarLayout layout = lower(test(
                 biome(),
-                SurfaceRules.bandlands()
+                BandlandsRule.INSTANCE
         ));
         assertEquals(
                 List.of(SurfaceBindingLayout.Kind.CONDITION),
@@ -150,16 +170,16 @@ public final class SurfaceBindingLayoutTest {
     @Test
     void doesNotSnapshotContextAcrossOpaqueBarrier() {
         SurfaceScalarLayout safe = lower(sequence(List.of(
-                test(water(), SurfaceRules.bandlands()),
-                test(water(), SurfaceRules.bandlands())
+                test(water(), BandlandsRule.INSTANCE),
+                test(water(), BandlandsRule.INSTANCE)
         )));
         SurfaceScalarLayout blocked = lower(sequence(List.of(
                 test(water(), unknownRule()),
-                test(water(), SurfaceRules.bandlands())
+                test(water(), BandlandsRule.INSTANCE)
         )));
         SurfaceScalarLayout trailingBarrier = lower(sequence(List.of(
-                test(water(), SurfaceRules.bandlands()),
-                test(water(), SurfaceRules.bandlands()),
+                test(water(), BandlandsRule.INSTANCE),
+                test(water(), BandlandsRule.INSTANCE),
                 unknownRule()
         )));
         if (!rootLocals(safe).caches(SurfaceRuntimeAbi.BLOCK_Y)) {
@@ -174,14 +194,22 @@ public final class SurfaceBindingLayoutTest {
     }
 
     @Test
-    void doesNotSnapshotLazyStoneDepthBelow() {
-        SurfaceRules.ConditionSource ceiling = stoneDepth(CaveSurface.CEILING, 0);
+    void snapshotsExactStoneDepthBelow() {
+        // 26.3: every CEILING check reads the exact stone depth, so repeating it is cacheable; 26.2
+        // re-answered the adjacent form from the column instead.
+        SurfaceConditionSpec.StoneDepth ceiling = new SurfaceConditionSpec.StoneDepth(
+                0, false, 0, CaveSurface.CEILING
+        );
+        MaterialCondition condition = new StoneDepthCondition(
+                ceiling.offset(), ceiling.addSurfaceDepth(),
+                ceiling.secondaryDepthRange(), ceiling.surfaceType()
+        );
         SurfaceScalarLayout layout = lower(sequence(List.of(
-                test(ceiling, SurfaceRules.bandlands()),
-                test(ceiling, SurfaceRules.bandlands())
+                test(condition, BandlandsRule.INSTANCE),
+                test(condition, BandlandsRule.INSTANCE)
         )));
-        if (rootLocals(layout).caches(SurfaceRuntimeAbi.STONE_BELOW)) {
-            throw new AssertionError("adjacent ceiling must not snapshot exact depth below");
+        if (!rootLocals(layout).caches(SurfaceRuntimeAbi.STONE_BELOW)) {
+            throw new AssertionError("repeated ceiling checks should snapshot the exact depth below");
         }
     }
 
@@ -194,7 +222,7 @@ public final class SurfaceBindingLayoutTest {
         );
     }
 
-    private static SurfaceScalarLayout lower(SurfaceRules.RuleSource source) {
+    private static SurfaceScalarLayout lower(MaterialRule source) {
         SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(
                 source,
                 SurfaceRuleAnalyzer.DEFAULT_LIMITS,
@@ -207,143 +235,65 @@ public final class SurfaceBindingLayoutTest {
         }
     }
 
-    private static SurfaceContextAccess fakeContext() {
-        return (SurfaceContextAccess) Proxy.newProxyInstance(
-                SurfaceBindingLayoutTest.class.getClassLoader(),
-                new Class<?>[]{SurfaceContextAccess.class},
-                (proxy, method, arguments) -> defaultValue(method.getReturnType())
+    private static MaterialRule sequence(List<MaterialRule> rules) {
+        return new SequenceRule(rules);
+    }
+
+    private static MaterialRule test(MaterialCondition condition, MaterialRule followup) {
+        return new ConditionRule(condition, followup);
+    }
+
+    private static MaterialCondition gradient(VerticalAnchor lower, VerticalAnchor upper) {
+        return new VerticalGradientCondition(
+                Identifier.parse("byepregen:test"), lower, upper
         );
     }
 
-    private static SurfaceRules.RuleSource sequence(List<SurfaceRules.RuleSource> rules) {
-        return ruleProxy(
-                SurfaceRuleSourceAccess.Sequence.class,
-                (method, arguments) -> method.equals("byepregen$sequence") ? rules : null
-        );
+    private static MaterialCondition yAbove(VerticalAnchor anchor) {
+        return new YCondition(anchor, 0, false);
     }
 
-    private static SurfaceRules.RuleSource test(
-            SurfaceRules.ConditionSource condition,
-            SurfaceRules.RuleSource followup
-    ) {
-        return ruleProxy(SurfaceRuleSourceAccess.Test.class, (method, arguments) -> switch (method) {
-            case "byepregen$condition" -> condition;
-            case "byepregen$followup" -> followup;
-            default -> null;
-        });
-    }
-
-    private static SurfaceRules.ConditionSource gradient(
-            VerticalAnchor lower,
-            VerticalAnchor upper
-    ) {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.VerticalGradientCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$randomName" -> Identifier.parse("byepregen:test");
-                    case "byepregen$trueAtAndBelow" -> lower;
-                    case "byepregen$falseAtAndAbove" -> upper;
-                    default -> null;
-                }
-        );
-    }
-
-    private static SurfaceRules.ConditionSource yAbove(VerticalAnchor anchor) {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.YCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$anchor" -> anchor;
-                    case "byepregen$surfaceDepthMultiplier" -> 0;
-                    case "byepregen$addStoneDepth" -> false;
-                    default -> null;
-                }
-        );
-    }
-
-    private static SurfaceRules.ConditionSource noise(
-            ResourceKey<NormalNoise.NoiseParameters> key,
+    private static MaterialCondition noise(
+            ResourceKey<NormalNoise> key,
             double minimum,
-            double maximum
+            double maximum,
+            boolean is3d
     ) {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.NoiseCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$noise" -> key;
-                    case "byepregen$minimum" -> minimum;
-                    case "byepregen$maximum" -> maximum;
-                    default -> null;
-                }
-        );
+        return new NoiseThresholdCondition(key, minimum, maximum, is3d);
     }
 
-    private static SurfaceRules.ConditionSource biome() {
-        return SurfaceRules.isBiome(Biomes.PLAINS);
+    private static MaterialCondition biome() {
+        return new BiomeCondition(HolderSet.direct(
+                Holder.Reference.createStandAlone(BIOME_OWNER, Biomes.PLAINS)
+        ));
     }
 
-    private static SurfaceRules.ConditionSource water() {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.WaterCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$offset", "byepregen$surfaceDepthMultiplier" -> 0;
-                    case "byepregen$addStoneDepth" -> false;
-                    default -> null;
-                }
-        );
+    private static MaterialCondition water() {
+        return new WaterCondition(0, 0, false);
     }
 
-    private static SurfaceRules.ConditionSource stoneDepth(CaveSurface surface, int offset) {
-        return conditionProxy(
-                SurfaceRuleSourceAccess.StoneDepthCondition.class,
-                (method, arguments) -> switch (method) {
-                    case "byepregen$offset" -> offset;
-                    case "byepregen$addSurfaceDepth" -> false;
-                    case "byepregen$secondaryDepthRange" -> 0;
-                    case "byepregen$surfaceType" -> surface;
-                    default -> null;
-                }
-        );
+    private static MaterialRule unknownRule() {
+        return new MaterialRule() {
+            @Override public RuleEvaluator compile(MaterialRuleContext context) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override public MapCodec<? extends MaterialRule> codec() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
-    private static SurfaceRules.RuleSource unknownRule() {
-        return ruleProxy(null, (method, arguments) -> null);
-    }
+    private static MaterialCondition unknownCondition() {
+        return new MaterialCondition() {
+            @Override public ConditionEvaluator compile(MaterialRuleContext context) {
+                throw new UnsupportedOperationException();
+            }
 
-    private static SurfaceRules.ConditionSource unknownCondition() {
-        return conditionProxy(null, (method, arguments) -> null);
-    }
-
-    private static SurfaceRules.RuleSource ruleProxy(Class<?> access, ProxyCall call) {
-        return (SurfaceRules.RuleSource) proxy(SurfaceRules.RuleSource.class, access, call);
-    }
-
-    private static SurfaceRules.ConditionSource conditionProxy(Class<?> access, ProxyCall call) {
-        return (SurfaceRules.ConditionSource) proxy(
-                SurfaceRules.ConditionSource.class, access, call
-        );
-    }
-
-    private static Object proxy(Class<?> sourceType, Class<?> access, ProxyCall call) {
-        Class<?>[] interfaces = access == null
-                ? new Class<?>[]{sourceType}
-                : new Class<?>[]{sourceType, access};
-        return Proxy.newProxyInstance(
-                SurfaceBindingLayoutTest.class.getClassLoader(),
-                interfaces,
-                (proxy, method, arguments) -> switch (method.getName()) {
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "equals" -> proxy == arguments[0];
-                    case "toString" -> sourceType.getSimpleName() + "BindingTestProxy";
-                    default -> call.invoke(method.getName(), arguments);
-                }
-        );
-    }
-
-    private static Object defaultValue(Class<?> type) {
-        if (!type.isPrimitive()) return null;
-        if (type == boolean.class) return false;
-        if (type == long.class) return 0L;
-        if (type == double.class) return 0.0D;
-        return 0;
+            @Override public MapCodec<? extends MaterialCondition> codec() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     private static void assertSame(Object expected, Object actual, String message) {
@@ -356,11 +306,6 @@ public final class SurfaceBindingLayoutTest {
         if (!java.util.Objects.equals(expected, actual)) {
             throw new AssertionError(message + ": expected " + expected + ", got " + actual);
         }
-    }
-
-    @FunctionalInterface
-    private interface ProxyCall {
-        Object invoke(String method, Object[] arguments);
     }
 
     private record TestAnchor(int y) implements VerticalAnchor {

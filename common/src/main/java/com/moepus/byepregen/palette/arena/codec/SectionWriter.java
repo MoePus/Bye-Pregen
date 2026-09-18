@@ -4,7 +4,6 @@ import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.serialization.nbt.BlockStateNbtCache;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.nbt.Tag;
-import net.minecraft.world.level.block.state.BlockState;
 
 public final class SectionWriter {
     private static final byte[] BLOCK_STATES = NbtWriter.asciiName("block_states");
@@ -34,21 +33,42 @@ public final class SectionWriter {
     }
 
     private static void writeUniform(NbtWriter writer, int rawId) {
+        boolean shortForm = BlockStateNbtCache.rawIdUsesShortForm(rawId);
         writer.startCompound(BLOCK_STATES);
-        writer.startFixedList(PALETTE, 1, Tag.TAG_COMPOUND);
-        writer.compoundEntryStart();
-        BlockStateNbtCache.writeRawIdEntry(writer, rawId);
-        writer.finishCompound();
+        writer.startFixedList(PALETTE, 1, shortForm ? Tag.TAG_STRING : Tag.TAG_COMPOUND);
+        if (shortForm) {
+            writer.write(BlockStateNbtCache.rawIdFileEntryBytes(rawId));
+        } else {
+            writer.compoundEntryStart();
+            writer.write(BlockStateNbtCache.rawIdFileEntryBytes(rawId));
+            writer.finishCompound();
+        }
         writer.finishCompound();
     }
 
+    /**
+     * Writes the palette the way the block-state codec does: a list of bare block names when every entry
+     * is a default state, otherwise a compound list with the shortened entries wrapped.
+     */
     private static void writePalette(NbtWriter writer, SerializationScratch scratch) {
         int size = scratch.paletteSize();
-        writer.startFixedList(PALETTE, size, Tag.TAG_COMPOUND);
+        boolean shortForms = true;
         for (int i = 0; i < size; ++i) {
-            writer.compoundEntryStart();
-            BlockStateNbtCache.writeRawIdEntry(writer, scratch.paletteRawId(i));
-            writer.finishCompound();
+            if (!BlockStateNbtCache.rawIdUsesShortForm(scratch.paletteRawId(i))) {
+                shortForms = false;
+                break;
+            }
+        }
+        writer.startFixedList(PALETTE, size, shortForms ? Tag.TAG_STRING : Tag.TAG_COMPOUND);
+        for (int i = 0; i < size; ++i) {
+            int rawId = scratch.paletteRawId(i);
+            if (shortForms) {
+                writer.write(BlockStateNbtCache.rawIdFileEntryBytes(rawId));
+            } else {
+                writer.compoundEntryStart();
+                writer.write(BlockStateNbtCache.rawIdFileWrappedEntryBytes(rawId));
+                writer.finishCompound();
+            }
         }
     }
 }

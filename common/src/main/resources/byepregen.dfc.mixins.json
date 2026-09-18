@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["dfc.DensityFunctionCompilerMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

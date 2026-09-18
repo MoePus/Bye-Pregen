@@ -1,0 +1,34 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "accessor.yalight.ChunkMapLightAccessor",
+    "yalight.ChunkAccessYALightDataMixin",
+    "yalight.ChunkAccessYASkyLightSourcesMixin",
+    "yalight.ChunkSerializerYALightMixin",
+    "yalight.ChunkSkyLightSourcesDirtyMixin",
+    "yalight.ChunkSkyLightSourcesStorageMixin",
+    "yalight.ClientboundLightUpdatePacketDataYALightMixin",
+    "yalight.EmptyLevelChunkYALightDataMixin",
+    "yalight.ImposterProtoChunkYALightDataMixin",
+    "yalight.LevelChunkYALightDataMixin",
+    "yalight.LevelLightEngineYAMixin",
+    "yalight.LightEngineYASuperMixin",
+    "yalight.BlockLightEngineYASuperMixin",
+    "yalight.SkyLightEngineYASuperMixin",
+    "yalight.ServerChunkCacheYAImmediateAccessMixin",
+    "yalight.ThreadedLevelLightEngineYAMixin",
+    "yalight.WorldGenRegionYALightMixin"
+  ],
+  "client": [
+    "yalight.ClientChunkCacheYALightMixin",
+    "yalight.ClientPacketListenerYALightMixin",
+    "yalight.LightCoordsUtilYALightMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

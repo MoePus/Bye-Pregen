@@ -6,14 +6,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
+import net.minecraft.world.level.levelgen.feature.DiskFeature;
 
 public final class FastDiskPlacement {
     private static final int UPDATE_CLIENTS = 2;
-    static final int PLACED = 1;
-    static final int PRESERVE_PLACED_ABOVE_STATE = 2;
 
-    private final DiskConfiguration config;
+    /** What one position contributed: nothing, a placed block, or a kept-but-unreplaced position. */
+    enum PositionResult {
+        NOT_REPLACED,
+        PLACED,
+        PRESERVED
+    }
+
+    private final DiskFeature config;
+    private final FastRuleBasedBlockStateProvider stateProvider;
     private final WorldGenLevel level;
     private final RandomSource random;
     private final FastDiskStateCursor cursor;
@@ -22,7 +28,8 @@ public final class FastDiskPlacement {
     private final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 
     public FastDiskPlacement(
-            DiskConfiguration config,
+            DiskFeature config,
+            FastRuleBasedBlockStateProvider stateProvider,
             WorldGenLevel level,
             RandomSource random,
             FastDiskStateCursor cursor,
@@ -30,6 +37,7 @@ public final class FastDiskPlacement {
             ColumnFallback fallback
     ) {
         this.config = config;
+        this.stateProvider = stateProvider;
         this.level = level;
         this.random = random;
         this.cursor = cursor;
@@ -57,7 +65,9 @@ public final class FastDiskPlacement {
         int maximumY = originY + this.config.halfHeight();
         int minimumY = originY - this.config.halfHeight();
         if (!this.cursor.selectColumn(x, z)) {
-            this.clearMemoizedResults();
+            if (this.knownFalse != null) {
+                this.knownFalse.clear();
+            }
             this.pos.set(x, maximumY, z);
             return this.fallback.place(new FastDiskFeature.ColumnContext(
                     this.config, this.level, this.random, maximumY, minimumY, this.pos
@@ -66,65 +76,55 @@ public final class FastDiskPlacement {
 
         boolean columnPlaced = false;
         boolean placedAbove = false;
-        BitSet knownFalseColumn = this.selectMemoizedColumn(x, z);
+        BitSet knownFalseColumn = this.knownFalse == null ? null : this.knownFalse.selectColumn(x, z);
         for (int y = maximumY; y >= minimumY; y--) {
             this.pos.set(x, y, z);
             this.cursor.beginPosition(y);
-            int result = this.placePosition(knownFalseColumn);
-            if (startsPlacementRun(placedAbove, result)) {
+            PositionResult positionResult = this.placePosition(knownFalseColumn);
+            if (startsPlacementRun(placedAbove, positionResult)) {
                 this.markAbove(x, y, z);
             }
-            columnPlaced |= (result & PLACED) != 0;
-            placedAbove = nextPlacedAboveState(placedAbove, result);
+            columnPlaced |= positionResult == PositionResult.PLACED;
+            placedAbove = nextPlacedAboveState(placedAbove, positionResult);
         }
         return columnPlaced;
     }
 
-    private BitSet selectMemoizedColumn(int x, int z) {
-        return this.knownFalse == null ? null : this.knownFalse.selectColumn(x, z);
-    }
-
-    private void clearMemoizedResults() {
-        if (this.knownFalse != null) {
-            this.knownFalse.clear();
-        }
-    }
-
-    private int placePosition(BitSet knownFalseColumn) {
+    private PositionResult placePosition(BitSet knownFalseColumn) {
         int x = this.pos.getX();
         int y = this.pos.getY();
         int z = this.pos.getZ();
         if (this.knownFalse != null && this.knownFalse.contains(knownFalseColumn, y)) {
-            return 0;
+            return PositionResult.NOT_REPLACED;
         }
         if (!DiskBlockPredicateEvaluator.test(this.config.target(), this.cursor, this.pos)) {
             if (this.knownFalse != null) {
                 this.knownFalse.add(knownFalseColumn, y);
             }
-            return 0;
+            return PositionResult.NOT_REPLACED;
         }
 
-        BlockState state = ((FastRuleBasedBlockStateProvider) (Object) this.config.stateProvider())
-                .byepregen$getState(this.random, this.pos, this.cursor);
+        BlockState state = this.stateProvider.byepregen$getState(this.random, this.pos, this.cursor);
         if (state == null) {
-            return PRESERVE_PLACED_ABOVE_STATE;
+            return PositionResult.PRESERVED;
         }
         this.level.setBlock(this.pos, state, UPDATE_CLIENTS);
         if (this.knownFalse != null) {
             this.knownFalse.invalidate(x, y, z);
         }
-        return PLACED;
+        return PositionResult.PLACED;
     }
 
-    static boolean startsPlacementRun(boolean placedAbove, int result) {
-        return (result & PLACED) != 0 && !placedAbove;
+    static boolean startsPlacementRun(boolean placedAbove, PositionResult result) {
+        return result == PositionResult.PLACED && !placedAbove;
     }
 
-    static boolean nextPlacedAboveState(boolean placedAbove, int result) {
-        if ((result & PLACED) != 0) {
-            return true;
-        }
-        return (result & PRESERVE_PLACED_ABOVE_STATE) != 0 && placedAbove;
+    static boolean nextPlacedAboveState(boolean placedAbove, PositionResult result) {
+        return switch (result) {
+            case PLACED -> true;
+            case PRESERVED -> placedAbove;
+            case NOT_REPLACED -> false;
+        };
     }
 
     private void markAbove(int x, int y, int z) {

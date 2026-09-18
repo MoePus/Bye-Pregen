@@ -1,0 +1,78 @@
+// Active modules: Arena, DFC, Features, climate search, surface caching/material compilation,
+// postprocessing, YA light, GC-free raw chunk save/IO and the Tectonic/Voxy save and world-conversion compat.
+// TODO(26.3): Third-party compat (FastNoise/TerraBlender), the density-column biome path
+// and the surface test/benchmark source sets stay unbuilt; restore them with their tests after migration.
+def rootPackage = 'com/moepus/byepregen/'
+def arenaMixins = [
+        'accessor/arena/LevelChunkSectionAccessor.java',
+        'arena/ChunkAccessArenaMixin.java',
+        'arena/ChunkSerializerArenaReadMixin.java',
+        'arena/PalettedContainerFactoryArenaCodecMixin.java',
+        'arena/LevelChunkArenaMixin.java',
+        'arena/NoiseBasedChunkGeneratorArenaMixin.java',
+        'arena/compat/voxy/VoxyWorldConversionFactoryMixin.java',
+]
+sourceSets.main.java {
+    include(rootPackage + '*.java')
+    include(rootPackage + 'config/**')
+    include(rootPackage + 'integration/platform/**')
+    include(rootPackage + 'integration/runtime/**')
+    include(rootPackage + 'integration/architectury/**')
+    include(rootPackage + 'integration/tectonic/**')
+    include(rootPackage + 'palette/**')
+    include(rootPackage + 'serialization/nbt/**')
+    include(rootPackage + 'worldgen/terrain/**')
+    include(rootPackage + 'worldgen/surface/**')
+    include(rootPackage + 'worldgen/postprocess/**')
+    include(rootPackage + 'mixin/surface/MaterialSystemRuleCompilerMixin.java')
+    include(rootPackage + 'mixin/surface/MaterialRuleContextAccessMixin.java')
+    include(rootPackage + 'worldgen/feature/**')
+    include(rootPackage + 'mixin/climate/ClimateParameterListSearchMixin.java')
+    include(rootPackage + 'mixin/climate/ClimateRTreeSearchMixin.java')
+    include(rootPackage + 'mixin/climate/ClimateRTreeColumnMixin.java')
+    include(rootPackage + 'mixin/climate/ClimateRTreeNodeCacheMixin.java')
+    include(rootPackage + 'worldgen/biome/ClimateRTreeSearchContext.java')
+    include(rootPackage + 'worldgen/biome/ClimateRTreeCacheNode.java')
+    include(rootPackage + 'worldgen/biome/FastClimateRTree.java')
+    include(rootPackage + 'worldgen/biome/FastClimateParameterList.java')
+    include(rootPackage + 'worldgen/biome/SurfaceBiome*.java')
+    include(rootPackage + 'worldgen/biome/ProfiledSurfaceBiomeLookup.java')
+    include(rootPackage + 'jfr/ByepregenJfrEvents.java')
+    include(rootPackage + 'mixin/accessor/surface/BiomeManagerAccessor.java')
+    include(rootPackage + 'mixin/surface/biome/**')
+    include(rootPackage + 'yalight/**')
+    include(rootPackage + 'mixin/yalight/**')
+    include(rootPackage + 'mixin/accessor/yalight/**')
+    include(rootPackage + 'dfc/**')
+    include(rootPackage + 'api/dfc/**')
+    include(rootPackage + 'mixin/dfc/**')
+    include(rootPackage + 'mixin/postprocess/LevelChunkPostProcessMixin.java')
+    include(rootPackage + 'mixin/postprocess/ChunkStatusPostProcessingPreNormMixin.java')
+    include(rootPackage + 'mixin/postprocess/compat/c2me/**')
+    include(rootPackage + 'mixin/feature/**')
+    include(rootPackage + 'mixin/worldgen/feature/ChunkStatusTasksDebugDisableFeaturesMixin.java')
+    include(rootPackage + 'mixin/worldgen/feature/LeavesBlockWorldgenTickMixin.java')
+    include(rootPackage + 'mixin/worldgen/cache/WorldGenRegionSectionCacheMixin.java')
+    arenaMixins.each { include(rootPackage + 'mixin/' + it) }
+}
+sourceSets.test.java {
+    include(rootPackage + 'worldgen/surface/**')
+    include(rootPackage + 'test/**')
+    include(rootPackage + 'harness/**')
+    include(rootPackage + 'config/**')
+    include(rootPackage + 'ConfigTestBuilder.java')
+    include(rootPackage + 'AccessRulesParityTest.java')
+    include(rootPackage + 'MixinFeatureEvaluatorTest.java')
+    include(rootPackage + 'MixinGateEvaluatorTest.java')
+    include(rootPackage + 'integration/platform/**')
+    include(rootPackage + 'integration/runtime/**')
+    include(rootPackage + 'integration/tectonic/**')
+    include(rootPackage + 'palette/**')
+    include(rootPackage + 'worldgen/terrain/**')
+    include(rootPackage + 'yalight/**')
+    include(rootPackage + 'dfc/**')
+    include(rootPackage + 'api/dfc/**')
+    include(rootPackage + 'worldgen/feature/**')
+    include(rootPackage + 'worldgen/postprocess/**')
+}
+

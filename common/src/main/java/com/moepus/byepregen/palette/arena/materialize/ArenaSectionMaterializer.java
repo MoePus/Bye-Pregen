@@ -36,7 +36,7 @@ public final class ArenaSectionMaterializer {
         }
     }
 
-    private static PalettedContainer<BlockState> materialize(ArenaBlockStatePalettedContainer container) {
+    public static PalettedContainer<BlockState> materialize(ArenaBlockStatePalettedContainer container) {
         if (container.isUniform()) {
             return createVanillaSingle(Block.stateById(container.uniformRawId()));
         }

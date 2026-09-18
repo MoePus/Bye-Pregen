@@ -40,7 +40,8 @@ final class DensityColumnDumpTest {
         Path dumpDirectory = this.temporaryDirectory.resolve("absent");
         System.clearProperty(DensityColumnCompiler.DUMP_DIRECTORY_PROPERTY);
 
-        DensityColumnCompiler.dumpIfRequested(ast(1.0D), ast(2.0D), new byte[]{1, 2, 3});
+        // 26.3: AstNodes.ConstantNode carries a float.
+        DensityColumnCompiler.dumpIfRequested(ast(1.0F), ast(2.0F), new byte[]{1, 2, 3});
 
         assertFalse(Files.exists(dumpDirectory));
         assertEquals(0L, countEntries(this.temporaryDirectory));
@@ -50,10 +51,10 @@ final class DensityColumnDumpTest {
     void configuredPathWritesBothAstsGraphAndClass() throws IOException {
         Path dumpDirectory = this.temporaryDirectory.resolve("configured");
         byte[] classBytes = {1, 2, 3};
-        ConstantNode shared = new ConstantNode(2.0D);
+        ConstantNode shared = new ConstantNode(2.0F);
         System.setProperty(DensityColumnCompiler.DUMP_DIRECTORY_PROPERTY, dumpDirectory.toString());
 
-        DensityColumnCompiler.dumpIfRequested(ast(1.0D), new AddNode(shared, shared), classBytes);
+        DensityColumnCompiler.dumpIfRequested(ast(1.0F), new AddNode(shared, shared), classBytes);
 
         List<Path> files;
         try (var entries = Files.list(dumpDirectory)) {
@@ -78,7 +79,7 @@ final class DensityColumnDumpTest {
         assertEquals(1, countOccurrences(dot, "n1 [label=\"ConstantNode\"]"));
     }
 
-    private static AstNode ast(double value) {
+    private static AstNode ast(float value) {
         return new ConstantNode(value);
     }
 

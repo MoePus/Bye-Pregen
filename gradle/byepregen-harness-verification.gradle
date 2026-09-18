@@ -1,0 +1,55 @@
+// Standalone probes that need a live server but are independent of the arena terrain comparison.
+def resultDir = layout.buildDirectory.dir('harness-verification').get().asFile
+def properties = [
+        storage   : 'byepregen.storageHarness.result',
+        palette   : 'byepregen.paletteHarness.result',
+        serverTick: 'byepregen.serverTickHarness.result',
+]
+def descriptions = [
+        storage   : 'Round-trips every non-full chunk status through GC-free serialization and the vanilla codec.',
+        palette   : 'Checks the palette raw-id bridge, custom palettes and independent threading detectors.',
+        serverTick: 'Checks the fast chunk tick permutation, tick scope and heightmap cache.',
+]
+def configs = [
+        storage   : ['chunk-saving.gc-free-worldgen': 'True'],
+        palette   : [:],
+        serverTick: ['server.fast-chunk-ticking.enabled': 'True'],
+]
+configs.each { name, config ->
+    def directory = file("run/harness-${name}")
+    def result = new File(resultDir, "${name}.txt")
+    def args = ['-Xmx2G', '-Dbyepregen.testConfig=true', "-D${properties[name]}=${result.absolutePath}"]
+    config.each { key, value -> args << "-Dbyepregen.testConfig.${key}=${value}" }
+    loom.runs.register('harness' + name.capitalize()) {
+        server()
+        source(sourceSets.arenaHarness)
+        ideConfigGenerated(false)
+        runDir(project.relativePath(directory))
+        programArgs('--nogui')
+        vmArgs(args as String[])
+    }
+    tasks.named('runHarness' + name.capitalize()) {
+        group = 'verification'
+        description = descriptions[name]
+        doFirst {
+            directory.mkdirs()
+            resultDir.mkdirs()
+            delete(result)
+            new File(directory, 'eula.txt').setText('eula=true\n', 'UTF-8')
+            new File(directory, 'server.properties').setText(
+                    'level-seed=8675309\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                    'view-distance=2\nsimulation-distance=2\nspawn-chunk-radius=0\n', 'UTF-8')
+        }
+        doLast {
+            if (!result.isFile() || !result.getText('UTF-8').startsWith('PASS\n')) {
+                throw new GradleException("Harness verification failed: ${result}")
+            }
+        }
+    }
+}
+
+tasks.register('testHarnessRuntime') {
+    group = 'verification'
+    description = 'Checks the storage serializer, the palette bridge and the fast tick loop in isolated servers.'
+    dependsOn(configs.keySet().collect { 'runHarness' + it.capitalize() })
+}

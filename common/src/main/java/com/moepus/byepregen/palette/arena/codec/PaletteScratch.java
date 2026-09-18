@@ -4,15 +4,15 @@ import com.moepus.byepregen.palette.arena.ArenaBlockStatePalettedContainer;
 
 import static com.moepus.byepregen.palette.arena.Layout.*;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.Arrays;
 
 final class PaletteScratch {
     private static final int INITIAL_PALETTE_CAPACITY = 64;
     private static final int INITIAL_LOOKUP_CAPACITY = 128;
-    private static final int HASH_MULTIPLIER = 0x9E3779B9;
 
-    private int[] lookupKeys;
-    private int[] lookupValues;
+    // raw ID to local ID + 1, so an absent key and local ID 0 stay distinguishable.
+    private final Int2IntOpenHashMap lookup = new Int2IntOpenHashMap(INITIAL_LOOKUP_CAPACITY);
     private int[] paletteRawIds = new int[INITIAL_PALETTE_CAPACITY];
     private byte[] pageLocalIds;
     private int paletteSize;
@@ -60,16 +60,12 @@ final class PaletteScratch {
     }
 
     int localIdFor(int rawId) {
-        this.ensureLookup();
-        int slot = this.findSlot(Math.max(rawId, 0));
-        int marker = this.lookupValues[slot];
+        int marker = this.lookup.get(Math.max(rawId, 0));
         return marker == 0 ? 0 : marker - 1;
     }
 
     void clear() {
-        if (this.lookupValues != null) {
-            Arrays.fill(this.lookupValues, 0);
-        }
+        this.lookup.clear();
         if (this.pageLocalIds != null) {
             Arrays.fill(this.pageLocalIds, (byte) 0);
         }
@@ -106,33 +102,17 @@ final class PaletteScratch {
     }
 
     private int localId(int rawId) {
-        this.ensureLookup();
-        int slot = this.findSlot(rawId);
-        int marker = this.lookupValues[slot];
+        int marker = this.lookup.get(rawId);
         if (marker != 0) {
             return marker - 1;
         }
 
         int localId = this.paletteSize;
         this.ensurePaletteCapacity(localId + 1);
-        if ((localId + 1) * 2 > this.lookupKeys.length) {
-            this.growLookup();
-            slot = this.findSlot(rawId);
-        }
-
         this.paletteSize = localId + 1;
-        this.lookupKeys[slot] = rawId;
-        this.lookupValues[slot] = localId + 1;
         this.paletteRawIds[localId] = rawId;
+        this.lookup.put(rawId, localId + 1);
         return localId;
-    }
-
-    private void ensureLookup() {
-        if (this.lookupKeys != null) {
-            return;
-        }
-        this.lookupKeys = new int[INITIAL_LOOKUP_CAPACITY];
-        this.lookupValues = new int[INITIAL_LOOKUP_CAPACITY];
     }
 
     private void ensurePageLocalIds() {
@@ -151,28 +131,5 @@ final class PaletteScratch {
             newLength *= 2;
         } while (newLength < required);
         this.paletteRawIds = Arrays.copyOf(this.paletteRawIds, newLength);
-    }
-
-    private void growLookup() {
-        this.lookupKeys = new int[this.lookupKeys.length * 2];
-        this.lookupValues = new int[this.lookupValues.length * 2];
-        for (int i = 0; i < this.paletteSize; ++i) {
-            int slot = this.findSlot(this.paletteRawIds[i]);
-            this.lookupKeys[slot] = this.paletteRawIds[i];
-            this.lookupValues[slot] = i + 1;
-        }
-    }
-
-    private int findSlot(int rawId) {
-        int slot = mix(rawId) & (this.lookupKeys.length - 1);
-        while (this.lookupValues[slot] != 0 && this.lookupKeys[slot] != rawId) {
-            slot = (slot + 1) & (this.lookupKeys.length - 1);
-        }
-        return slot;
-    }
-
-    private static int mix(int value) {
-        int hash = value * HASH_MULTIPLIER;
-        return hash ^ (hash >>> 16);
     }
 }

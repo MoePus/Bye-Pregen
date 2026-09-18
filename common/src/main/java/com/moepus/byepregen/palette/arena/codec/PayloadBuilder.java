@@ -12,10 +12,11 @@ public final class PayloadBuilder {
     private PayloadBuilder() {}
 
     public static byte[] uniform(int rawId) {
-        byte[] payload = new byte[uniformPayloadSize(rawId)];
+        boolean shortForms = BlockStateNbtCache.rawIdUsesShortForm(rawId);
+        byte[] payload = new byte[uniformPayloadSize(rawId, shortForms)];
         PayloadWriter writer = new PayloadWriter(payload);
-        writePaletteHeader(writer, 1);
-        writePaletteEntry(writer, rawId);
+        writePaletteHeader(writer, 1, shortForms);
+        writePaletteEntry(writer, rawId, shortForms);
         writer.writeByte(Tag.TAG_END);
         writer.finish();
         return payload;
@@ -25,9 +26,10 @@ public final class PayloadBuilder {
             SerializationScratch scratch, ArenaBlockStatePalettedContainer container) {
         int paletteSize = scratch.paletteSize();
         int packedLength = paletteSize > 1 ? packedLength(paletteSize) : 0;
-        byte[] payload = new byte[packedPayloadSize(scratch, packedLength)];
+        boolean shortForms = usesShortForms(scratch);
+        byte[] payload = new byte[packedPayloadSize(scratch, packedLength, shortForms)];
         PayloadWriter writer = new PayloadWriter(payload);
-        writePalette(writer, scratch);
+        writePalette(writer, scratch, shortForms);
         if (paletteSize > 1) {
             writeData(writer, scratch, container, packedLength);
         }
@@ -36,14 +38,23 @@ public final class PayloadBuilder {
         return payload;
     }
 
-    private static int uniformPayloadSize(int rawId) {
-        return namedHeaderSize(PALETTE) + listHeaderSize() + paletteEntrySize(rawId) + Byte.BYTES;
+    private static boolean usesShortForms(SerializationScratch scratch) {
+        for (int i = 0; i < scratch.paletteSize(); ++i) {
+            if (!BlockStateNbtCache.rawIdUsesShortForm(scratch.paletteRawId(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    private static int packedPayloadSize(SerializationScratch scratch, int packedLength) {
+    private static int uniformPayloadSize(int rawId, boolean shortForms) {
+        return namedHeaderSize(PALETTE) + listHeaderSize() + paletteEntrySize(rawId, shortForms) + Byte.BYTES;
+    }
+
+    private static int packedPayloadSize(SerializationScratch scratch, int packedLength, boolean shortForms) {
         int size = namedHeaderSize(PALETTE) + listHeaderSize();
         for (int i = 0; i < scratch.paletteSize(); ++i) {
-            size += paletteEntrySize(scratch.paletteRawId(i));
+            size += paletteEntrySize(scratch.paletteRawId(i), shortForms);
         }
         if (packedLength > 0) {
             size += namedHeaderSize(DATA) + Integer.BYTES + packedLength * Long.BYTES;
@@ -51,11 +62,11 @@ public final class PayloadBuilder {
         return size + Byte.BYTES;
     }
 
-    private static void writePalette(PayloadWriter writer, SerializationScratch scratch) {
+    private static void writePalette(PayloadWriter writer, SerializationScratch scratch, boolean shortForms) {
         int size = scratch.paletteSize();
-        writePaletteHeader(writer, size);
+        writePaletteHeader(writer, size, shortForms);
         for (int i = 0; i < size; ++i) {
-            writePaletteEntry(writer, scratch.paletteRawId(i));
+            writePaletteEntry(writer, scratch.paletteRawId(i), shortForms);
         }
     }
 
@@ -71,19 +82,25 @@ public final class PayloadBuilder {
         scratch.writePayloadData(writer, container);
     }
 
-    private static void writePaletteHeader(PayloadWriter writer, int size) {
+    private static void writePaletteHeader(PayloadWriter writer, int size, boolean shortForms) {
         writer.writeNamedType(Tag.TAG_LIST, PALETTE);
-        writer.writeByte(Tag.TAG_COMPOUND);
+        writer.writeByte(shortForms ? Tag.TAG_STRING : Tag.TAG_COMPOUND);
         writer.writeInt(size);
     }
 
-    private static void writePaletteEntry(PayloadWriter writer, int rawId) {
-        writer.writeBytes(BlockStateNbtCache.rawIdEntryBytes(rawId));
+    private static void writePaletteEntry(PayloadWriter writer, int rawId, boolean shortForms) {
+        if (shortForms) {
+            writer.writeBytes(BlockStateNbtCache.rawIdFileEntryBytes(rawId));
+            return;
+        }
+        writer.writeBytes(BlockStateNbtCache.rawIdFileWrappedEntryBytes(rawId));
         writer.writeByte(Tag.TAG_END);
     }
 
-    private static int paletteEntrySize(int rawId) {
-        return BlockStateNbtCache.rawIdEntryBytes(rawId).length + Byte.BYTES;
+    private static int paletteEntrySize(int rawId, boolean shortForms) {
+        return shortForms
+                ? BlockStateNbtCache.rawIdFileEntryBytes(rawId).length
+                : BlockStateNbtCache.rawIdFileWrappedEntryBytes(rawId).length + Byte.BYTES;
     }
 
     private static int namedHeaderSize(byte[] name) {

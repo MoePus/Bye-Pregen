@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "byepregen_arena_harness",
+  "version": "1.0",
+  "environment": "server",
+  "mixins": ["byepregen.arena-harness.mixins.json"],
+  "depends": { "byepregen": "*" }
+}

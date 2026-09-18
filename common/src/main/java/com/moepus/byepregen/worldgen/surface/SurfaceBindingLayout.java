@@ -3,13 +3,14 @@ package com.moepus.byepregen.worldgen.surface;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.DoubleSupplier;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.VerticalAnchor;
-import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
+import net.minecraft.world.level.levelgen.VerticalAnchor;
+import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
+import net.minecraft.world.level.levelgen.material.condition.MaterialCondition;
+import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
 
 final class SurfaceBindingLayout {
     private final List<BindEvent> events;
@@ -32,23 +33,18 @@ final class SurfaceBindingLayout {
         return this.storedSlots.get(id.value());
     }
 
-    Object[] bind(Object rawContext) {
-        SurfaceContextAccess context = (SurfaceContextAccess) rawContext;
-        return this.bind(rawContext, context, SurfaceBindingLayout::resolveRuntime);
+    Object[] bind(MaterialRuleContext context) {
+        return this.bind(context, SurfaceBindingLayout::resolveRuntime);
     }
 
-    Object[] bindForTest(Object rawContext, Resolver resolver) {
-        return this.bind(rawContext, (SurfaceContextAccess) rawContext, resolver);
+    Object[] bindForTest(Object context, Resolver resolver) {
+        return this.bind(context, resolver);
     }
 
-    private Object[] bind(
-            Object rawContext,
-            SurfaceContextAccess context,
-            Resolver resolver
-    ) {
+    private Object[] bind(Object context, Resolver resolver) {
         Object[] values = new Object[this.storedSlots.size()];
         for (BindEvent event : this.events) {
-            Object value = resolver.resolve(event, rawContext, context);
+            Object value = resolver.resolve(event, context);
             if (event instanceof Slot slot) {
                 values[slot.id().value()] = value;
             }
@@ -56,50 +52,32 @@ final class SurfaceBindingLayout {
         return values;
     }
 
-    private static Object resolveRuntime(
-            BindEvent event,
-            Object rawContext,
-            SurfaceContextAccess context
-    ) {
+    private static Object resolveRuntime(BindEvent event, Object context) {
+        MaterialRuleContext material = (MaterialRuleContext) context;
         return switch (event.kind()) {
-            case STATE, Y_ANCHOR -> event.source();
-            case NOISE -> context.byepregen$randomState().getOrCreateNoise(
-                    castNoiseKey(event.source())
-            );
-            case RESOLVED_ANCHOR -> ((VerticalAnchor) event.source()).resolveY(
-                    context.byepregen$worldGenerationContext()
-            );
-            case RANDOM_FACTORY -> context.byepregen$randomState().getOrCreateRandomFactory(
+            case STATE -> event.source();
+            // 26.3: vanilla caches one sampler per (noise, is3d) on the context, and it already
+            // returns the per-column or per-position value lazily.
+            case NOISE -> {
+                SurfaceConditionSpec.Noise noise = (SurfaceConditionSpec.Noise) event.source();
+                yield material.getNoiseSampler(noise.noise(), noise.is3d());
+            }
+            // 26.3: anchors are resolved through the context; MaterialRuleContext has no public
+            // WorldGenerationContext to call VerticalAnchor.resolveY on.
+            case RESOLVED_ANCHOR -> material.resolveAnchorY((VerticalAnchor) event.source());
+            case RANDOM_FACTORY -> material.getOrCreateRandomFactory(
                     (Identifier) event.source()
             );
-            case CONDITION -> bindCondition(event.source(), rawContext);
-            case RULE -> bindRule(event.source(), rawContext);
+            case CONDITION -> ((MaterialCondition) event.source()).compile(material);
+            case RULE -> ((MaterialRule) event.source()).compile(material);
         };
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<NormalNoise.NoiseParameters> castNoiseKey(Object source) {
-        return (ResourceKey<NormalNoise.NoiseParameters>) source;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static SurfaceBoundAccess.Condition bindCondition(Object source, Object context) {
-        Object bound = ((Function) source).apply(context);
-        return (SurfaceBoundAccess.Condition) bound;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static SurfaceBoundAccess.Rule bindRule(Object source, Object context) {
-        Object bound = ((Function) source).apply(context);
-        return (SurfaceBoundAccess.Rule) bound;
     }
 
     enum Kind {
         STATE(BlockState.class),
-        NOISE(NormalNoise.class),
+        NOISE(DoubleSupplier.class),
         RESOLVED_ANCHOR(int.class),
         RANDOM_FACTORY(PositionalRandomFactory.class),
-        Y_ANCHOR(VerticalAnchor.class),
         CONDITION(null),
         RULE(null);
 
@@ -164,6 +142,6 @@ final class SurfaceBindingLayout {
 
     @FunctionalInterface
     interface Resolver {
-        Object resolve(BindEvent event, Object rawContext, SurfaceContextAccess context);
+        Object resolve(BindEvent event, Object context);
     }
 }

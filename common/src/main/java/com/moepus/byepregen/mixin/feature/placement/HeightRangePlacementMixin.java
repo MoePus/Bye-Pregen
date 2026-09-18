@@ -18,7 +18,7 @@ public abstract class HeightRangePlacementMixin implements FastPlacementModifier
     private HeightProvider height;
 
     @Override
-    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
-        context.apply(nextIndex, x, this.height.sample(context.random(), context.placementContext()), z);
+    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {
+        context.emit(x, this.height.sample(context.random(), context.placementContext()), z);
     }
 }

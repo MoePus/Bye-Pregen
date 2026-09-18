@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(value = InSquarePlacement.class, remap = false)
 public abstract class InSquarePlacementMixin implements FastPlacementModifier {
     @Override
-    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
-        context.apply(nextIndex, x + context.random().nextInt(16), y, z + context.random().nextInt(16));
+    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {
+        context.emit(x + context.random().nextInt(16), y, z + context.random().nextInt(16));
     }
 }

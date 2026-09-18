@@ -1,0 +1,81 @@
+def resultDir = layout.buildDirectory.dir('dfc-verification').get().asFile
+[dfcBaseline: false, dfcOptimized: true].each { name, enabled ->
+    def directory = file("run/${name}")
+    def result = new File(resultDir, name + '.txt')
+    loom.runs.register(name) {
+        server()
+        source(sourceSets.arenaHarness)
+        ideConfigGenerated(false)
+        runDir(project.relativePath(directory))
+        programArgs('--nogui')
+        vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
+                "-Dbyepregen.testConfig.worldgen.arena.density-column-compiler=${enabled}",
+                "-Dbyepregen.dfcHarness.result=${result.absolutePath}")
+    }
+    tasks.named('run' + name.capitalize()) {
+        group = 'verification'
+        doFirst {
+            directory.mkdirs()
+            resultDir.mkdirs()
+            delete(new File(resultDir, 'comparison.txt'))
+            delete(result, new File(result.absolutePath + '.samples'), new File(result.absolutePath + '.timings'))
+            new File(directory, 'eula.txt').setText('eula=true\n', 'UTF-8')
+            new File(directory, 'server.properties').setText(
+                    'level-seed=8675309\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                    'view-distance=2\nsimulation-distance=2\nspawn-chunk-radius=0\n', 'UTF-8')
+        }
+        doLast {
+            if (!result.isFile() || !result.getText('UTF-8').startsWith('PASS\n')) {
+                throw new GradleException("DFC runtime verification failed: ${result}")
+            }
+        }
+    }
+}
+
+def compareValues = { String name, int size, DataInputStream a, DataInputStream b, Map stats ->
+    for (int i = 0; i < size; ++i) {
+        float x = a.readFloat(), y = b.readFloat()
+        ++stats.samples
+        if (Float.floatToIntBits(x) == Float.floatToIntBits(y)) continue
+        ++stats.changed
+        if ((x > 0) != (y > 0)) ++stats.signs
+        double error = Math.abs((double)x - y)
+        double tolerance = 3.0e-5 * Math.max(1.0, Math.abs((double)x))
+        if (!Float.isFinite(x) || !Float.isFinite(y) || error > tolerance) {
+            throw new GradleException("DFC numerical mismatch: ${name}[${i}] ${x} -> ${y}")
+        }
+        stats.maximumError = Math.max(stats.maximumError, error)
+    }
+}
+
+def compareRecords = { DataInputStream a, DataInputStream b, Map stats ->
+    while (a.available() > 0) {
+        def name = a.readUTF()
+        if (name != b.readUTF()) throw new GradleException("DFC sample key mismatch: ${name}")
+        int size = a.readInt()
+        if (size != b.readInt()) throw new GradleException("DFC sample size mismatch: ${name}")
+        compareValues(name, size, a, b, stats)
+    }
+    if (b.available() != 0) throw new GradleException('Unexpected extra DFC samples')
+}
+
+def compareSamples = { File reference, File optimized ->
+    def stats = [samples: 0L, changed: 0L, signs: 0L, maximumError: 0.0D]
+    reference.withDataInputStream { a ->
+        optimized.withDataInputStream { b -> compareRecords(a, b, stats) }
+    }
+    return stats
+}
+
+tasks.register('testDfcRuntime') {
+    group = 'verification'
+    description = 'Checks RC2 density samplers numerically and generates terrain with DFC in all three dimensions.'
+    dependsOn('runDfcBaseline', 'runDfcOptimized', 'runArenaDfc', 'runArenaDfcFeatures')
+    doLast {
+        def stats = compareSamples(new File(resultDir, 'dfcBaseline.txt.samples'),
+                new File(resultDir, 'dfcOptimized.txt.samples'))
+        new File(resultDir, 'comparison.txt').setText(
+                "PASS\nsamples=${stats.samples}\nchanged=${stats.changed}\nsigns=${stats.signs}\n" +
+                        "maxAbsoluteError=${stats.maximumError}\n", 'UTF-8')
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "palette.GlobalPaletteMixin",
+    "palette.HashMapPaletteMixin",
+    "palette.LinearPaletteMixin",
+    "palette.SingleValuePaletteMixin",
+    "palette.PalettedContainerNoLithiumMixin",
+    "palette.PalettedContainerThreadingDetectorMixin",
+    "palette.PalettedContainerRawIdMixin",
+    "palette.compat.lithium.LithiumHashPaletteMixin",
+    "accessor.server.tick.ServerChunkCacheTickAccessor",
+    "server.fasttick.NaturalSpawnerChunkCacheMixin",
+    "server.fasttick.ServerChunkCacheTickIterationMixin",
+    "server.fasttick.ServerLevelWeatherTickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

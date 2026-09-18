@@ -8,8 +8,16 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 final class ArenaBlockStateStorage {
+    /** The three legal representations; {@code arena} and {@code denseIds} realise exactly one of them. */
+    enum Mode {
+        UNIFORM,
+        PAGE_PALETTE,
+        DENSE
+    }
+
     private int uniformRawId;
     private BlockState uniformState;
+    private Mode mode = Mode.UNIFORM;
     private int[] arena;
     private int[] denseIds;
     private Int2IntOpenHashMap denseRawIdCounts;
@@ -26,6 +34,7 @@ final class ArenaBlockStateStorage {
     void copyFrom(ArenaBlockStateStorage source) {
         this.uniformRawId = source.uniformRawId;
         this.uniformState = source.uniformState;
+        this.mode = source.mode;
         this.arena = source.arena == null ? null : source.arena.clone();
         this.denseIds = source.denseIds == null ? null : source.denseIds.clone();
         // Counts are derived from denseIds and may be changing while a renderer snapshots the section.
@@ -33,37 +42,11 @@ final class ArenaBlockStateStorage {
     }
 
     BlockState stateAt(int x, int y, int z) {
-        int[] dense = this.denseIds;
-        if (dense != null) {
-            return Block.stateById(UnsafeIntArrayAccess.get(dense, localIndex(x, y, z)));
-        }
-        int[] pageArena = this.arena;
-        if (pageArena == null) {
-            return this.uniformState;
-        }
-        int page = y >>> 2;
-        int local = ((y & 3) << 8) | (z << 4) | x;
-        int base = pageBase(page);
-        int paletteIndex = localPaletteIndex(pageArena, base, local);
-        return Block.stateById(ArenaPaletteConversions.rawIdForPaletteIndex(
-                pageArena, base, paletteIndex));
+        return Block.stateById(this.rawIdAt(localIndex(x, y, z)));
     }
 
     BlockState stateAt(int index) {
-        int[] dense = this.denseIds;
-        if (dense != null) {
-            return Block.stateById(UnsafeIntArrayAccess.get(dense, index));
-        }
-        int[] pageArena = this.arena;
-        if (pageArena == null) {
-            return this.uniformState;
-        }
-        int page = pageIndexFromSectionIndex(index);
-        int local = pageLocalIndexFromSectionIndex(index);
-        int base = pageBase(page);
-        int paletteIndex = localPaletteIndex(pageArena, base, local);
-        return Block.stateById(ArenaPaletteConversions.rawIdForPaletteIndex(
-                pageArena, base, paletteIndex));
+        return Block.stateById(this.rawIdAt(index));
     }
 
     int rawIdAt(int index) {
@@ -143,24 +126,29 @@ final class ArenaBlockStateStorage {
     }
 
     int[] ensureArena() {
-        if (this.arena == null) {
+        if (this.mode == Mode.UNIFORM) {
             this.arena = ArenaPaletteConversions.createArena(this.uniformRawId);
+            this.mode = Mode.PAGE_PALETTE;
         }
         return this.arena;
     }
 
     void promoteToDense() {
-        if (this.denseIds != null) {
+        if (this.mode == Mode.DENSE) {
             return;
         }
         this.denseIds = ArenaPaletteConversions.toDense(this.arena, this.uniformRawId);
         this.arena = null;
         this.denseRawIdCounts = null;
+        this.mode = Mode.DENSE;
     }
 
     void tryPromoteFullUniformSection() {
+        if (this.mode != Mode.PAGE_PALETTE) {
+            return;
+        }
         int rawId = ArenaPaletteConversions.uniformRawId(this.arena);
-        if (rawId >= 0 && this.denseIds == null) {
+        if (rawId >= 0) {
             this.setUniformSection(rawId);
         }
     }
@@ -171,19 +159,24 @@ final class ArenaBlockStateStorage {
         this.arena = null;
         this.denseIds = null;
         this.denseRawIdCounts = null;
+        this.mode = Mode.UNIFORM;
     }
 
     void unpack(Object[] values) {
         ArenaPaletteConversions.unpack(values, this.uniformState, this.arena, this.denseIds);
     }
 
+    Mode mode() {
+        return this.mode;
+    }
+
     boolean isUniform() {
-        return this.arena == null && this.denseIds == null;
+        return this.mode == Mode.UNIFORM;
     }
 
     boolean isFreshAirForWorldgen(int airRawId, BlockState airState) {
-        return this.isUniform()
-                && this.denseRawIdCounts == null
+        // Leaving DENSE, or leaving PAGE_PALETTE, always clears denseRawIdCounts, so the mode is enough.
+        return this.mode == Mode.UNIFORM
                 && this.uniformRawId == airRawId
                 && this.uniformState == airState;
     }
@@ -193,12 +186,14 @@ final class ArenaBlockStateStorage {
     }
 
     boolean hasPagePalettes() {
-        return this.arena != null && this.denseIds == null;
+        return this.mode == Mode.PAGE_PALETTE;
     }
 
     boolean hasDenseIds() {
-        return this.denseIds != null;
+        return this.mode == Mode.DENSE;
     }
+
+    int[] denseIdsForFreshWrite() { return this.denseIds; }
 
     Int2IntOpenHashMap denseRawIdCounts() {
         Int2IntOpenHashMap counts = this.denseRawIdCounts;
@@ -235,8 +230,13 @@ final class ArenaBlockStateStorage {
         return this.arena[base + wordIndex];
     }
 
-    boolean isUniformRawId(int rawId) {
-        return this.arena == null && rawId == this.uniformRawId;
+    /**
+     * Whether a page whose single raw ID is this one needs no write at all: uniform sections store
+     * nothing, and a dense array still holds the uniform fill value wherever nothing was written yet.
+     * The page arena is the one representation that keeps per-page data a caller has to fill in.
+     */
+    boolean alreadyUniformRawId(int rawId) {
+        return this.mode != Mode.PAGE_PALETTE && rawId == this.uniformRawId;
     }
 
     private void writeDense(int index, int rawId, int[] dense) {

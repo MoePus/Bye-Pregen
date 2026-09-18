@@ -21,8 +21,8 @@ final class ColumnSpecializerTest {
     @Test
     void structurallyEqualYIndependentSubtreesShareOneMemoSlot() {
         CoordinateNode x = new CoordinateNode(Axis.X);
-        AstNode first = new AddNode(new ConstantNode(2.0D), x);
-        AstNode second = new AddNode(new ConstantNode(2.0D), new CoordinateNode(Axis.X));
+        AstNode first = new AddNode(new ConstantNode(2.0F), x);
+        AstNode second = new AddNode(new ConstantNode(2.0F), new CoordinateNode(Axis.X));
         ColumnSpecializer.Result result = ColumnSpecializer.specialize(
                 new RootNode(new AddNode(first, second)));
 
@@ -37,9 +37,9 @@ final class ColumnSpecializerTest {
 
     @Test
     void YIndependentRangeBranchGetsLazyColumnSlot() {
-        AstNode branch = new AddNode(new ConstantNode(1.0D), new CoordinateNode(Axis.X));
+        AstNode branch = new AddNode(new ConstantNode(1.0F), new CoordinateNode(Axis.X));
         RangeChoiceNode range = new RangeChoiceNode(
-                new CoordinateNode(Axis.Y), 0.0D, 1.0D, branch, new ConstantNode(0.0D));
+                new CoordinateNode(Axis.Y), 0.0F, 1.0F, branch, new ConstantNode(0.0F));
 
         AstNode result = ColumnSpecializer.specialize(new RootNode(range)).root();
         RangeChoiceNode specialized = assertInstanceOf(
@@ -52,9 +52,9 @@ final class ColumnSpecializerTest {
 
     @Test
     void conditionalAndUnconditionalReferencesShareLazyWrapper() {
-        AstNode shared = new AddNode(new ConstantNode(3.0D), new CoordinateNode(Axis.X));
+        AstNode shared = new AddNode(new ConstantNode(3.0F), new CoordinateNode(Axis.X));
         RangeChoiceNode choice = new RangeChoiceNode(new CoordinateNode(Axis.Y),
-                0.0D, 1.0D, shared, new ConstantNode(0.0D));
+                0.0F, 1.0F, shared, new ConstantNode(0.0F));
         ColumnSpecializer.Result result = ColumnSpecializer.specialize(
                 new RootNode(new AddNode(shared, choice)));
 

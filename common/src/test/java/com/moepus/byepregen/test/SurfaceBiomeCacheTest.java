@@ -10,6 +10,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.biome.BiomeResolver;
 import org.junit.jupiter.api.Test;
 
 public final class SurfaceBiomeCacheTest {
@@ -158,7 +159,7 @@ public final class SurfaceBiomeCacheTest {
         MIXED
     }
 
-    private static final class CountingSource implements BiomeManager.NoiseBiomeSource {
+    private static final class CountingSource implements BiomeResolver {
         private final Map<QuartCell, Holder<Biome>> biomes = new HashMap<>();
         private final Map<QuartCell, Integer> calls = new HashMap<>();
         private final Holder<Biome> uniformBiome = Holder.direct(null);

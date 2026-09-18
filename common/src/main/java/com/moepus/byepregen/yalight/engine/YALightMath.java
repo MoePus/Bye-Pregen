@@ -1,7 +1,6 @@
 package com.moepus.byepregen.yalight.engine;
 
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 public final class YALightMath {
@@ -32,6 +31,19 @@ public final class YALightMath {
 
     public static int directions(long entry) {
         return (int)(entry >>> DIRECTIONS_SHIFT) & 63;
+    }
+
+    // A queued entry may publish its level only through the level write path and only upwards. A recheck
+    // entry was scheduled to look at work that was already written, so it must not write over a brighter
+    // value another entry produced in the meantime.
+    public static boolean canWrite(long meta, int stored, int level) {
+        return (meta & (FLAG_RECHECK | FLAG_WRITE_LEVEL)) == FLAG_WRITE_LEVEL && stored < level;
+    }
+
+    // Ownership of a chunk edge moves to the neighbouring fresh chunk only from an entry that still carries
+    // the transfer flag, and never from a recheck: the new owner may already have propagated that edge.
+    public static boolean transfersFreshOwner(long meta) {
+        return (meta & (FLAG_FRESH_OWNER_TRANSFER | FLAG_RECHECK)) == FLAG_FRESH_OWNER_TRANSFER;
     }
 
     public static int withoutOpposite(int directionIndex) {

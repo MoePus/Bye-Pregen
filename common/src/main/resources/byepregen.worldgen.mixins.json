@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.moepus.byepregen.mixin",
+  "plugin": "com.moepus.byepregen.MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "climate.ClimateParameterListSearchMixin",
+    "climate.ClimateRTreeSearchMixin",
+    "climate.ClimateRTreeColumnMixin",
+    "climate.ClimateRTreeNodeCacheMixin",
+    "accessor.surface.BiomeManagerAccessor",
+    "surface.biome.NoiseBasedChunkGeneratorSurfaceBiomeMixin",
+    "surface.biome.SurfaceSystemBiomeCacheMixin",
+    "surface.MaterialSystemRuleCompilerMixin",
+    "surface.MaterialRuleContextAccessMixin",
+    "postprocess.ChunkStatusPostProcessingPreNormMixin",
+    "postprocess.LevelChunkPostProcessMixin",
+    "postprocess.compat.c2me.C2MEServerBlockTickingMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

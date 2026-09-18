@@ -1,7 +1,6 @@
 package com.moepus.byepregen.worldgen.surface;
 
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.SurfaceSystem;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
@@ -58,9 +57,6 @@ final class SurfaceRuleEmitter {
             boolean rootMethod
     ) {
         method.visitCode();
-        if (rootMethod) {
-            SurfaceScalarClassEmitter.emitColumnReset(method, this.context);
-        }
         SurfaceMethodLocals locals = SurfaceMethodLocals.create(this.context, body);
         locals.emitPrelude(method, this.context);
         MethodState state = new MethodState(
@@ -195,13 +191,15 @@ final class SurfaceRuleEmitter {
     }
 
     private void emitBandlands(MethodVisitor method) {
-        this.context.loadSurfaceSystem(method);
+        // 26.3: vanilla's BandlandsRule.compile is exactly context::getBand, and the context is the
+        // only public route to the band lookup.
+        this.context.loadContext(method);
         method.visitVarInsn(ILOAD, 1);
         method.visitVarInsn(ILOAD, 2);
         method.visitVarInsn(ILOAD, 3);
         method.visitMethodInsn(
                 INVOKEVIRTUAL,
-                Type.getInternalName(SurfaceSystem.class),
+                this.context.abi().contextOwner(),
                 SurfaceRuntimeAbi.BAND,
                 RULE_DESCRIPTOR,
                 false

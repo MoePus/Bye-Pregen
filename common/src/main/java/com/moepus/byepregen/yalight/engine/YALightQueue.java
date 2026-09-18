@@ -260,7 +260,7 @@ public final class YALightQueue {
             for (YAFreshLightRequest request = this.firstFreshOwner;
                     request != null;
                     request = request.nextQueued(layer)) {
-                request.cancel();
+                request.markFailed();
             }
         }
 

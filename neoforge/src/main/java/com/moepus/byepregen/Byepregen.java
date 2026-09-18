@@ -4,9 +4,9 @@ import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +17,7 @@ public class Byepregen {
 
     public Byepregen(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(Byepregen::onLoadComplete);
+        LOGGER.info("ByePregen world generation optimizations initialized for 26.3");
     }
 
     private static void onLoadComplete(FMLLoadCompleteEvent event) {
@@ -29,6 +30,6 @@ public class Byepregen {
                     + "despite lighting.ya.enabled=true");
             return;
         }
-        event.enqueueWork(() -> YABlockStateLightClass.initialize());
+        event.enqueueWork(YABlockStateLightClass::initialize);
     }
 }

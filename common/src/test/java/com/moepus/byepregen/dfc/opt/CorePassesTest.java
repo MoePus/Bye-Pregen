@@ -15,22 +15,22 @@ final class CorePassesTest {
     @Test
     void canonicalizeMovesSwappableConstantLeft() {
         AddNode result = assertInstanceOf(AddNode.class,
-                CorePasses.canonicalize(new AddNode(Y, new ConstantNode(2.0D))));
+                CorePasses.canonicalize(new AddNode(Y, new ConstantNode(2.0F))));
         assertInstanceOf(ConstantNode.class, result.left());
     }
 
     @Test
     void constantFoldEvaluatesConstantSubtree() {
         ConstantNode result = assertInstanceOf(ConstantNode.class,
-                CorePasses.constantFold(new MulNode(new ConstantNode(2.0D), new ConstantNode(3.0D))));
-        assertEquals(6.0D, result.value());
+                CorePasses.constantFold(new MulNode(new ConstantNode(2.0F), new ConstantNode(3.0F))));
+        assertEquals(6.0F, result.value());
     }
 
     @Test
     void constantFoldEvaluatesSqueezeThroughColumnMath() {
         // The squeeze formula lives in ColumnMath because the generated emitters call it there;
         // the optimizer must fold constants through that same implementation, not a private copy.
-        for (double value : new double[] {-4.0D, -1.0D, -0.25D, 0.0D, 0.25D, 1.0D, 4.0D}) {
+        for (float value : new float[] {-4.0F, -1.0F, -0.25F, 0.0F, 0.25F, 1.0F, 4.0F}) {
             ConstantNode result = assertInstanceOf(ConstantNode.class,
                     CorePasses.constantFold(new SqueezeNode(new ConstantNode(value))));
             assertEquals(ColumnMath.squeeze(value), result.value(),
@@ -40,8 +40,8 @@ final class CorePassesTest {
 
     @Test
     void constantFoldSqueezeMatchesClampAndCubeFormula() {
-        double clamped = 0.25D;
-        assertEquals(clamped * 0.5D - clamped * clamped * clamped / 24.0D,
+        float clamped = 0.25F;
+        assertEquals(clamped * 0.5F - clamped * clamped * clamped / 24.0F,
                 assertInstanceOf(ConstantNode.class,
                         CorePasses.constantFold(new SqueezeNode(new ConstantNode(clamped)))).value());
     }
@@ -63,7 +63,7 @@ final class CorePassesTest {
     @Test
     void algebraicSimplifyRemovesNeutralAdd() {
         assertSame(Y, CorePasses.algebraicSimplify(
-                new AddNode(new ConstantNode(0.0D), Y)));
+                new AddNode(new ConstantNode(0.0F), Y)));
     }
 
     @Test
@@ -74,53 +74,53 @@ final class CorePassesTest {
     @Test
     void identityEliminateHandlesMaxOnEitherMinSide() {
         AstNode leftNested = CorePasses.identityEliminate(
-                new MinNode(new MaxNode(new ConstantNode(1.0D), Y), Y));
+                new MinNode(new MaxNode(new ConstantNode(1.0F), Y), Y));
         assertSame(Y, leftNested);
 
         AstNode rightNested = CorePasses.identityEliminate(
-                new MaxNode(new MinNode(new ConstantNode(1.0D), Y), Y));
+                new MaxNode(new MinNode(new ConstantNode(1.0F), Y), Y));
         assertSame(Y, rightNested);
     }
 
     @Test
     void rangePruneSelectsKnownBranch() {
-        ConstantNode inside = new ConstantNode(4.0D);
+        ConstantNode inside = new ConstantNode(4.0F);
         AstNode result = CorePasses.rangePrune(new RangeChoiceNode(
-                new ConstantNode(0.5D), 0.0D, 1.0D,
-                inside, new ConstantNode(8.0D)));
+                new ConstantNode(0.5F), 0.0F, 1.0F,
+                inside, new ConstantNode(8.0F)));
         assertSame(inside, result);
     }
 
     @Test
     void rangePruneUsesKnownOuterIntervalForNestedChoice() {
-        RangeChoiceNode nested = new RangeChoiceNode(Y, 2.0D, 3.0D,
-                new ConstantNode(7.0D), new ConstantNode(8.0D));
-        RangeChoiceNode outer = new RangeChoiceNode(Y, 0.0D, 1.0D,
-                nested, new ConstantNode(9.0D));
+        RangeChoiceNode nested = new RangeChoiceNode(Y, 2.0F, 3.0F,
+                new ConstantNode(7.0F), new ConstantNode(8.0F));
+        RangeChoiceNode outer = new RangeChoiceNode(Y, 0.0F, 1.0F,
+                nested, new ConstantNode(9.0F));
         RangeChoiceNode result = assertInstanceOf(RangeChoiceNode.class,
                 CorePasses.rangePrune(outer));
-        assertEquals(8.0D, assertInstanceOf(ConstantNode.class, result.whenInRange()).value());
+        assertEquals(8.0F, assertInstanceOf(ConstantNode.class, result.whenInRange()).value());
     }
 
     @Test
     void rangePruneRemovesConstantMinShortCondition() {
         MinNode eager = assertInstanceOf(MinNode.class, CorePasses.rangePrune(
-                new MinShortNode(new ConstantNode(0.0D), Y, -4.9294D)));
-        assertEquals(0.0D, assertInstanceOf(ConstantNode.class, eager.left()).value());
+                new MinShortNode(new ConstantNode(0.0F), Y, -4.9294F)));
+        assertEquals(0.0F, assertInstanceOf(ConstantNode.class, eager.left()).value());
 
         ConstantNode shorted = assertInstanceOf(ConstantNode.class, CorePasses.rangePrune(
-                new MinShortNode(new ConstantNode(-5.0D), Y, -4.9294D)));
-        assertEquals(-5.0D, shorted.value());
+                new MinShortNode(new ConstantNode(-5.0F), Y, -4.9294F)));
+        assertEquals(-5.0F, shorted.value());
     }
 
     @Test
     void rangePruneRemovesConstantMaxShortCondition() {
         MaxNode eager = assertInstanceOf(MaxNode.class, CorePasses.rangePrune(
-                new MaxShortNode(new ConstantNode(0.0D), Y, 4.9294D)));
-        assertEquals(0.0D, assertInstanceOf(ConstantNode.class, eager.left()).value());
+                new MaxShortNode(new ConstantNode(0.0F), Y, 4.9294F)));
+        assertEquals(0.0F, assertInstanceOf(ConstantNode.class, eager.left()).value());
 
         ConstantNode shorted = assertInstanceOf(ConstantNode.class, CorePasses.rangePrune(
-                new MaxShortNode(new ConstantNode(5.0D), Y, 4.9294D)));
-        assertEquals(5.0D, shorted.value());
+                new MaxShortNode(new ConstantNode(5.0F), Y, 4.9294F)));
+        assertEquals(5.0F, shorted.value());
     }
 }

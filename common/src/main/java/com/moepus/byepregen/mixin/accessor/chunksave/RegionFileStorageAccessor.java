@@ -12,6 +12,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @MixinGate(feature = MixinFeature.GC_FREE_RAW_CHUNK_IO)
 @Mixin(value = RegionFileStorage.class, remap = false)
 public interface RegionFileStorageAccessor {
-    @Invoker("getRegionFile")
-    RegionFile byepregen$getRegionFile(ChunkPos pos) throws IOException;
+    @Invoker("getOrCreateRegionFile")
+    RegionFile byepregen$getOrCreateRegionFile(ChunkPos pos) throws IOException;
 }

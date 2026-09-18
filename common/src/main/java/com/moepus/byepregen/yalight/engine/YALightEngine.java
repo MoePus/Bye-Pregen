@@ -256,16 +256,6 @@ public final class YALightEngine {
                 : this.getVisibleSkyLight(pos, access);
     }
 
-    public int getLightColor(BlockPos pos) {
-        return this.getLightColor(pos, this.brightnessData(pos));
-    }
-
-    public int getLightColor(BlockPos pos, YAChunkLightAccess access) {
-        int sky = this.getVisibleSkyLight(pos, access);
-        int block = this.getVisibleBlockLight(pos, access);
-        return sky << 20 | block << 4;
-    }
-
     private int getVisibleSkyLight(BlockPos pos, YAChunkLightAccess access) {
         if (this.skyEngine == null) {
             return 0;
@@ -284,11 +274,6 @@ public final class YALightEngine {
 
     private YAChunkLightAccess brightnessData(BlockPos pos) {
         return (YAChunkLightAccess)this.chunkGetter.getChunkForLighting(pos.getX() >> 4, pos.getZ() >> 4);
-    }
-
-    public boolean lightOnInSection(SectionPos pos) {
-        boolean block = this.blockEngine == null || this.blockEngine.lightOnInSection(pos);
-        return block && (this.skyEngine == null || this.skyEngine.lightOnInSection(pos));
     }
 
     public boolean lightOnInColumn(long columnPos) {

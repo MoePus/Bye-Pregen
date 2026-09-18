@@ -192,7 +192,10 @@ final class SurfaceMethodLocals {
             }
             SurfaceConditionSpec spec = SurfaceRulePlan.conditionValue(condition).spec();
             switch (spec) {
-                case SurfaceConditionSpec.Noise ignored -> this.add(Input.X, Input.Z);
+                // 26.3: the noise condition reads its bound DoubleSupplier, which touches the
+                // context itself, so the generated method no longer reads X or Z for it.
+                case SurfaceConditionSpec.Noise ignored -> {
+                }
                 case SurfaceConditionSpec.StoneDepth stone -> this.countStone(stone);
                 case SurfaceConditionSpec.VerticalGradient ignored ->
                         this.add(Input.X, Input.Y, Input.Y, Input.Y, Input.Z);
@@ -211,10 +214,6 @@ final class SurfaceMethodLocals {
 
         private void countStone(SurfaceConditionSpec.StoneDepth stone) {
             if (stone.hasFixedLimit() && stone.baseLimit() <= 0) {
-                return;
-            }
-            if (stone.surfaceType() == CaveSurface.CEILING
-                    && this.layout.plan().boundedStoneDepthBelow()) {
                 return;
             }
             this.add(stone.surfaceType() == CaveSurface.CEILING
@@ -243,10 +242,8 @@ final class SurfaceMethodLocals {
             if (yAbove.addStoneDepth()) {
                 this.add(Input.STONE_ABOVE);
             }
-            SurfaceScalarLayout.ConditionLayout lowered = this.layout.condition(condition);
-            if (!(lowered instanceof SurfaceScalarLayout.AbsoluteY)) {
-                this.barrierSeen = true;
-            }
+            // 26.3: the anchor is resolved while binding, so an YAbove condition is now a plain
+            // context read set like Water and no longer crosses a barrier.
             if (yAbove.surfaceDepthMultiplier() != 0) {
                 this.add(Input.SURFACE_DEPTH);
             }
@@ -303,9 +300,9 @@ final class SurfaceMethodLocals {
             if (condition instanceof SurfaceRulePlan.NotCondition not) {
                 return this.containsBarrier(not.target());
             }
+            // 26.3: anchors are resolved while binding, so only a vanilla-bound evaluator is opaque.
             SurfaceScalarLayout.ConditionLayout lowered = this.layout.condition(condition);
-            return lowered instanceof SurfaceScalarLayout.Delegate
-                    || lowered instanceof SurfaceScalarLayout.BoundY;
+            return lowered instanceof SurfaceScalarLayout.Delegate;
         }
     }
 }

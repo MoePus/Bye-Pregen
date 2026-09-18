@@ -24,25 +24,25 @@ public abstract class CountOnEveryLayerPlacementMixin implements FastPlacementMo
     private IntProvider count;
 
     @Override
-    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
+    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {
         int layer = 0;
         boolean found;
         do {
-            found = this.byepregen$collectLayer(context, x, z, layer, nextIndex);
+            found = this.byepregen$collectLayer(context, x, z, layer);
             layer++;
         } while (found);
     }
 
     @Unique
-    private boolean byepregen$collectLayer(FastPlacementContext context, int x, int z, int layer, int nextIndex) {
+    private boolean byepregen$collectLayer(FastPlacementContext context, int x, int z, int layer) {
         boolean found = false;
-        for (int i = 0, size = this.count.sample(context.random()); i < size; i++) {
+        for (int i = 0; i < this.count.sample(context.random()); i++) {
             int targetX = x + context.random().nextInt(16);
             int targetZ = z + context.random().nextInt(16);
             int height = context.placementContext().getHeight(Heightmap.Types.MOTION_BLOCKING, targetX, targetZ);
             int groundY = this.byepregen$findOnGroundYPosition(context, targetX, height, targetZ, layer);
             if (groundY != Integer.MAX_VALUE) {
-                context.apply(nextIndex, targetX, groundY, targetZ);
+                context.emit(targetX, groundY, targetZ);
                 found = true;
             }
         }

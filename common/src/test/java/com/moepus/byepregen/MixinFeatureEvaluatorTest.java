@@ -26,13 +26,13 @@ final class MixinFeatureEvaluatorTest {
     }
 
     @Test
-    void dfcRequiresArenaAndCompilerConfigButNotC2me() {
+    void dfcRequiresCompilerConfigIndependentlyOfArenaStorage() {
         assertTrue(enabled(MixinFeature.DFC, new Config()));
         assertTrue(evaluator(Set.of("c2me"), true).isEnabled(MixinFeature.DFC, new Config()));
         Config noCompiler = new ConfigTestBuilder().densityColumnCompiler(false).build();
         assertFalse(enabled(MixinFeature.DFC, noCompiler));
         Config noArena = new ConfigTestBuilder().arena(false).build();
-        assertFalse(enabled(MixinFeature.DFC, noArena));
+        assertTrue(enabled(MixinFeature.DFC, noArena));
     }
 
     @Test
@@ -56,7 +56,7 @@ final class MixinFeatureEvaluatorTest {
 
     @Test
     void rawChunkIoUsesDirectStorageWithC2me() {
-        Config config = new Config();
+        Config config = new ConfigTestBuilder().gcFreeWorldgen(true).build();
 
         MixinFeatureEvaluator evaluator = evaluator(Set.of("c2me"), true);
         assertTrue(evaluator.isEnabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, config));
@@ -69,9 +69,19 @@ final class MixinFeatureEvaluatorTest {
                 ignored -> false,
                 () -> false
         );
+        Config config = new ConfigTestBuilder().gcFreeWorldgen(true).build();
 
-        assertFalse(evaluator.isEnabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, new Config()));
-        assertTrue(evaluator.isEnabled(MixinFeature.GC_FREE_CHUNK_SAVE, new Config()));
+        assertFalse(evaluator.isEnabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, config));
+        assertTrue(evaluator.isEnabled(MixinFeature.GC_FREE_CHUNK_SAVE, config));
+    }
+
+    @Test
+    void gcFreeChunkSaveIsDisabledByDefault() {
+        Config defaults = new Config();
+
+        assertFalse(defaults.chunkSaving().gcFreeWorldgen());
+        assertFalse(enabled(MixinFeature.GC_FREE_CHUNK_SAVE, defaults));
+        assertFalse(enabled(MixinFeature.GC_FREE_RAW_CHUNK_IO, defaults));
     }
 
     @Test
@@ -79,6 +89,14 @@ final class MixinFeatureEvaluatorTest {
         Config disabled = new ConfigTestBuilder().surfaceBiomeCache(false).build();
         assertFalse(enabled(MixinFeature.SURFACE_BIOME_CACHE, disabled));
         assertTrue(enabled(MixinFeature.SURFACE_BIOME_CACHE, new Config()));
+    }
+
+    @Test
+    void yaLightYieldsToScalableLux() {
+        Config enabled = new ConfigTestBuilder().yaLight(true).build();
+
+        assertTrue(enabled(MixinFeature.YA_LIGHT, enabled));
+        assertFalse(evaluator(Set.of("scalablelux"), true).isEnabled(MixinFeature.YA_LIGHT, enabled));
     }
 
     private static boolean enabled(MixinFeature feature, Config config) {
@@ -92,6 +110,7 @@ final class MixinFeatureEvaluatorTest {
     private static Config disabledConfig() {
         return new ConfigTestBuilder()
                 .arena(false)
+                .densityColumnCompiler(false)
                 .gcFreeWorldgen(false)
                 .surfaceRuleCompiler(false)
                 .yaLight(false)

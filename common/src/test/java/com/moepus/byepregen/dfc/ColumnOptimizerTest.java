@@ -17,9 +17,9 @@ final class ColumnOptimizerTest {
     @Test
     void canonicalizesConstantsToTheLeft() {
         AstNode root = new AddNode(new CoordinateNode(com.moepus.byepregen.dfc.ast.AstNodes.Axis.Y),
-                new ConstantNode(2.0D));
+                new ConstantNode(2.0F));
         AddNode result = assertInstanceOf(AddNode.class, ColumnOptimizer.optimize(root).root());
-        assertEquals(2.0D, assertInstanceOf(ConstantNode.class, result.left()).value());
+        assertEquals(2.0F, assertInstanceOf(ConstantNode.class, result.left()).value());
     }
 
     @Test
@@ -33,7 +33,7 @@ final class ColumnOptimizerTest {
 
     @Test
     void splineStageRunsOnlyOnce() {
-        ColumnOptimizer.Result result = ColumnOptimizer.optimize(new ConstantNode(1.0D));
+        ColumnOptimizer.Result result = ColumnOptimizer.optimize(new ConstantNode(1.0F));
         assertEquals(1, result.executedPasses().stream()
                 .filter("spline-arithmetic"::equals).count());
     }
@@ -51,7 +51,7 @@ final class ColumnOptimizerTest {
         System.setProperty(property, "constant-fold");
         try {
             ColumnOptimizer.Result result = ColumnOptimizer.optimize(
-                    new AddNode(new ConstantNode(2.0D), new ConstantNode(3.0D)));
+                    new AddNode(new ConstantNode(2.0F), new ConstantNode(3.0F)));
             assertInstanceOf(AddNode.class, result.root());
             assertEquals(0, result.executedPasses().stream()
                     .filter("constant-fold"::equals).count());
@@ -64,7 +64,7 @@ final class ColumnOptimizerTest {
     @Test
     void shortMinKeepsOperandDirection() {
         CoordinateNode y = new CoordinateNode(com.moepus.byepregen.dfc.ast.AstNodes.Axis.Y);
-        MinShortNode original = new MinShortNode(y, new ConstantNode(2.0D), 2.0D);
+        MinShortNode original = new MinShortNode(y, new ConstantNode(2.0F), 2.0F);
         MinShortNode result = assertInstanceOf(MinShortNode.class,
                 ColumnOptimizer.optimize(original).root());
         assertEquals(y, result.left());

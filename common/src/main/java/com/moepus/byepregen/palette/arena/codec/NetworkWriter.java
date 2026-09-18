@@ -46,6 +46,17 @@ public final class NetworkWriter {
         buffer.writeVarInt(rawId);
     }
 
+    public static int bitsPerEntry(ArenaBlockStatePalettedContainer container) {
+        if (container.isUniform()) return 0;
+        SerializationScratch scratch = SerializationScratch.get();
+        try {
+            scratch.collectForNetworkSize(container);
+            return serializedBits(scratch.paletteSize());
+        } finally {
+            scratch.clear();
+        }
+    }
+
     private static int uniformSerializedSize(int rawId) {
         return 1 + VarInt.getByteSize(rawId);
     }

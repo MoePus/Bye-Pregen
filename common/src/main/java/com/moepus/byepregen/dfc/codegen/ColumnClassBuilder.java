@@ -12,7 +12,6 @@ import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import net.minecraft.world.level.levelgen.DensityFunction;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -31,6 +30,7 @@ public final class ColumnClassBuilder {
     private final ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
     private final BindingRegistry bindings = new BindingRegistry(this.writer);
     private final PointMethodEmitter points;
+    private final PointMethodEmitter scalarPoints;
     private final ColumnMethodEmitter columns;
     private final int memoizedSlots;
 
@@ -39,15 +39,19 @@ public final class ColumnClassBuilder {
         this.memoizedSlots = memoizedSlots;
         GenerationContext context = new GenerationContext(
                 this.className, this.writer, this.bindings);
-        this.points = new PointMethodEmitter(context);
+        this.points = new PointMethodEmitter(context, false);
+        this.scalarPoints = new PointMethodEmitter(context, true);
         this.columns = new ColumnMethodEmitter(context, this.points);
         this.writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
                 this.className, null, "java/lang/Object", new String[]{EVALUATOR});
     }
 
+    public static long generatedCount() { return CLASS_IDS.get(); }
+
     public BuildResult build(AstNode root) {
         String rootMethod = this.columns.method(root);
         this.emitEvalColumn(rootMethod);
+        this.emitSamplePoint(this.scalarPoints.method(root));
         this.emitConstructor();
         this.writer.visitEnd();
         return new BuildResult(this.className, this.writer.toByteArray(), this.bindings.bindings());
@@ -89,10 +93,10 @@ public final class ColumnClassBuilder {
         method.visitVarInsn(Opcodes.ALOAD, 0);
         method.visitVarInsn(Opcodes.ALOAD, 1);
         method.visitVarInsn(Opcodes.ALOAD, 1);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "output", "()[D", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "output", "()[F", false);
         method.visitInsn(Opcodes.ICONST_0);
         method.visitVarInsn(Opcodes.ALOAD, 1);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "output", "()[D", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "output", "()[F", false);
         method.visitInsn(Opcodes.ARRAYLENGTH);
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.className, rootMethod,
                 ColumnMethodEmitter.DESC, false);
@@ -115,9 +119,25 @@ public final class ColumnClassBuilder {
             pushInt(method, this.memoizedSlots);
             method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "prepareMemoizedCount", "(I)V", false);
         }
+
+    }
+
+    private void emitSamplePoint(String target) {
+        String descriptor = Type.getMethodDescriptor(Type.FLOAT_TYPE, Type.getType(ColumnEvaluationContext.class),
+                Type.INT_TYPE, Type.INT_TYPE, Type.INT_TYPE);
+        MethodVisitor method = this.writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
+                "samplePoint", descriptor, null, null);
+        method.visitCode();
+        this.prepareContext(method);
+        method.visitVarInsn(Opcodes.ALOAD, 0);
+        method.visitVarInsn(Opcodes.ILOAD, 2);
+        method.visitVarInsn(Opcodes.ILOAD, 3);
+        method.visitVarInsn(Opcodes.ILOAD, 4);
         method.visitVarInsn(Opcodes.ALOAD, 1);
-        pushInt(method, this.points.interpolationCount());
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "prepareInterpolationCount", "(I)V", false);
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, this.className, target, PointMethodEmitter.DESC, false);
+        method.visitInsn(Opcodes.FRETURN);
+        method.visitMaxs(0, 0);
+        method.visitEnd();
     }
 
     static void pushInt(MethodVisitor method, int value) {

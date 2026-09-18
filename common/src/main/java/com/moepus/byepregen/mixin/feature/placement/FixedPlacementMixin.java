@@ -21,13 +21,13 @@ public abstract class FixedPlacementMixin implements FastPlacementModifier {
     private List<BlockPos> positions;
 
     @Override
-    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
+    public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z) {
         int chunkX = SectionPos.blockToSectionCoord(x);
         int chunkZ = SectionPos.blockToSectionCoord(z);
         for (int i = 0, size = this.positions.size(); i < size; i++) {
             BlockPos pos = this.positions.get(i);
             if (byepregen$isSameChunk(chunkX, chunkZ, pos)) {
-                context.apply(nextIndex, pos.getX(), pos.getY(), pos.getZ());
+                context.emit(pos.getX(), pos.getY(), pos.getZ());
             }
         }
     }

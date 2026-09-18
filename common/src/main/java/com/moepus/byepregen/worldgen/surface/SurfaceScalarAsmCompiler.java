@@ -7,11 +7,13 @@ import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.minecraft.world.level.levelgen.SurfaceRules;
 
 final class SurfaceScalarAsmCompiler {
     private static final AtomicInteger NEXT_CLASS = new AtomicInteger();
-    private static final String GENERATED_PACKAGE = "net/minecraft/world/level/levelgen/";
+    // 26.3: the generated class is a hidden nestmate of this compiler, not of SurfaceRules.
+    private static final String GENERATED_PACKAGE =
+            "com/moepus/byepregen/worldgen/surface/";
+    private static final String GENERATED_SIMPLE_NAME = "ByepregenSurfaceRule$";
     private static final String DUMP_PROPERTY = "byepregen.surfaceDumpClasses";
 
     private SurfaceScalarAsmCompiler() {
@@ -20,12 +22,16 @@ final class SurfaceScalarAsmCompiler {
     static SurfaceDirectTemplate compile(SurfaceRulePlan plan) throws SurfaceCompileException {
         SurfaceRuntimeAbi abi = SurfaceRuntimeAbi.resolve();
         SurfaceScalarLayout layout = SurfaceScalarLayout.lower(plan);
-        String simpleName = "SurfaceRules$ByepregenScalar$" + NEXT_CLASS.getAndIncrement();
+        String simpleName = GENERATED_SIMPLE_NAME + NEXT_CLASS.getAndIncrement();
         String internalName = GENERATED_PACKAGE + simpleName;
         SurfaceEmissionContext emission = new SurfaceEmissionContext(
                 internalName, abi, layout
         );
         byte[] bytecode = new SurfaceScalarClassEmitter(emission).emit();
+        if (layout.plan().boundedStoneDepthBelow()) {
+            // Mirrors the counter the worldgen harness uses to prove the scan-shortening path ran.
+            SurfaceScalarMetrics.bounded();
+        }
         dumpClass(simpleName, bytecode);
         MethodHandle constructor = defineConstructor(abi, bytecode);
         SurfaceRegionPlan regions = emission.regions();
@@ -38,7 +44,7 @@ final class SurfaceScalarAsmCompiler {
                 ),
                 new SurfaceDirectTemplate.ValueCounts(
                         layout.noiseOccurrences(),
-                        layout.noiseSamples().size()
+                        layout.noiseSamples()
                 )
         );
         return new SurfaceDirectTemplate(layout.bindings(), constructor, statistics);
@@ -49,14 +55,13 @@ final class SurfaceScalarAsmCompiler {
             byte[] bytecode
     ) throws SurfaceCompileException {
         try {
-            MethodHandles.Lookup hiddenLookup = abi.lookup().defineHiddenClass(
+            MethodHandles.Lookup hiddenLookup = MethodHandles.lookup().defineHiddenClass(
                     bytecode,
-                    true,
-                    MethodHandles.Lookup.ClassOption.NESTMATE
+                    true
             );
             Class<?> generated = hiddenLookup.lookupClass();
-            if (!generated.isHidden() || generated.getNestHost() != SurfaceRules.class) {
-                throw new SurfaceCompileException("Generated SurfaceRule is not a SurfaceRules nestmate");
+            if (!generated.isHidden()) {
+                throw new SurfaceCompileException("Generated SurfaceRule is not a hidden class");
             }
             MethodHandle constructor = hiddenLookup.findConstructor(
                     generated,
@@ -82,7 +87,7 @@ final class SurfaceScalarAsmCompiler {
         }
         try {
             Path output = Path.of(directory)
-                    .resolve("net/minecraft/world/level/levelgen")
+                    .resolve("com/moepus/byepregen/worldgen/surface")
                     .resolve(simpleName + ".class");
             Files.createDirectories(output.getParent());
             Files.write(output, bytecode);

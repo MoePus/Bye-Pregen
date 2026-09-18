@@ -4,42 +4,44 @@ import com.moepus.byepregen.config.ConfigManager;
 import java.util.List;
 
 import net.minecraft.core.Vec3i;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
+import net.minecraft.world.level.levelgen.feature.DiskFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import net.minecraft.world.level.levelgen.placement.RepeatingPlacement;
 
 public final class FeaturePlan {
     private static final String VANILLA_PLACEMENT_PACKAGE =
             "net.minecraft.world.level.levelgen.placement";
-    private static final FeaturePlan UNSUPPORTED = new FeaturePlan(null, null, false);
+    private static final FeaturePlan UNSUPPORTED = new FeaturePlan(null, null, null, false);
 
-    private final DiskConfiguration diskConfig;
+    private final DiskFeature diskConfig;
+    private final FastRuleBasedBlockStateProvider stateProvider;
     private final Vec3i[] predicateDependencies;
     private final boolean repeatingPlacement;
 
     private FeaturePlan(
-            DiskConfiguration diskConfig,
+            DiskFeature diskConfig,
+            FastRuleBasedBlockStateProvider stateProvider,
             Vec3i[] predicateDependencies,
             boolean repeatingPlacement
     ) {
         this.diskConfig = diskConfig;
+        this.stateProvider = stateProvider;
         this.predicateDependencies = predicateDependencies;
         this.repeatingPlacement = repeatingPlacement;
     }
 
     public static FeaturePlan create(
-            ConfiguredFeature<?, ?> feature,
+            Feature feature,
             List<PlacementModifier> modifiers
     ) {
         if (!ConfigManager.getConfig().worldgen().placedFeatures().memoizedDiskPlan()) {
             return UNSUPPORTED;
         }
-        if (feature.feature() != Feature.DISK || !(feature.config() instanceof DiskConfiguration config)) {
+        if (!(feature instanceof DiskFeature config)) {
             return UNSUPPORTED;
         }
-        if (!((Object) config.stateProvider() instanceof FastRuleBasedBlockStateProvider)) {
+        if (!((Object) config.stateProvider().value() instanceof FastRuleBasedBlockStateProvider provider)) {
             return UNSUPPORTED;
         }
         if (!hasOnlyVanillaPlacement(modifiers)) {
@@ -49,7 +51,7 @@ public final class FeaturePlan {
         if (dependencies == null) {
             return UNSUPPORTED;
         }
-        return new FeaturePlan(config, dependencies, hasRepeatingPlacement(modifiers));
+        return new FeaturePlan(config, provider, dependencies, hasRepeatingPlacement(modifiers));
     }
 
     public PredicateMemoizedDiskPlacement open(FastPlacementContext context) {
@@ -59,6 +61,7 @@ public final class FeaturePlan {
         return PredicateMemoizedDiskPlacement.open(
                 context,
                 this.diskConfig,
+                this.stateProvider,
                 this.predicateDependencies,
                 this.repeatingPlacement
         );

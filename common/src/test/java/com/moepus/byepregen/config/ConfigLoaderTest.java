@@ -26,8 +26,8 @@ final class ConfigLoaderTest {
         assertTrue(config.worldgen().arena().densityColumnCompiler());
         assertTrue(config.worldgen().placedFeatures().memoizedDiskPlan());
         assertTrue(config.worldgen().placedFeatures().localOptimizations());
-        assertTrue(config.worldgen().misc().flatCacheAccess());
         assertTrue(config.worldgen().misc().paletteLock());
+        assertTrue(config.worldgen().misc().leafWorldgenTick());
         assertTrue(output.contains("[worldgen.arena]"));
         assertTrue(output.contains("[worldgen.misc]"));
         assertEquals(16, output.lines().filter(line -> line.endsWith("= \"Default\"")).count());
@@ -35,7 +35,7 @@ final class ConfigLoaderTest {
                 .filter(line -> line.equals("# Default: True") || line.equals("# Default: False"))
                 .count());
         assertTrue(output.contains("# Default: True"));
-        assertTrue(output.contains("# Compiles final-density graphs"));
+        assertTrue(output.contains("# Compiles density arithmetic for terrain, biomes and aquifers"));
         assertTrue(output.contains("# All options in this file are read at startup and require a game restart."));
         assertTrue(output.contains("Performance patches for Minecraft's vanilla block-light and sky-light engines."));
         assertTrue(output.contains("making light"));
@@ -62,8 +62,8 @@ final class ConfigLoaderTest {
                 local-optimizations = "false"
 
                 [worldgen.misc]
-                flat-cache-access = false
                 palette-lock = "False"
+                leaf-worldgen-tick = false
                 """, StandardCharsets.UTF_8);
 
         Config config = new ConfigLoader(path).load();
@@ -73,8 +73,8 @@ final class ConfigLoaderTest {
         assertTrue(config.worldgen().arena().runtime().client());
         assertFalse(config.worldgen().surface().biomeCache());
         assertFalse(config.worldgen().placedFeatures().localOptimizations());
-        assertFalse(config.worldgen().misc().flatCacheAccess());
         assertFalse(config.worldgen().misc().paletteLock());
+        assertFalse(config.worldgen().misc().leafWorldgenTick());
         assertFalse(firstOutput.contains("custom comment"));
         assertFalse(firstOutput.contains("unknown ="));
         assertTrue(firstOutput.contains("[lighting.ya]"));
@@ -83,8 +83,8 @@ final class ConfigLoaderTest {
         assertTrue(firstOutput.contains("client = \"True\""));
         assertTrue(firstOutput.contains("biome-cache = \"False\""));
         assertTrue(firstOutput.contains("local-optimizations = \"False\""));
-        assertTrue(firstOutput.contains("flat-cache-access = \"False\""));
         assertTrue(firstOutput.contains("palette-lock = \"False\""));
+        assertTrue(firstOutput.contains("leaf-worldgen-tick = \"False\""));
 
         new ConfigLoader(path).load();
         assertEquals(firstOutput, Files.readString(path, StandardCharsets.UTF_8));
@@ -141,12 +141,12 @@ final class ConfigLoaderTest {
 
     @Test
     void readsAndWritesUtf8Paths() throws IOException {
-        Path path = this.temporaryDirectory.resolve("配置.toml");
+        Path path = this.temporaryDirectory.resolve("閰嶇疆.toml");
 
         assertTrue(new ConfigLoader(path).save(Config.defaults()));
         String output = Files.readString(path, StandardCharsets.UTF_8);
         assertTrue(output.contains("local-optimizations = \"Default\""));
-        assertTrue(output.contains("flat-cache-access = \"Default\""));
+        assertTrue(output.contains("leaf-worldgen-tick = \"Default\""));
     }
 
     @Test

@@ -1,0 +1,84 @@
+def directory = file('run/worldgen-verification')
+def result = layout.buildDirectory.file('worldgen-verification/result.txt').get().asFile
+loom.runs.register('worldgenVerification') {
+    server()
+    source(sourceSets.arenaHarness)
+    ideConfigGenerated(false)
+    runDir(project.relativePath(directory))
+    programArgs('--nogui')
+    vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
+            "-Dbyepregen.worldgenHarness.result=${result.absolutePath}")
+}
+tasks.named('runWorldgenVerification') {
+    group = 'verification'
+    doFirst {
+        delete(directory)
+        directory.mkdirs()
+        result.parentFile.mkdirs()
+        delete(result)
+        new File(directory, 'eula.txt').setText('eula=true\n', 'UTF-8')
+        new File(directory, 'server.properties').setText(
+                'level-seed=8675309\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                'view-distance=2\nsimulation-distance=2\nspawn-chunk-radius=0\n', 'UTF-8')
+    }
+    doLast {
+        if (!result.isFile() || !result.getText('UTF-8').startsWith('PASS\n')) {
+            throw new GradleException("Worldgen verification failed: ${result}")
+        }
+    }
+}
+tasks.register('testWorldgenRuntime') {
+    group = 'verification'
+    description = 'Verifies migrated RC2 worldgen optimizations against native behavior.'
+    dependsOn('runWorldgenVerification')
+}
+
+def terrainResults = layout.buildDirectory.dir('surface-verification').get().asFile
+[surfaceBaseline: false, surfaceOptimized: true].each { name, enabled ->
+    def serverDir = file("run/${name}")
+    def output = new File(terrainResults, name + '.txt')
+    loom.runs.register(name) {
+        server()
+        source(sourceSets.arenaHarness)
+        ideConfigGenerated(false)
+        runDir(project.relativePath(serverDir))
+        programArgs('--nogui')
+        vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
+                '-Dbyepregen.testConfig.worldgen.arena.enabled=false',
+                '-Dbyepregen.testConfig.worldgen.arena.density-column-compiler=false',
+                '-Dbyepregen.testConfig.worldgen.placed-features.enabled=false',
+                "-Dbyepregen.testConfig.worldgen.surface.biome-cache=${enabled}",
+                "-Dbyepregen.testConfig.worldgen.surface.rule-compiler=${enabled}",
+                "-Dbyepregen.worldgenHarness.enabled=${enabled}",
+                "-Dbyepregen.arenaHarness.result=${output.absolutePath}")
+    }
+    tasks.named('run' + name.capitalize()) {
+        group = 'verification'
+        doFirst {
+            delete(serverDir)
+            serverDir.mkdirs()
+            terrainResults.mkdirs()
+            delete(output, new File(output.absolutePath + '.terrain'))
+            new File(serverDir, 'eula.txt').setText('eula=true\n', 'UTF-8')
+            new File(serverDir, 'server.properties').setText(
+                    'level-seed=8675309\nonline-mode=false\nserver-port=0\nmax-tick-time=0\n' +
+                    'view-distance=2\nsimulation-distance=2\nspawn-chunk-radius=0\n', 'UTF-8')
+        }
+        doLast {
+            if (!output.isFile() || !output.getText('UTF-8').startsWith('PASS\n')) {
+                throw new GradleException("Surface terrain verification failed: ${output}")
+            }
+        }
+    }
+}
+tasks.register('testSurfaceRuntime') {
+    group = 'verification'
+    description = 'Compares terrain, heightmaps and postprocessing queues with native surface generation.'
+    dependsOn('runSurfaceBaseline', 'runSurfaceOptimized')
+    doLast {
+        if (new File(terrainResults, 'surfaceBaseline.txt.terrain').getText('UTF-8')
+                != new File(terrainResults, 'surfaceOptimized.txt.terrain').getText('UTF-8')) {
+            throw new GradleException('Compiled/cached surface generation differs from native terrain')
+        }
+    }
+}

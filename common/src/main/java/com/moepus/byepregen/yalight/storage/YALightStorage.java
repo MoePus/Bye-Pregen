@@ -60,10 +60,6 @@ public final class YALightStorage {
         return chunk == null ? null : ((YAChunkLightAccess)chunk).byepregen$yaLightData(this.layer, false);
     }
 
-    public YANibbleArray getSection(int chunkX, int sectionY, int chunkZ) {
-        return this.getVisibleSection(this.chunkAccess(chunkX, chunkZ), sectionY);
-    }
-
     public YANibbleArray getVisibleSection(ChunkAccess chunk, int sectionY) {
         YAChunkLightData data = this.existingData(chunk);
         return data == null ? null : data.getVisibleSection(sectionY);
@@ -84,10 +80,6 @@ public final class YALightStorage {
             this.markDirty(data, index);
         }
         return section;
-    }
-
-    public YANibbleArray getOrCreateUpdatingSection(YAChunkLightData data, int sectionY) {
-        return data == null ? null : data.getOrCreateUpdatingSection(sectionY);
     }
 
     public void setSection(SectionPos pos, YANibbleArray nibble) {

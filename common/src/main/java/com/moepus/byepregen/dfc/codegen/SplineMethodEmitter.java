@@ -16,7 +16,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import net.minecraft.util.CubicSpline;
-import net.minecraft.world.level.levelgen.DensityFunctions;
+import net.minecraft.world.level.levelgen.densityfunction.op.SplineFunction;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -34,10 +34,12 @@ final class SplineMethodEmitter {
     private final ClassWriter writer;
     private final BindingRegistry bindings;
     private final BiConsumer<MethodVisitor, AstNode> pointCaller;
-    private final Map<SplineNode, Map<CubicSpline<?, ?>, SplineValue>> methods = new IdentityHashMap<>();
+    private final Map<SplineNode, Map<CubicSpline<?>, SplineValue>> methods = new IdentityHashMap<>();
     private int methodCount;
+    private final String prefix;
 
-    SplineMethodEmitter(GenerationContext context, BiConsumer<MethodVisitor, AstNode> pointCaller) {
+    SplineMethodEmitter(GenerationContext context, BiConsumer<MethodVisitor, AstNode> pointCaller, String prefix) {
+        this.prefix = prefix;
         this.owner = context.owner();
         this.writer = context.writer();
         this.bindings = context.bindings();
@@ -46,22 +48,20 @@ final class SplineMethodEmitter {
 
     void emitSample(SplineNode node, MethodVisitor method) {
         this.callValue(method, this.method(node, node.spline()));
-        method.visitInsn(Opcodes.F2D);
     }
 
     private SplineValue method(
             SplineNode root,
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline
+            CubicSpline<SplineFunction.Coordinate> spline
     ) {
-        if (spline instanceof CubicSpline.Constant<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> constant) {
+        if (spline instanceof CubicSpline.Constant<SplineFunction.Coordinate> constant) {
             return new SplineValue(constant.value(), null);
         }
-        Map<CubicSpline<?, ?>, SplineValue> rootMethods =
+        Map<CubicSpline<?>, SplineValue> rootMethods =
                 this.methods.computeIfAbsent(root, ignored -> new HashMap<>());
         SplineValue existing = rootMethods.get(spline);
         if (existing != null) return existing;
-        String name = "spline" + this.methodCount++;
+        String name = this.prefix + "Spline" + this.methodCount++;
         SplineValue value = new SplineValue(0.0F, name);
         rootMethods.put(spline, value);
         this.generate(root, spline, name);
@@ -70,11 +70,10 @@ final class SplineMethodEmitter {
 
     private void generate(
             SplineNode root,
-            CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
+            CubicSpline<SplineFunction.Coordinate> spline,
             String name
     ) {
-        if (!(spline instanceof CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                DensityFunctions.Spline.Coordinate> points)) {
+        if (!(spline instanceof CubicSpline.Multipoint<SplineFunction.Coordinate> points)) {
             throw new IllegalArgumentException("Unsupported spline " + spline.getClass().getName());
         }
         MethodVisitor method = this.writer.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
@@ -87,15 +86,13 @@ final class SplineMethodEmitter {
 
     private void emitMultipoint(
             SplineNode root,
-            CubicSpline.Multipoint<DensityFunctions.Spline.Point,
-                    DensityFunctions.Spline.Coordinate> points,
+            CubicSpline.Multipoint<SplineFunction.Coordinate> points,
             MethodVisitor method
     ) {
         this.callPoint(method, root.coordinateNode(points.coordinate()));
-        method.visitInsn(Opcodes.D2F);
         method.visitVarInsn(Opcodes.FSTORE, 5);
-        FieldRef locations = this.bindings.field(points.locations().clone(), float[].class, false);
-        FieldRef derivatives = this.bindings.field(points.derivatives().clone(), float[].class, false);
+        FieldRef locations = this.bindings.field(points.locations().clone(), float[].class);
+        FieldRef derivatives = this.bindings.field(points.derivatives().clone(), float[].class);
         BindingRegistry.loadField(method, this.owner, locations);
         method.visitVarInsn(Opcodes.ASTORE, 6);
         BindingRegistry.loadField(method, this.owner, derivatives);

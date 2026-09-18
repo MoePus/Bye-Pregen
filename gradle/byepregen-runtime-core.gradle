@@ -1,0 +1,11 @@
+def runtimePackage = 'com/moepus/byepregen/'
+sourceSets.main.java {
+    include(runtimePackage + 'mixin/palette/*.java')
+    include(runtimePackage + 'mixin/palette/compat/lithium/**')
+    include(runtimePackage + 'mixin/server/fasttick/**')
+    include(runtimePackage + 'mixin/accessor/server/tick/**')
+    include(runtimePackage + 'server/tick/**')
+}
+sourceSets.test.java {
+    include(runtimePackage + 'server/tick/**')
+}

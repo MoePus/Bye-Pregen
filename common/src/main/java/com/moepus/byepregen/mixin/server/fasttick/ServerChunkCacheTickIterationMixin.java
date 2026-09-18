@@ -16,12 +16,14 @@ import java.util.List;
 @MixinGate(config = ConfigFlag.FAST_CHUNK_TICKING)
 @Mixin(value = ServerChunkCache.class, remap = false)
 public abstract class ServerChunkCacheTickIterationMixin {
+    // RC2 shuffles only spawning/thunder chunks; block ticks keep their native traversal.
+    // This opt-in permutation intentionally retains the legacy three-draw RNG contract.
     @Unique
     private final ChunkTickPermutationIterator byepregen$chunkTickPermutation =
             new ChunkTickPermutationIterator();
 
     @Redirect(
-            method = "tickChunks(Lnet/minecraft/util/profiling/ProfilerFiller;J)V",
+            method = "tickChunks(Lnet/minecraft/util/profiling/ProfilerFiller;)V",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/util/Util;shuffle(Ljava/util/List;Lnet/minecraft/util/RandomSource;)V"
@@ -36,7 +38,7 @@ public abstract class ServerChunkCacheTickIterationMixin {
     }
 
     @Redirect(
-            method = "tickChunks(Lnet/minecraft/util/profiling/ProfilerFiller;J)V",
+            method = "tickChunks(Lnet/minecraft/util/profiling/ProfilerFiller;)V",
             at = @At(
                     value = "INVOKE",
                     target = "Ljava/util/List;iterator()Ljava/util/Iterator;"

@@ -7,12 +7,10 @@
 package com.moepus.byepregen.dfc.codegen;
 
 import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
-import com.moepus.byepregen.dfc.runtime.ColumnTemplate.BindingKind;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.world.level.levelgen.DensityFunction;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -27,25 +25,16 @@ final class BindingRegistry {
         this.writer = writer;
     }
 
-    FieldRef field(Object value, Class<?> type, boolean resolveDensity) {
-        return this.field(value, type, resolveDensity ? BindingKind.DENSITY : BindingKind.DIRECT, -1);
-    }
-
-    FieldRef interpolatedField(DensityFunction source, int slot) {
-        return this.field(source, DensityFunction.class, BindingKind.INTERPOLATED, slot);
-    }
-
-    private FieldRef field(Object value, Class<?> type, BindingKind kind, int slot) {
+    FieldRef field(Object value, Class<?> type) {
         FieldRef existing = this.fields.get(value);
         if (existing != null) {
-            if (existing.type() != type || existing.binding().kind() != kind
-                    || existing.binding().interpolatorSlot() != slot) {
+            if (existing.type() != type) {
                 throw new IllegalArgumentException("Incompatible generated field reuse");
             }
             return existing;
         }
         String name = "binding" + this.ordered.size();
-        ColumnTemplate.Binding binding = new ColumnTemplate.Binding(value, kind, slot);
+        ColumnTemplate.Binding binding = new ColumnTemplate.Binding(value);
         FieldRef result = new FieldRef(name, type, binding);
         this.fields.put(value, result);
         this.ordered.add(result);

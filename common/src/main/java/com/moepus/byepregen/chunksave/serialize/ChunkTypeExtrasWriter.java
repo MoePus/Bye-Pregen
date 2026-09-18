@@ -6,14 +6,12 @@ import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.CarvingMask;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkType;
 
 final class ChunkTypeExtrasWriter {
     private static final byte[] ENTITIES = NbtWriter.asciiName("entities");
-    private static final byte[] CARVING_MASK = NbtWriter.asciiName("carving_mask");
 
     private ChunkTypeExtrasWriter() {
     }
@@ -30,10 +28,6 @@ final class ChunkTypeExtrasWriter {
         writer.startFixedList(ENTITIES, chunk.getEntities().size(), Tag.TAG_COMPOUND);
         for (Tag entity : chunk.getEntities()) {
             writer.putTagEntry(entity);
-        }
-        CarvingMask mask = chunk.getCarvingMask();
-        if (mask != null) {
-            writer.putLongArray(CARVING_MASK, mask.toArray());
         }
     }
 }

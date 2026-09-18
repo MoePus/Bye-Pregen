@@ -10,6 +10,7 @@ import com.moepus.byepregen.dfc.ast.AstNodes.ConstantNode;
 import com.moepus.byepregen.dfc.ast.AstNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.CoordinateNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Axis;
+import com.moepus.byepregen.dfc.ast.AstNodes.DivNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MaxShortNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.Memoized2DNode;
 import com.moepus.byepregen.dfc.ast.AstNodes.MinShortNode;
@@ -19,6 +20,7 @@ import com.moepus.byepregen.dfc.ast.AstNodes.SplineNode;
 import com.moepus.byepregen.dfc.codegen.ColumnClassBuilder;
 import com.moepus.byepregen.dfc.codegen.ColumnClassDefiner;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
+import com.moepus.byepregen.dfc.runtime.ColumnTestFrames;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -28,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.util.CubicSpline;
-import net.minecraft.world.level.levelgen.DensityFunctions;
+import net.minecraft.world.level.levelgen.densityfunction.op.SplineFunction;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -43,7 +45,7 @@ final class ColumnBytecodeAuditTest {
     @Test
     void gradientColumnHelperAvoidsPointFallback() {
         AstNode graph = new com.moepus.byepregen.dfc.ast.AstNodes.YClampedGradientNode(
-                -4, 4, -1.0D, 1.0D);
+                -4, 4, -1.0F, 1.0F);
         ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(graph);
         ClassNode type = read(generated.classBytes());
         MethodNode gradient = find(type, "column", "YClampedGradientNode");
@@ -55,21 +57,22 @@ final class ColumnBytecodeAuditTest {
     @Test
     void shortMinUsesHybridColumnAndInlinesConstants() {
         ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(
-                new MinShortNode(new MulNode(new ConstantNode(0.64D), new CoordinateNode(Axis.X)),
-                        new CoordinateNode(Axis.Y), 4.0D));
+                new MinShortNode(new MulNode(new ConstantNode(0.64F), new CoordinateNode(Axis.X)),
+                        new CoordinateNode(Axis.Y), 4.0F));
         ClassNode type = read(generated.classBytes());
         MethodNode mul = find(type, "column", "MulNode");
         MethodNode min = find(type, "column", "MinShortNode");
 
         assertNotNull(mul);
         assertNotNull(min);
-        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DMUL));
+        // 26.3: the AST, emitters and column context are float based (FMUL/FALOAD/borrowFloatArray).
+        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.FMUL));
         assertTrue(containsJump(min), "MinShort column helper must retain lane short-circuiting");
         assertTrue(countCallsWithPrefix(min, "column") > 1,
                 "MinShort must call both sides through range-aware column helpers");
         assertEquals(0, countCallsWithPrefix(min, "point"));
-        assertTrue(containsDoubleConstant(mul, 0.64D));
-        assertFalse(calls(mul, ColumnEvaluationContext.class, "borrowDoubleArray"),
+        assertTrue(containsFloatConstant(mul, 0.64F));
+        assertFalse(calls(mul, ColumnEvaluationContext.class, "borrowFloatArray"),
                 "constant-sided arithmetic should update the output in one loop");
         assertEquals(0, type.methods.stream()
                 .filter(method -> method.name.startsWith("point")
@@ -82,7 +85,7 @@ final class ColumnBytecodeAuditTest {
     void shortMaxUsesHybridColumn() {
         ClassNode type = read(new ColumnClassBuilder(0).build(
                 new MaxShortNode(new CoordinateNode(Axis.Y),
-                        new CoordinateNode(Axis.X), 0.0D)).classBytes());
+                        new CoordinateNode(Axis.X), 0.0F)).classBytes());
         MethodNode max = find(type, "column", "MaxShortNode");
         assertNotNull(max);
         assertTrue(containsJump(max));
@@ -95,8 +98,8 @@ final class ColumnBytecodeAuditTest {
     @Test
     void constantMinShortConditionsAreSpecializedWithoutPointHelpers() {
         ClassNode eagerType = read(new ColumnClassBuilder(0).build(
-                new MinShortNode(new ConstantNode(0.0D),
-                        new CoordinateNode(Axis.Y), -4.9294D)).classBytes());
+                new MinShortNode(new ConstantNode(0.0F),
+                        new CoordinateNode(Axis.Y), -4.9294F)).classBytes());
         MethodNode eager = find(eagerType, "column", "MinShortNode");
         assertNotNull(eager);
         assertTrue(countCallsWithPrefix(eager, "column") > 0);
@@ -105,33 +108,34 @@ final class ColumnBytecodeAuditTest {
                 && method.name.endsWith("MinShortNode")));
 
         ClassNode shortedType = read(new ColumnClassBuilder(0).build(
-                new MinShortNode(new ConstantNode(-5.0D),
-                        new CoordinateNode(Axis.Y), -4.9294D)).classBytes());
+                new MinShortNode(new ConstantNode(-5.0F),
+                        new CoordinateNode(Axis.Y), -4.9294F)).classBytes());
         MethodNode shorted = find(shortedType, "column", "MinShortNode");
         assertNotNull(shorted);
         assertFalse(calls(shorted, Math.class, "min"));
-        assertTrue(containsDoubleConstant(shorted, -5.0D));
+        assertTrue(containsFloatConstant(shorted, -5.0F));
         assertEquals(0, countCallsWithPrefix(shorted, "point"));
     }
 
     @Test
-    void rangeChoiceBoundsAreEmittedAsDoubleConstants() {
+    void rangeChoiceBoundsAreEmittedAsFloatConstants() {
         ClassNode type = read(new ColumnClassBuilder(0).build(new RangeChoiceNode(
-                new CoordinateNode(Axis.Y), -1000000.0D, 0.0D,
-                new ConstantNode(1.0D), new ConstantNode(2.0D))).classBytes());
+                new CoordinateNode(Axis.Y), -1000000.0F, 0.0F,
+                new ConstantNode(1.0F), new ConstantNode(2.0F))).classBytes());
         MethodNode choice = find(type, "column", "RangeChoiceNode");
         assertNotNull(choice);
-        assertTrue(containsDoubleConstant(choice, -1000000.0D));
-        assertTrue(containsDoubleConstant(choice, 0.0D));
+        // 26.3: range bounds are float literals now; the guard is that no F2D widening sneaks in.
+        assertTrue(containsFloatConstant(choice, -1000000.0F));
+        assertTrue(containsFloatConstant(choice, 0.0F));
         assertFalse(containsOpcode(choice, org.objectweb.asm.Opcodes.F2D));
     }
 
     @Test
     void maxShortAndRangeChoiceRetainConditionalLazyBranches() {
         AstNode range = new RangeChoiceNode(
-                new CoordinateNode(Axis.X), 0.0D, 1.0D,
-                new MaxShortNode(new CoordinateNode(Axis.Z), new ConstantNode(2.0D), 2.0D),
-                new MinShortNode(new CoordinateNode(Axis.Z), new ConstantNode(-2.0D), -2.0D));
+                new CoordinateNode(Axis.X), 0.0F, 1.0F,
+                new MaxShortNode(new CoordinateNode(Axis.Z), new ConstantNode(2.0F), 2.0F),
+                new MinShortNode(new CoordinateNode(Axis.Z), new ConstantNode(-2.0F), -2.0F));
         ClassNode type = read(new ColumnClassBuilder(0).build(range).classBytes());
 
         MethodNode max = find(type, "column", "MaxShortNode");
@@ -150,7 +154,7 @@ final class ColumnBytecodeAuditTest {
 
     @Test
     void evalColumnUsesDedicatedArrayHelpersForArithmetic() {
-        AstNode graph = new MulNode(new CoordinateNode(Axis.Y), new ConstantNode(2.0D));
+        AstNode graph = new MulNode(new CoordinateNode(Axis.Y), new ConstantNode(2.0F));
         ClassNode type = read(new ColumnClassBuilder(0).build(graph).classBytes());
         MethodNode entry = type.methods.stream()
                 .filter(method -> method.name.equals("evalColumn"))
@@ -160,9 +164,21 @@ final class ColumnBytecodeAuditTest {
         assertNotNull(mul);
         assertEquals(1, countCallsWithPrefix(entry, "column"));
         assertEquals(0, countCallsWithPrefix(entry, "point"));
-        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DALOAD));
-        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DASTORE));
-        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.DMUL));
+        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.FALOAD));
+        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.FASTORE));
+        assertTrue(containsOpcode(mul, org.objectweb.asm.Opcodes.FMUL));
+    }
+
+    @Test
+    void constantDivisorColumnUsesReciprocalMultiplication() {
+        ClassNode type = read(new ColumnClassBuilder(0).build(
+                new DivNode(new CoordinateNode(Axis.Y), new ConstantNode(4.0F))).classBytes());
+        MethodNode div = find(type, "column", "DivNode");
+
+        assertNotNull(div);
+        assertTrue(containsOpcode(div, org.objectweb.asm.Opcodes.FMUL));
+        assertFalse(containsOpcode(div, org.objectweb.asm.Opcodes.FDIV));
+        assertTrue(containsFloatConstant(div, 0.25F));
     }
 
     @Test
@@ -181,7 +197,7 @@ final class ColumnBytecodeAuditTest {
     @Test
     void evalColumnOwnsTheOnlyCleanupHandlerAndRethrows() throws Throwable {
         AstNode graph = new MulNode(new CoordinateNode(Axis.Y),
-                new Memoized2DNode(new ConstantNode(2.0D), 1));
+                new Memoized2DNode(new ConstantNode(2.0F), 1));
         ColumnClassBuilder.BuildResult generated = new ColumnClassBuilder(0).build(graph);
         ClassNode type = read(generated.classBytes());
         MethodNode entry = type.methods.stream()
@@ -193,8 +209,8 @@ final class ColumnBytecodeAuditTest {
         assertTrue(containsOpcode(entry, org.objectweb.asm.Opcodes.ATHROW));
 
         CompiledColumnEvaluator evaluator = instantiate(generated);
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(new double[3], 0, 0, 0, 4, source -> new double[3]);
+        // 26.3: column frames are float based and come from the request-owned workspace.
+        ColumnEvaluationContext context = ColumnTestFrames.prepared(new float[3], 0, 0, 0, 4);
         IndexOutOfBoundsException failure = assertThrows(
                 IndexOutOfBoundsException.class, () -> evaluator.evalColumn(context));
         assertTrue(failure.getMessage().contains("memoized index"));
@@ -207,9 +223,12 @@ final class ColumnBytecodeAuditTest {
         byte[] bytes = generated.classBytes();
         assertFalse(new String(bytes, StandardCharsets.ISO_8859_1).contains("SplineProgram"));
         ClassNode type = read(bytes);
-        assertTrue(type.methods.stream()
-                .filter(method -> method.name.startsWith("spline"))
-                .anyMatch(ColumnBytecodeAuditTest::containsTableSwitch));
+        // 26.3: spline helpers carry the volume/scalar prefix, so they are named volumeSpline0.
+        List<MethodNode> splines = type.methods.stream()
+                .filter(method -> method.name.contains("Spline"))
+                .toList();
+        assertFalse(splines.isEmpty(), "spline helper methods must be generated");
+        assertTrue(splines.stream().anyMatch(ColumnBytecodeAuditTest::containsTableSwitch));
     }
 
     @Test
@@ -229,16 +248,17 @@ final class ColumnBytecodeAuditTest {
         MethodNode miss = context.methods.stream()
                 .filter(method -> method.name.equals("memoizedValueMiss"))
                 .findFirst().orElseThrow();
-        assertTrue(calls(miss, Double.class, "doubleToRawLongBits"));
-        assertFalse(calls(miss, Double.class, "doubleToLongBits"));
-        assertFalse(calls(miss, Double.class, "isNaN"));
+        // 26.3: the sentinel is a float payload compared through floatToRawIntBits.
+        assertTrue(calls(miss, Float.class, "floatToRawIntBits"));
+        assertFalse(calls(miss, Float.class, "floatToIntBits"));
+        assertFalse(calls(miss, Float.class, "isNaN"));
     }
 
     @Test
     void generatedReachableDescriptorsDoNotContainC2meOrGenericMultiAbi() {
-        AstNode graph = new RangeChoiceNode(new CoordinateNode(Axis.Y), 0.0D, 1.0D,
-                new MulNode(new CoordinateNode(Axis.X), new ConstantNode(2.0D)),
-                new ConstantNode(1.0D));
+        AstNode graph = new RangeChoiceNode(new CoordinateNode(Axis.Y), 0.0F, 1.0F,
+                new MulNode(new CoordinateNode(Axis.X), new ConstantNode(2.0F)),
+                new ConstantNode(1.0F));
         byte[] bytes = new ColumnClassBuilder(0).build(graph).classBytes();
         String constants = new String(bytes, StandardCharsets.ISO_8859_1);
         assertFalse(constants.contains("com/ishland/c2me"));
@@ -313,15 +333,17 @@ final class ColumnBytecodeAuditTest {
     }
 
     private static SplineNode splineNode() {
-        DensityFunctions.Spline.Coordinate coordinate = SplineTestFixtures.coordinate();
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> child =
+        // 26.3: DensityFunctions.Spline.Coordinate became SplineFunction.Coordinate, and
+        // CubicSpline.Multipoint dropped its explicit minValue/maxValue constructor arguments.
+        SplineFunction.Coordinate coordinate = SplineTestFixtures.coordinate();
+        CubicSpline<SplineFunction.Coordinate> child =
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-2.0F, 2.0F},
                         List.of(CubicSpline.constant(-1.0F), CubicSpline.constant(3.0F)),
-                        new float[]{0.25F, -0.5F}, -1.0F, 3.0F);
-        CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> root =
+                        new float[]{0.25F, -0.5F});
+        CubicSpline<SplineFunction.Coordinate> root =
                 new CubicSpline.Multipoint<>(coordinate, new float[]{-4.0F, 0.0F, 4.0F},
                         List.of(CubicSpline.constant(-5.0F), child, CubicSpline.constant(7.0F)),
-                        new float[]{0.0F, 0.5F, 0.0F}, -5.0F, 7.0F);
+                        new float[]{0.0F, 0.5F, 0.0F});
         return new SplineNode(root, List.of(coordinate),
                 List.of(new CoordinateNode(Axis.Y)));
     }
@@ -361,14 +383,14 @@ final class ColumnBytecodeAuditTest {
         return false;
     }
 
-    private static boolean containsDoubleConstant(MethodNode method, double value) {
+    private static boolean containsFloatConstant(MethodNode method, float value) {
         for (var instruction : method.instructions) {
             if (instruction instanceof LdcInsnNode constant
-                    && constant.cst instanceof Double number
-                    && Double.doubleToRawLongBits(number)
-                    == Double.doubleToRawLongBits(value)) return true;
+                    && constant.cst instanceof Float number
+                    && Float.floatToRawIntBits(number)
+                    == Float.floatToRawIntBits(value)) return true;
         }
-        return value == 0.0D && containsOpcode(method, org.objectweb.asm.Opcodes.DCONST_0);
+        return value == 0.0F && containsOpcode(method, org.objectweb.asm.Opcodes.FCONST_0);
     }
 
     private static boolean containsTableSwitch(MethodNode method) {

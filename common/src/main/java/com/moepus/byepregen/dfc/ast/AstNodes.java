@@ -14,8 +14,8 @@ import java.util.Objects;
 import java.util.Set;
 import net.minecraft.util.BoundedFloatFunction;
 import net.minecraft.util.CubicSpline;
-import net.minecraft.world.level.levelgen.DensityFunction;
-import net.minecraft.world.level.levelgen.DensityFunctions;
+import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
+import net.minecraft.world.level.levelgen.densityfunction.op.SplineFunction;
 
 public final class AstNodes {
     private AstNodes() {
@@ -80,25 +80,15 @@ public final class AstNodes {
         X, Y, Z
     }
 
-    public enum CacheKind {
-        CACHE_2D,
-        CACHE_ONCE,
-        CACHE_ALL_IN_CELL,
-        FLAT_CACHE,
-        INTERPOLATED
-    }
-
-    public enum SourceMode {
-        FLAT,
-        INTERPOLATED
-    }
+    public enum CacheKind { CACHE_2D, CACHE_ONCE }
 
     /**
      * Folds a binary node whose two operands are compile-time constants. Shared by the optimizer
      * pass and the column emitter so both agree on every foldable node type.
      */
-    public static double foldBinary(BinaryNode node, double left, double right) {
+    public static float foldBinary(BinaryNode node, float left, float right) {
         if (node instanceof AddNode) return left + right;
+        if (node instanceof SubNode) return left - right;
         if (node instanceof MulNode) return left * right;
         if (node instanceof DivNode) return left / right;
         if (node instanceof MinNode || node instanceof MinShortNode) return Math.min(left, right);
@@ -115,7 +105,7 @@ public final class AstNodes {
         @Override public UnaryNode withOperand(AstNode operand) { return new RootNode(operand); }
     }
 
-    public record ConstantNode(double value) implements LeafNode {
+    public record ConstantNode(float value) implements LeafNode {
     }
 
     public record CoordinateNode(Axis axis) implements LeafNode {
@@ -149,7 +139,7 @@ public final class AstNodes {
         @Override public UnaryNode withOperand(AstNode value) { return new SqueezeNode(value); }
     }
 
-    public record NegMulNode(AstNode operand, double multiplier) implements UnaryNode {
+    public record NegMulNode(AstNode operand, float multiplier) implements UnaryNode {
         public NegMulNode { Objects.requireNonNull(operand, "operand"); }
         @Override public UnaryNode withOperand(AstNode value) { return new NegMulNode(value, this.multiplier); }
     }
@@ -157,6 +147,27 @@ public final class AstNodes {
     public record AddNode(AstNode left, AstNode right) implements BinaryNode {
         public AddNode { requireNodes(left, right); }
         @Override public BinaryNode withOperands(AstNode a, AstNode b) { return new AddNode(a, b); }
+    }
+
+    public record SubNode(AstNode left, AstNode right) implements BinaryNode {
+        public SubNode { requireNodes(left, right); }
+        @Override public BinaryNode withOperands(AstNode a, AstNode b) { return new SubNode(a, b); }
+        @Override public boolean canSwapOperands() { return false; }
+    }
+
+    public enum NativeUnaryOp { SQRT, LOG, SIGN, CLAMP }
+    public record NativeUnaryNode(AstNode operand, NativeUnaryOp operation, float first, float second) implements UnaryNode {
+        @Override public UnaryNode withOperand(AstNode value) {
+            return new NativeUnaryNode(value, this.operation, this.first, this.second);
+        }
+    }
+
+    public record LerpNode(AstNode alpha, AstNode first, AstNode second) implements AstNode {
+        @Override public AstNode[] children() { return new AstNode[]{this.alpha, this.first, this.second}; }
+        @Override public AstNode withChildren(AstNode[] values) {
+            requireCount(values, 3);
+            return new LerpNode(values[0], values[1], values[2]);
+        }
     }
 
     public record MulNode(AstNode left, AstNode right) implements BinaryNode {
@@ -173,34 +184,36 @@ public final class AstNodes {
     public record MinNode(AstNode left, AstNode right) implements BinaryNode {
         public MinNode { requireNodes(left, right); }
         @Override public BinaryNode withOperands(AstNode a, AstNode b) { return new MinNode(a, b); }
+        @Override public boolean canSwapOperands() { return false; }
     }
 
     public record MaxNode(AstNode left, AstNode right) implements BinaryNode {
         public MaxNode { requireNodes(left, right); }
         @Override public BinaryNode withOperands(AstNode a, AstNode b) { return new MaxNode(a, b); }
+        @Override public boolean canSwapOperands() { return false; }
     }
 
-    public record MinShortNode(AstNode left, AstNode right, double rightMin) implements BinaryNode {
+    public record MinShortNode(AstNode left, AstNode right, float rightMin) implements BinaryNode {
         public MinShortNode { requireNodes(left, right); }
         @Override public BinaryNode withOperands(AstNode a, AstNode b) { return new MinShortNode(a, b, this.rightMin); }
         @Override public boolean canSwapOperands() { return false; }
     }
 
-    public record MaxShortNode(AstNode left, AstNode right, double rightMax) implements BinaryNode {
+    public record MaxShortNode(AstNode left, AstNode right, float rightMax) implements BinaryNode {
         public MaxShortNode { requireNodes(left, right); }
         @Override public BinaryNode withOperands(AstNode a, AstNode b) { return new MaxShortNode(a, b, this.rightMax); }
         @Override public boolean canSwapOperands() { return false; }
     }
 
     public record YClampedGradientNode(
-            int fromY, int toY, double fromValue, double toValue
+            int fromY, int toY, float fromValue, float toValue
     ) implements LeafNode {
     }
 
     public record RangeChoiceNode(
             AstNode input,
-            double minInclusive,
-            double maxExclusive,
+            float minInclusive,
+            float maxExclusive,
             AstNode whenInRange,
             AstNode whenOutOfRange
     ) implements AstNode {
@@ -222,7 +235,31 @@ public final class AstNodes {
         }
     }
 
-    public record CacheNode(DensityFunction source, CacheKind kind, AstNode delegate) implements UnaryNode {
+    public record IntervalSelectNode(AstNode input, List<Float> thresholds, List<AstNode> branches) implements AstNode {
+        public IntervalSelectNode {
+            Objects.requireNonNull(input, "input");
+            thresholds = List.copyOf(thresholds);
+            branches = List.copyOf(branches);
+            if (branches.size() != thresholds.size() + 1) {
+                throw new IllegalArgumentException("Interval select needs one more branch than thresholds");
+            }
+        }
+
+        @Override public AstNode[] children() {
+            AstNode[] result = new AstNode[this.branches.size() + 1];
+            result[0] = this.input;
+            for (int i = 0; i < this.branches.size(); ++i) result[i + 1] = this.branches.get(i);
+            return result;
+        }
+
+        @Override public AstNode withChildren(AstNode[] children) {
+            requireCount(children, this.branches.size() + 1);
+            return new IntervalSelectNode(children[0], this.thresholds,
+                    List.of(children).subList(1, children.length));
+        }
+    }
+
+    public record CacheNode(DensitySampler source, CacheKind kind, AstNode delegate) implements UnaryNode {
         public CacheNode {
             Objects.requireNonNull(source, "source");
             Objects.requireNonNull(kind, "kind");
@@ -233,72 +270,36 @@ public final class AstNodes {
     }
 
     public static final class SourceNode implements LeafNode {
-        private final DensityFunction source;
-        private final SourceMode mode;
+        private final DensitySampler source;
 
-        public SourceNode(DensityFunction source, SourceMode mode) {
+        public SourceNode(DensitySampler source) {
             this.source = Objects.requireNonNull(source, "source");
-            this.mode = Objects.requireNonNull(mode, "mode");
         }
 
-        public DensityFunction source() { return this.source; }
-        public SourceMode mode() { return this.mode; }
+        public DensitySampler source() { return this.source; }
     }
 
     public static final class DelegateNode implements LeafNode {
-        private final DensityFunction delegate;
+        private final DensitySampler delegate;
         private final boolean yIndependent;
 
-        public DelegateNode(DensityFunction delegate, boolean yIndependent) {
+        public DelegateNode(DensitySampler delegate, boolean yIndependent) {
             this.delegate = Objects.requireNonNull(delegate, "delegate");
             this.yIndependent = yIndependent;
         }
 
-        public DensityFunction delegate() { return this.delegate; }
+        public DensitySampler delegate() { return this.delegate; }
         public boolean yIndependent() { return this.yIndependent; }
     }
 
-    public record NoiseNode(
-            AstNode inputX,
-            AstNode inputY,
-            AstNode inputZ,
-            DensityFunction.NoiseHolder noise
-    ) implements AstNode {
-        public NoiseNode {
-            requireNodes(inputX, inputY);
-            Objects.requireNonNull(inputZ, "inputZ");
-            Objects.requireNonNull(noise, "noise");
-        }
-        @Override public AstNode[] children() { return new AstNode[]{this.inputX, this.inputY, this.inputZ}; }
-        @Override public AstNode withChildren(AstNode[] children) {
-            requireCount(children, 3);
-            if (children[0] == this.inputX && children[1] == this.inputY && children[2] == this.inputZ) return this;
-            return new NoiseNode(children[0], children[1], children[2], this.noise);
-        }
-    }
-
-    public record WeirdScaledNode(
-            AstNode input,
-            DensityFunction.NoiseHolder noise,
-            DensityFunctions.WeirdScaledSampler.RarityValueMapper mapper
-    ) implements UnaryNode {
-        public WeirdScaledNode {
-            Objects.requireNonNull(input, "input");
-            Objects.requireNonNull(noise, "noise");
-            Objects.requireNonNull(mapper, "mapper");
-        }
-        @Override public AstNode operand() { return this.input; }
-        @Override public UnaryNode withOperand(AstNode value) { return new WeirdScaledNode(value, this.noise, this.mapper); }
-    }
-
     public static final class SplineNode implements AstNode {
-        private final CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline;
-        private final List<DensityFunctions.Spline.Coordinate> coordinates;
+        private final CubicSpline<SplineFunction.Coordinate> spline;
+        private final List<SplineFunction.Coordinate> coordinates;
         private final List<AstNode> coordinateNodes;
 
         public SplineNode(
-                CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline,
-                List<DensityFunctions.Spline.Coordinate> coordinates,
+                CubicSpline<SplineFunction.Coordinate> spline,
+                List<SplineFunction.Coordinate> coordinates,
                 List<AstNode> coordinateNodes
         ) {
             this.spline = Objects.requireNonNull(spline, "spline");
@@ -309,16 +310,16 @@ public final class AstNodes {
             }
         }
 
-        public CubicSpline<DensityFunctions.Spline.Point, DensityFunctions.Spline.Coordinate> spline() { return this.spline; }
+        public CubicSpline<SplineFunction.Coordinate> spline() { return this.spline; }
 
-        public AstNode coordinateNode(DensityFunctions.Spline.Coordinate coordinate) {
+        public AstNode coordinateNode(SplineFunction.Coordinate coordinate) {
             for (int i = 0; i < this.coordinates.size(); ++i) {
                 if (this.coordinates.get(i) == coordinate) return this.coordinateNodes.get(i);
             }
             throw new IllegalArgumentException("Unknown spline coordinate");
         }
 
-        public List<DensityFunctions.Spline.Coordinate> coordinates() { return this.coordinates; }
+        public List<SplineFunction.Coordinate> coordinates() { return this.coordinates; }
 
         @Override public AstNode[] children() { return this.coordinateNodes.toArray(AstNode[]::new); }
 
@@ -351,7 +352,7 @@ public final class AstNodes {
     }
 
     public static <P, C extends BoundedFloatFunction<P>> List<C> collectSplineCoordinates(
-            CubicSpline<P, C> spline
+            CubicSpline<C> spline
     ) {
         List<C> coordinates = new ArrayList<>();
         Set<C> seen = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -360,11 +361,11 @@ public final class AstNodes {
     }
 
     private static <P, C extends BoundedFloatFunction<P>> void collectSplineCoordinates(
-            CubicSpline<P, C> spline, List<C> coordinates, Set<C> seen
+            CubicSpline<C> spline, List<C> coordinates, Set<C> seen
     ) {
-        if (!(spline instanceof CubicSpline.Multipoint<P, C> multipoint)) return;
+        if (!(spline instanceof CubicSpline.Multipoint<C> multipoint)) return;
         if (seen.add(multipoint.coordinate())) coordinates.add(multipoint.coordinate());
-        for (CubicSpline<P, C> child : multipoint.values()) {
+        for (CubicSpline<C> child : multipoint.values()) {
             collectSplineCoordinates(child, coordinates, seen);
         }
     }
