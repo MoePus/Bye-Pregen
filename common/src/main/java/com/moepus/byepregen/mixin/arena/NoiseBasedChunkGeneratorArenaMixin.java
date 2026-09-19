@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Retains vanilla's terrain lifetime, locks, surface generation and carvers. */
-@MixinGate(feature = MixinFeature.ARENA)
+@MixinGate(feature = MixinFeature.ARENA, conflictingMods = {"reterraforged", "freeterraforged"})
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorArenaMixin {
     @Shadow @Final private Holder<NoiseGeneratorSettings> settings;

@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
 )
 @Mixin(value = NoiseBasedChunkGenerator.class, priority = 1100)
 public abstract class NoiseBasedChunkGeneratorBiomeColumnMixin extends ChunkGenerator {
