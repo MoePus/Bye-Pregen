@@ -94,6 +94,7 @@ final class DensityColumnRuntimeProbe {
 
     private static boolean biomeColumnsConflict() {
         return ModEnvironment.isModLoaded("reterraforged")
+                || ModEnvironment.isModLoaded("freeterraforged")
                 || ModEnvironment.isModLoaded("terrablender")
                 || ModEnvironment.isModLoaded("blueprint");
     }
