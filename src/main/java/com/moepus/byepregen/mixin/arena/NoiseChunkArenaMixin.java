@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Slice;
 
-@MixinGate(feature = MixinFeature.ARENA, conflictingMods = "reterraforged")
+@MixinGate(feature = MixinFeature.ARENA, conflictingMods = {"reterraforged", "freeterraforged"})
 @Mixin(NoiseChunk.class)
 public abstract class NoiseChunkArenaMixin implements ArenaNoiseChunkAccess {
     @Shadow @Final private int cellCountY;

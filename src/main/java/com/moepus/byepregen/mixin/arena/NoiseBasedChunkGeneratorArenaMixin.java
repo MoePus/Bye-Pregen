@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * The batching approach is inspired by ZenXArch's FastNoise's noise-generation optimization;
  * Have to make this because there would be conflicts which were difficult to handle.
  */
-@MixinGate(feature = MixinFeature.ARENA, conflictingMods = "reterraforged")
+@MixinGate(feature = MixinFeature.ARENA, conflictingMods = {"reterraforged", "freeterraforged"})
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorArenaMixin {
     @Shadow
