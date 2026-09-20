@@ -75,7 +75,7 @@ final class YABlockLightPropagation {
                 pos, fromBlock, YALightMath.offset(pos, direction), toBlock, YALightMath.direction(direction))) {
             return fromBlock;
         }
-        target.setLight(engine.runCache, engine.storage, index, nextLevel);
+        target.setBoundLight(engine.storage, index, nextLevel);
         if (nextLevel > 1) {
             engine.enqueueIncrease(YALightMath.offset(pos, direction), nextLevel,
                     YALightMath.withoutOpposite(direction), 0L);
@@ -126,7 +126,7 @@ final class YABlockLightPropagation {
         YALightBlockAccess blocks = engine.blockAccess();
         int block = blocks.blockAt(target, index);
         if (blocks.isFull(block)) {
-            target.setLight(engine.runCache, engine.storage, index, 0);
+            target.clearNonzeroLight(engine.storage, index);
             return;
         }
         int remaining = blocks.isSlow(block) ? blocks.slowAttenuatedLevel(level, block, YALightMath.offset(pos, direction)) : level - 1;
@@ -135,7 +135,7 @@ final class YABlockLightPropagation {
             engine.enqueueIncrease(toPos, current, YALightMath.oppositeMask(direction), YALightMath.FLAG_RECHECK);
             return;
         }
-        target.setLight(engine.runCache, engine.storage, index, 0);
+        target.clearNonzeroLight(engine.storage, index);
         if (blocks.isSlow(block)) {
             int emitted = blocks.toState(block).getLightEmission(engine.levelReader, engine.mutablePos.set(toPos));
             if (emitted > 0) {

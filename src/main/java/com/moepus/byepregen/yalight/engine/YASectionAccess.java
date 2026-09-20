@@ -77,11 +77,23 @@ public final class YASectionAccess {
             }
             this.enabled = this.data.lightEnabled();
         }
+        this.setBoundLight(storage, localIndex, value);
+    }
+
+    // The propagation edge has already established enabled data and a valid storageIndex.
+    public void setBoundLight(YALightStorage storage, int localIndex, int value) {
         YANibbleArray current = this.nibble;
         if (current == null || current.isNullUpdating()) {
             this.nibble = current = this.data.getOrCreateUpdatingSectionByIndex(this.storageIndex);
         }
         if (current.setUpdatingAndGetDirtyTransition(localIndex, value)) {
+            storage.markDirty(this.data, this.storageIndex);
+        }
+    }
+
+    // A positive light read proves the nibble exists and is not STATE_NULL.
+    public void clearNonzeroLight(YALightStorage storage, int localIndex) {
+        if (this.nibble.setUpdatingAndGetDirtyTransition(localIndex, 0)) {
             storage.markDirty(this.data, this.storageIndex);
         }
     }
@@ -92,6 +104,6 @@ public final class YASectionAccess {
             this.blocksResolved = true;
         }
         BlockStateRawIdAccess access = this.blocks;
-        return access == null ? -1 : access.getRawId(localIndex & 15, localIndex >>> 8, (localIndex >>> 4) & 15);
+        return access == null ? -1 : access.getRawId(localIndex);
     }
 }

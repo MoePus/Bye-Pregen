@@ -26,7 +26,7 @@ class YASectionAccessTest {
         YASectionAccess access = this.access(0);
         assertTrue(access.enabled());
         assertEquals(0, access.light(4095));
-        access.setLight(this.cache, this.storage, 4095, 12);
+        access.setBoundLight(this.storage, 4095, 12);
         assertEquals(12, access.light(4095));
         assertEquals(12, this.data.getUpdatingSectionByIndex(this.storage.sectionIndex(0)).getUpdating(4095));
     }
@@ -61,7 +61,7 @@ class YASectionAccessTest {
         retired.discardUnpublished();
         YASectionAccess access = this.access(0);
         assertEquals(0, access.light(1));
-        access.setLight(this.cache, this.storage, 1, 5);
+        access.setBoundLight(this.storage, 1, 5);
         assertNotSame(retired, this.data.getUpdatingSectionByIndex(index));
         assertEquals(5, access.light(1));
         this.data.setLightEnabled(false);
@@ -83,6 +83,25 @@ class YASectionAccessTest {
         above.setLight(this.cache, this.storage, 4095, 15);
         assertEquals(0, below.light(0));
         assertEquals(0, above.light(4095));
+    }
+
+    @Test
+    void clearingPositiveLightPreservesTheOtherNibbleAndPublishedSnapshot() {
+        this.data.setLightEnabled(true);
+        this.data.setFullSection(0, this.storage);
+        YASectionAccess access = this.access(0);
+        YANibbleArray nibble = this.data.getUpdatingSectionByIndex(this.storage.sectionIndex(0));
+        assertEquals(15, access.light(30));
+        access.clearNonzeroLight(this.storage, 30);
+        assertEquals(0, access.light(30));
+        assertEquals(15, access.light(31));
+        assertEquals(15, nibble.getVisible(14, 0, 1));
+        nibble.publish();
+        assertEquals(0, nibble.getVisible(14, 0, 1));
+        assertEquals(15, access.light(31));
+        access.clearNonzeroLight(this.storage, 31);
+        assertEquals(0, access.light(31));
+        assertEquals(15, nibble.getVisible(15, 0, 1));
     }
 
     private YASectionAccess access(int sectionY) {
