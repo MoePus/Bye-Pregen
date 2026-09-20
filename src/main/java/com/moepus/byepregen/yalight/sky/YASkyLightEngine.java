@@ -229,19 +229,6 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
         YASkyLightPropagation.propagateIncrease(this, pos, meta);
     }
 
-    int tryPropagateIncreaseEdge(
-            int x,
-            int y,
-            int z,
-            int level,
-            int directionIndex,
-            int fromBlock,
-            long flags
-    ) {
-        return YASkyLightPropagation.tryPropagateIncreaseEdge(
-                this, x, y, z, level, directionIndex, fromBlock, flags);
-    }
-
     @Override
     public int propagateAfterIncreases() {
         return this.ownerTransfers.drain();
@@ -258,6 +245,12 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
         int z = BlockPos.getZ(pos);
         int sourceCode = this.sourceCache.enabledSourceCode(this.storage, x, z);
         return this.sources.sourceYCode(y) >= sourceCode ? 15 : 0;
+    }
+
+    int getSourceLight(ChunkAccess enabledOwner, long pos) {
+        YAChunkSkyLightSources source = (YAChunkSkyLightSources)enabledOwner.getSkyLightSources();
+        int code = source == null ? Integer.MAX_VALUE : source.sourceCode(BlockPos.getX(pos), BlockPos.getZ(pos));
+        return this.sources.sourceYCode(BlockPos.getY(pos)) >= code ? 15 : 0;
     }
 
     public void restoreSavedSkyLight(ChunkAccess chunk) {

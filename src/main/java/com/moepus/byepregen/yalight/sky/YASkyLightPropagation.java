@@ -1,269 +1,231 @@
 package com.moepus.byepregen.yalight.sky;
 
+import com.moepus.byepregen.yalight.engine.YALightBlockAccess;
 import com.moepus.byepregen.yalight.engine.YALightMath;
-
+import com.moepus.byepregen.yalight.engine.YASectionAccess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 
 final class YASkyLightPropagation {
-    private static final int CHUNK_LOCAL_MASK = 15;
-
     private YASkyLightPropagation() {
     }
 
     static void propagateIncrease(YASkyLightEngine engine, long pos, long meta) {
         int level = YALightMath.level(meta);
-        int x = BlockPos.getX(pos);
-        int y = BlockPos.getY(pos);
-        int z = BlockPos.getZ(pos);
-        boolean resident = YALightMath.isSectionInterior(x, y, z);
-        if (resident) {
-            engine.runCache().prepareResidentSection(engine.storage, x, y, z);
-        }
-        int stored = resident
-                ? engine.runCache().getResidentUpdatingLight(x, y, z)
-                : engine.getCachedUpdatingLight(x, y, z);
+        int index = YALightMath.localIndex(pos);
+        YASectionAccess source = engine.runCache().prepareSource(engine.storage, pos);
+        int stored = source.light(index);
         if (stored != level) {
-            boolean canWrite = (meta & (YALightMath.FLAG_RECHECK | YALightMath.FLAG_WRITE_LEVEL))
-                    == YALightMath.FLAG_WRITE_LEVEL && stored < level;
-            if (!canWrite) {
+            if (!YALightMath.canWrite(meta, stored, level)) {
                 return;
             }
-            if (resident) {
-                engine.runCache().setResidentUpdatingLight(engine.storage, x, y, z, level);
-            } else {
-                engine.setCachedUpdatingLight(x, y, z, level);
-            }
+            source.setLight(engine.runCache(), engine.storage, index, level);
         }
-
-        int fromBlock = Integer.MIN_VALUE;
         int directions = YALightMath.directions(meta);
-        while (directions != 0) {
-            int directionIndex = Integer.numberOfTrailingZeros(directions);
-            directions &= directions - 1;
-            fromBlock = resident
-                    ? propagateResidentIncreaseEdge(engine, x, y, z, level, directionIndex, fromBlock, meta)
-                    : tryPropagateIncreaseEdge(engine, x, y, z, level, directionIndex, fromBlock, meta);
+        if (YALightMath.isSectionInterior(index)) {
+            if (source.enabled()) {
+                increaseInterior(engine, source, pos, index, level, directions,
+                        meta & YALightMath.FLAG_FRESH_OWNER_TRANSFER);
+            }
+        } else {
+            increaseBoundary(engine, source, pos, index, level, directions, meta);
         }
     }
 
-    private static int propagateResidentIncreaseEdge(
-            YASkyLightEngine engine,
-            int x,
-            int y,
-            int z,
-            int level,
-            int directionIndex,
-            int fromBlock,
-            long flags
-    ) {
-        int toX = x + YALightMath.stepX(directionIndex);
-        int toY = y + YALightMath.stepY(directionIndex);
-        int toZ = z + YALightMath.stepZ(directionIndex);
-        return propagateIncreaseEdge(
-                engine, x, y, z, toX, toY, toZ, level, directionIndex, fromBlock,
-                flags & YALightMath.FLAG_FRESH_OWNER_TRANSFER, true);
+    static void propagateSourceEdges(YASkyLightEngine engine, long pos, int directions, long flags) {
+        if (directions == 0) {
+            return;
+        }
+        int index = YALightMath.localIndex(pos);
+        if (YALightMath.isSectionInterior(index)) {
+            YASectionAccess source = engine.runCache().prepareSource(engine.storage, pos);
+            if (source.enabled()) {
+                increaseInterior(engine, source, pos, index, 15, directions,
+                        flags & YALightMath.FLAG_FRESH_OWNER_TRANSFER);
+            }
+        } else {
+            // An outward edge can transfer without touching either source or target light data.
+            increaseBoundary(engine, null, pos, index, 15, directions, flags);
+        }
     }
 
-    static int tryPropagateIncreaseEdge(
-            YASkyLightEngine engine,
-            int x,
-            int y,
-            int z,
-            int level,
-            int directionIndex,
-            int fromBlock,
-            long flags
-    ) {
-        int toX = x;
-        int toY = y;
-        int toZ = z;
-        switch (directionIndex) {
-            case 0 -> --toY;
-            case 1 -> ++toY;
-            case 2 -> --toZ;
-            case 3 -> ++toZ;
-            case 4 -> --toX;
-            case 5 -> ++toX;
-            default -> {
+    private static void increaseInterior(YASkyLightEngine engine, YASectionAccess source,
+                                         long pos, int index, int level, int directions, long flags) {
+        int fromBlock = YALightBlockAccess.UNRESOLVED_BLOCK;
+        while (directions != 0) {
+            int direction = Integer.numberOfTrailingZeros(directions);
+            directions &= directions - 1;
+            fromBlock = increaseEdge(engine, source, source, pos,
+                    index + YALightMath.localStep(direction), level, direction, fromBlock, flags);
+        }
+    }
+
+    private static void increaseBoundary(YASkyLightEngine engine, YASectionAccess source,
+                                         long pos, int index, int level, int directions, long flags) {
+        int fromBlock = YALightBlockAccess.UNRESOLVED_BLOCK;
+        boolean transfers = YALightMath.transfersFreshOwner(flags);
+        long inheritedFlags = flags & YALightMath.FLAG_FRESH_OWNER_TRANSFER;
+        while (directions != 0) {
+            int direction = Integer.numberOfTrailingZeros(directions);
+            directions &= directions - 1;
+            int edge = YALightMath.neighbor(index, direction);
+            int carry = YALightMath.sectionCarry(edge);
+            boolean horizontalExit = carry != 0 && direction >= 2;
+            boolean freshExit = transfers && horizontalExit;
+            if (freshExit && tryTransferFreshOwnerEdge(engine, pos, level, direction)) {
+                continue;
+            }
+            YASectionAccess target;
+            if (horizontalExit) {
+                target = engine.runCache().horizontalNeighbor(engine.storage, pos, direction, carry);
+            } else {
+                if (source == null) {
+                    source = engine.runCache().prepareSource(engine.storage, pos);
+                }
+                target = carry == 0 ? source : engine.runCache().verticalNeighbor(engine.storage, source, carry);
+            }
+            if (target.enabled()) {
+                fromBlock = increaseEdge(engine, source, target, pos, YALightMath.neighborIndex(edge),
+                        level, direction, fromBlock, freshExit ? 0L : inheritedFlags);
             }
         }
-        boolean freshOwnerExit = (flags & (YALightMath.FLAG_FRESH_OWNER_TRANSFER | YALightMath.FLAG_RECHECK))
-                == YALightMath.FLAG_FRESH_OWNER_TRANSFER
-                && crossesChunkBoundary(x, z, directionIndex);
-        if (freshOwnerExit && tryTransferFreshOwnerEdge(
-                engine, x, y, z, toX, toY, toZ, level, directionIndex)) {
+    }
+
+    private static int increaseEdge(YASkyLightEngine engine, YASectionAccess source, YASectionAccess target,
+                                    long pos, int index, int level, int direction, int fromBlock, long childFlags) {
+        int current = target.light(index);
+        int nextLevel = level - 1;
+        if (current >= nextLevel) {
             return fromBlock;
         }
-        long childFlags = freshOwnerExit ? 0L : flags & YALightMath.FLAG_FRESH_OWNER_TRANSFER;
-        return propagateIncreaseEdge(
-                engine, x, y, z, toX, toY, toZ, level, directionIndex, fromBlock, childFlags, false);
-    }
-
-    private static boolean crossesChunkBoundary(int x, int z, int directionIndex) {
-        return switch (directionIndex) {
-            case 2 -> (z & CHUNK_LOCAL_MASK) == 0;
-            case 3 -> (z & CHUNK_LOCAL_MASK) == CHUNK_LOCAL_MASK;
-            case 4 -> (x & CHUNK_LOCAL_MASK) == 0;
-            case 5 -> (x & CHUNK_LOCAL_MASK) == CHUNK_LOCAL_MASK;
-            default -> false;
-        };
-    }
-
-    static void propagateTransferredEdge(
-            YASkyLightEngine engine,
-            long fromPos,
-            int level,
-            int directionIndex,
-            long flags
-    ) {
-        int x = BlockPos.getX(fromPos);
-        int y = BlockPos.getY(fromPos);
-        int z = BlockPos.getZ(fromPos);
-        propagateIncreaseEdge(
-                engine,
-                x,
-                y,
-                z,
-                x + YALightMath.stepX(directionIndex),
-                y + YALightMath.stepY(directionIndex),
-                z + YALightMath.stepZ(directionIndex),
-                level,
-                directionIndex,
-                Integer.MIN_VALUE,
-                flags,
-                false);
-    }
-
-    private static int propagateIncreaseEdge(
-            YASkyLightEngine engine,
-            int x,
-            int y,
-            int z,
-            int toX,
-            int toY,
-            int toZ,
-            int level,
-            int directionIndex,
-            int fromBlock,
-            long childFlags,
-            boolean resident
-    ) {
-        int current = resident
-                ? engine.runCache().getEnabledResidentUpdatingLight(toX, toY, toZ)
-                : engine.getEnabledCachedUpdatingLight(toX, toY, toZ);
-        if (current < 0 || current >= level - 1) {
-            return fromBlock;
-        }
-        int toBlock = resident
-                ? engine.blocks.residentBlockAt(toX, toY, toZ)
-                : engine.blocks.blockAt(toX, toY, toZ);
+        int toBlock = engine.blocks.blockAt(target, index);
         if (engine.blocks.isFull(toBlock)) {
             return fromBlock;
         }
-        int target = engine.blocks.attenuatedLevel(level, toX, toY, toZ, toBlock);
-        if (target <= current) {
-            return fromBlock;
+        if (engine.blocks.isSlow(toBlock)) {
+            nextLevel = engine.blocks.slowAttenuatedLevel(level, toBlock, YALightMath.offset(pos, direction));
+            if (nextLevel <= current) {
+                return fromBlock;
+            }
         }
-        if (fromBlock == Integer.MIN_VALUE) {
-            fromBlock = resident
-                    ? engine.blocks.residentBlockAt(x, y, z)
-                    : engine.blocks.blockAt(x, y, z);
+        if (fromBlock == YALightBlockAccess.UNRESOLVED_BLOCK) {
+            if (source == null) {
+                source = engine.runCache().prepareSource(engine.storage, pos);
+            }
+            fromBlock = engine.blocks.blockAt(source, YALightMath.localIndex(pos));
         }
         if ((fromBlock | toBlock) != 0 && engine.blocks.shapeOccludes(
-                x, y, z, fromBlock, toX, toY, toZ, toBlock, YALightMath.direction(directionIndex))) {
+                pos, fromBlock, YALightMath.offset(pos, direction), toBlock, YALightMath.direction(direction))) {
             return fromBlock;
         }
-        if (resident) {
-            engine.runCache().setResidentUpdatingLight(engine.storage, toX, toY, toZ, target);
-        } else {
-            engine.setCachedUpdatingLight(toX, toY, toZ, target);
-        }
-        if (target > 1) {
-            engine.enqueueIncrease(
-                    BlockPos.asLong(toX, toY, toZ),
-                    target,
-                    YALightMath.withoutOpposite(directionIndex),
-                    childFlags);
+        target.setLight(engine.runCache(), engine.storage, index, nextLevel);
+        if (nextLevel > 1) {
+            engine.enqueueIncrease(YALightMath.offset(pos, direction), nextLevel,
+                    YALightMath.withoutOpposite(direction), childFlags);
         }
         return fromBlock;
     }
 
-    private static boolean tryTransferFreshOwnerEdge(
-            YASkyLightEngine engine,
-            int x,
-            int y,
-            int z,
-            int toX,
-            int toY,
-            int toZ,
-            int level,
-            int directionIndex
-    ) {
-        long targetOwner = ChunkPos.asLong(toX >> 4, toZ >> 4);
-        byte targetOwnerState = engine.ownerTransfers.state(targetOwner);
-        if (!engine.ownerTransfers.isTransferTarget(targetOwnerState)) {
+    static void propagateTransferredEdge(YASkyLightEngine engine, long pos, int level, int direction, long flags) {
+        int edge = YALightMath.neighbor(YALightMath.localIndex(pos), direction);
+        int carry = YALightMath.sectionCarry(edge);
+        YASectionAccess source = null;
+        YASectionAccess target;
+        if (carry != 0 && direction >= 2) {
+            target = engine.runCache().horizontalNeighbor(engine.storage, pos, direction, carry);
+        } else {
+            source = engine.runCache().prepareSource(engine.storage, pos);
+            target = carry == 0 ? source : engine.runCache().verticalNeighbor(engine.storage, source, carry);
+        }
+        if (target.enabled()) {
+            // The inbox already chose this owner. Do not transfer this edge back into an inbox.
+            increaseEdge(engine, source, target, pos, YALightMath.neighborIndex(edge), level,
+                    direction, YALightBlockAccess.UNRESOLVED_BLOCK, flags);
+        }
+    }
+
+    private static boolean tryTransferFreshOwnerEdge(YASkyLightEngine engine, long pos, int level, int direction) {
+        int x = BlockPos.getX(pos) + YALightMath.stepX(direction);
+        int y = BlockPos.getY(pos);
+        int z = BlockPos.getZ(pos) + YALightMath.stepZ(direction);
+        long targetOwner = ChunkPos.asLong(x >> 4, z >> 4);
+        byte state = engine.ownerTransfers.state(targetOwner);
+        if (!engine.ownerTransfers.isTransferTarget(state)) {
             return false;
         }
-        if (engine.ownerTransfers.isInitialized(targetOwnerState)) {
-            int current = engine.getEnabledCachedUpdatingLight(toX, toY, toZ);
+        if (engine.ownerTransfers.isInitialized(state)) {
+            int current = engine.getEnabledCachedUpdatingLight(x, y, z);
             if (current < 0 || current >= level - 1) {
                 return true;
             }
         }
-        engine.ownerTransfers.enqueue(targetOwner, BlockPos.asLong(x, y, z), level, directionIndex);
+        engine.ownerTransfers.enqueue(targetOwner, pos, level, direction);
         return true;
     }
 
     static void propagateDecrease(YASkyLightEngine engine, long pos, long meta) {
-        int level = YALightMath.level(meta);
-        int x = BlockPos.getX(pos);
-        int y = BlockPos.getY(pos);
-        int z = BlockPos.getZ(pos);
         int directions = YALightMath.directions(meta);
+        if (directions == 0) {
+            return;
+        }
+        YASectionAccess source = engine.runCache().prepareSource(engine.storage, pos);
+        int index = YALightMath.localIndex(pos);
+        int level = YALightMath.level(meta);
+        if (YALightMath.isSectionInterior(index)) {
+            if (source.enabled()) {
+                decreaseInterior(engine, source, pos, index, level, directions);
+            }
+            return;
+        }
         while (directions != 0) {
-            int directionIndex = Integer.numberOfTrailingZeros(directions);
+            int direction = Integer.numberOfTrailingZeros(directions);
             directions &= directions - 1;
-            propagateDecreaseEdge(engine, x, y, z, level, directionIndex);
+            int edge = YALightMath.neighbor(index, direction);
+            int carry = YALightMath.sectionCarry(edge);
+            YASectionAccess target = source;
+            if (carry != 0) {
+                target = direction < 2
+                        ? engine.runCache().verticalNeighbor(engine.storage, source, carry)
+                        : engine.runCache().horizontalNeighbor(engine.storage, pos, direction, carry);
+            }
+            if (target.enabled()) {
+                decreaseEdge(engine, target, pos, YALightMath.neighborIndex(edge), level, direction);
+            }
         }
     }
 
-    private static void propagateDecreaseEdge(
-            YASkyLightEngine engine,
-            int x,
-            int y,
-            int z,
-            int level,
-            int directionIndex
-    ) {
-        int toX = x + YALightMath.stepX(directionIndex);
-        int toY = y + YALightMath.stepY(directionIndex);
-        int toZ = z + YALightMath.stepZ(directionIndex);
-        int current = engine.getEnabledCachedUpdatingLight(toX, toY, toZ);
+    private static void decreaseInterior(YASkyLightEngine engine, YASectionAccess source,
+                                         long pos, int index, int level, int directions) {
+        while (directions != 0) {
+            int direction = Integer.numberOfTrailingZeros(directions);
+            directions &= directions - 1;
+            decreaseEdge(engine, source, pos, index + YALightMath.localStep(direction), level, direction);
+        }
+    }
+
+    private static void decreaseEdge(YASkyLightEngine engine, YASectionAccess target,
+                                     long pos, int index, int level, int direction) {
+        int current = target.light(index);
         if (current <= 0) {
             return;
         }
-        long toPos = BlockPos.asLong(toX, toY, toZ);
-        int toBlock = engine.blocks.blockAt(toX, toY, toZ);
-        if (engine.blocks.isFull(toBlock)) {
-            engine.setCachedUpdatingLight(toX, toY, toZ, 0);
+        int block = engine.blocks.blockAt(target, index);
+        if (engine.blocks.isFull(block)) {
+            target.setLight(engine.runCache(), engine.storage, index, 0);
             return;
         }
-        int target = engine.blocks.attenuatedLevel(level, toX, toY, toZ, toBlock);
-        if (current > target) {
-            engine.enqueueIncrease(
-                    toPos, current, YALightMath.oppositeMask(directionIndex), YALightMath.FLAG_RECHECK);
+        int remaining = engine.blocks.isSlow(block) ? engine.blocks.slowAttenuatedLevel(level, block, YALightMath.offset(pos, direction)) : level - 1;
+        long toPos = YALightMath.offset(pos, direction);
+        if (current > remaining) {
+            engine.enqueueIncrease(toPos, current, YALightMath.oppositeMask(direction), YALightMath.FLAG_RECHECK);
             return;
         }
-        engine.setCachedUpdatingLight(toX, toY, toZ, 0);
-        int source = engine.getSourceLight(toPos);
+        target.setLight(engine.runCache(), engine.storage, index, 0);
+        int source = engine.getSourceLight(target.owner(), toPos);
         if (source > 0) {
-            engine.enqueueIncrease(
-                    toPos,
-                    source,
-                    engine.sources.skySourceDirections(toX, toY, toZ),
-                    YALightMath.FLAG_WRITE_LEVEL);
+            engine.enqueueIncrease(toPos, source, engine.sources.skySourceDirections(
+                    BlockPos.getX(toPos), BlockPos.getY(toPos), BlockPos.getZ(toPos)), YALightMath.FLAG_WRITE_LEVEL);
         }
-        engine.enqueueDecrease(toPos, current, YALightMath.withoutOpposite(directionIndex));
+        engine.enqueueDecrease(toPos, current, YALightMath.withoutOpposite(direction));
     }
 }
