@@ -11,6 +11,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class YALightBlockAccess {
+    // Classified blocks are 0, 1, or negative; this cannot alias a real block class.
+    public static final int UNRESOLVED_BLOCK = 2;
     private static final int RAW_ID_BITS = 30;
     private static final int RAW_ID_MASK = (1 << RAW_ID_BITS) - 1;
     private static final int SLOW_BIT = 1 << RAW_ID_BITS;
@@ -44,8 +46,8 @@ public final class YALightBlockAccess {
         return this.blockFromRawId(this.cache.getRawId(this.chunkGetter, x, y, z));
     }
 
-    public int residentBlockAt(int x, int y, int z) {
-        return this.blockFromRawId(this.cache.getResidentRawId(x, y, z));
+    public int blockAt(YASectionAccess section, int localIndex) {
+        return this.blockFromRawId(section.rawId(localIndex));
     }
 
     private int blockFromRawId(int rawId) {
@@ -74,7 +76,7 @@ public final class YALightBlockAccess {
     }
 
     public boolean isSlow(int block) {
-        return block < 0 && (block & SLOW_BIT) != 0;
+        return (block & SLOW_BIT) != 0;
     }
 
     public BlockState toState(int block) {
@@ -94,6 +96,16 @@ public final class YALightBlockAccess {
         }
         int opacity = Math.max(1, this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z)));
         return Math.max(0, level - opacity);
+    }
+
+    // NeoForge 1.21.1 permits position-dependent opacity and occlusion shapes.
+    public int slowAttenuatedLevel(int level, int block, long pos) {
+        return level - Math.max(1, this.toState(block).getLightBlock(this.level, this.mutablePos.set(pos)));
+    }
+
+    public boolean shapeOccludes(long fromPos, int fromBlock, long toPos, int toBlock, Direction direction) {
+        return this.shapeOccludes(BlockPos.getX(fromPos), BlockPos.getY(fromPos), BlockPos.getZ(fromPos), fromBlock,
+                BlockPos.getX(toPos), BlockPos.getY(toPos), BlockPos.getZ(toPos), toBlock, direction);
     }
 
     public boolean shapeOccludes(

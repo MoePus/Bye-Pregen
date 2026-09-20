@@ -136,13 +136,12 @@ final class LightChunk {
         }
 
         static SectionBlocks from(CompoundTag tag) {
-            ListTag paletteTags = tag.getList("palette", 10);
-            if (paletteTags.isEmpty()) {
+            if (!(tag.get("palette") instanceof ListTag paletteTags) || paletteTags.isEmpty()) {
                 return MISSING;
             }
             String[] palette = new String[paletteTags.size()];
             for (int index = 0; index < palette.length; index++) {
-                palette[index] = stateName(paletteTags.getCompound(index));
+                palette[index] = BlockStateNbtName.describe(paletteTags.get(index));
             }
             if (!tag.contains("data", 12)) {
                 return new SectionBlocks(palette, null);
@@ -183,25 +182,6 @@ final class LightChunk {
             int paletteIndex = this.storage == null ? 0 : this.storage.get(storageIndex);
             return paletteIndex >= 0 && paletteIndex < this.palette.length
                     ? this.palette[paletteIndex] : "invalid-palette-id:" + paletteIndex;
-        }
-
-        private static String stateName(CompoundTag stateTag) {
-            String name = stateTag.getString("Name");
-            if (!stateTag.contains("Properties", 10)) {
-                return name;
-            }
-            CompoundTag properties = stateTag.getCompound("Properties");
-            TreeSet<String> keys = new TreeSet<>(properties.getAllKeys());
-            StringBuilder builder = new StringBuilder(name).append('[');
-            boolean first = true;
-            for (String key : keys) {
-                if (!first) {
-                    builder.append(',');
-                }
-                first = false;
-                builder.append(key).append('=').append(properties.getString(key));
-            }
-            return builder.append(']').toString();
         }
 
         private static int ceilLog2(int value) {
