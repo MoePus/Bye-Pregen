@@ -19,8 +19,13 @@ public abstract class PalettedContainerRawIdMixin<T> implements BlockStateRawIdA
 
     @Override
     public int getRawId(int x, int y, int z) {
+        return this.getRawId(this.strategy.getIndex(x, y, z));
+    }
+
+    @Override
+    public int getRawId(int index) {
         PalettedContainer.Data<T> data = this.data;
-        int localId = data.storage().get(this.strategy.getIndex(x, y, z));
+        int localId = data.storage().get(index);
         Palette<T> palette = data.palette();
         if (palette instanceof PaletteRawIdAccess rawIdAccess) {
             return rawIdAccess.byepregen$rawIdForLocalId(localId);

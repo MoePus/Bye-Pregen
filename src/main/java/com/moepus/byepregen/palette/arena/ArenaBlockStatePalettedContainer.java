@@ -158,6 +158,11 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
         return this.rawIdAt(localIndex(x, y, z));
     }
 
+    @Override
+    public int getRawId(int index) {
+        return this.rawIdAt(index);
+    }
+
     public boolean isUniform() {
         return this.storage.isUniform();
     }
