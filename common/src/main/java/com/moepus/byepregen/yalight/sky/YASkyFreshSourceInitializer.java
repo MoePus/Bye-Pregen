@@ -5,6 +5,7 @@ import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
 
 final class YASkyFreshSourceInitializer {
     private static final int DOWN = YALightMath.only(Direction.DOWN);
@@ -86,13 +87,7 @@ final class YASkyFreshSourceInitializer {
     }
 
     private void emitEdges(int x, int y, int z, int directions, long flags) {
-        int fromBlock = Integer.MIN_VALUE;
-        while (directions != 0) {
-            int directionIndex = Integer.numberOfTrailingZeros(directions);
-            directions &= directions - 1;
-            fromBlock = this.engine.tryPropagateIncreaseEdge(
-                    x, y, z, 15, directionIndex, fromBlock, flags);
-        }
+        YASkyLightPropagation.propagateSourceEdges(this.engine, BlockPos.asLong(x, y, z), directions, flags);
     }
 
     private int horizontalDirections(int yCode, int north, int south, int west, int east) {

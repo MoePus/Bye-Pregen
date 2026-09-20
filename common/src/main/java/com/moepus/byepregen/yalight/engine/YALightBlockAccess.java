@@ -9,6 +9,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class YALightBlockAccess {
+    // Classified blocks are 0, 1, or negative; this cannot alias a real block class.
+    public static final int UNRESOLVED_BLOCK = 2;
     private static final int RAW_ID_BITS = 30;
     private static final int RAW_ID_MASK = (1 << RAW_ID_BITS) - 1;
     private static final int SLOW_BIT = 1 << RAW_ID_BITS;
@@ -33,8 +35,8 @@ public final class YALightBlockAccess {
         return this.blockFromRawId(this.cache.getRawId(this.chunkGetter, x, y, z));
     }
 
-    public int residentBlockAt(int x, int y, int z) {
-        return this.blockFromRawId(this.cache.getResidentRawId(x, y, z));
+    public int blockAt(YASectionAccess section, int localIndex) {
+        return this.blockFromRawId(section.rawId(localIndex));
     }
 
     private int blockFromRawId(int rawId) {
@@ -63,7 +65,7 @@ public final class YALightBlockAccess {
     }
 
     public boolean isSlow(int block) {
-        return block < 0 && (block & SLOW_BIT) != 0;
+        return (block & SLOW_BIT) != 0;
     }
 
     public BlockState toState(int block) {
@@ -77,31 +79,30 @@ public final class YALightBlockAccess {
     }
 
     // Callers must reject FULL_BLOCK before reaching this hot-path helper.
-    public int attenuatedLevel(int level, int x, int y, int z, int block) {
+    public int attenuatedLevel(int level, int block) {
         if (!this.isSlow(block)) {
             return level - 1;
         }
-        int opacity = Math.max(1, this.toState(block).getLightDampening());
-        return Math.max(0, level - opacity);
+        return Math.max(0, this.slowAttenuatedLevel(level, block));
     }
 
-    public boolean shapeOccludes(
-            int fromX, int fromY, int fromZ, int fromBlock,
-            int toX, int toY, int toZ, int toBlock,
-            Direction direction
-    ) {
+    public int slowAttenuatedLevel(int level, int block) {
+        return level - Math.max(1, this.toState(block).getLightDampening());
+    }
+
+    public boolean shapeOccludes(int fromBlock, int toBlock, Direction direction) {
         if (fromBlock == EMPTY_BLOCK && toBlock == EMPTY_BLOCK) {
             return false;
         }
         if (fromBlock == FULL_BLOCK || toBlock == FULL_BLOCK) {
             return true;
         }
-        VoxelShape fromShape = this.faceShapeAt(fromX, fromY, fromZ, fromBlock, direction);
-        VoxelShape toShape = this.faceShapeAt(toX, toY, toZ, toBlock, direction.getOpposite());
+        VoxelShape fromShape = this.faceShapeAt(fromBlock, direction);
+        VoxelShape toShape = this.faceShapeAt(toBlock, direction.getOpposite());
         return Shapes.faceShapeOccludes(fromShape, toShape);
     }
 
-    private VoxelShape faceShapeAt(int x, int y, int z, int block, Direction direction) {
+    private VoxelShape faceShapeAt(int block, Direction direction) {
         if (block == EMPTY_BLOCK) {
             return Shapes.empty();
         }

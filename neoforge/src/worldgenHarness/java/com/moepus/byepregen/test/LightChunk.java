@@ -140,9 +140,7 @@ final class LightChunk {
             }
             String[] palette = new String[paletteTags.size()];
             for (int index = 0; index < palette.length; index++) {
-                palette[index] = paletteTags.getCompound(index)
-                        .map(SectionBlocks::stateName)
-                        .orElse("invalid-palette-entry");
+                palette[index] = BlockStateNbtName.describe(paletteTags.get(index));
             }
             if (!tag.contains("data")) {
                 return new SectionBlocks(palette, null);
@@ -184,25 +182,6 @@ final class LightChunk {
             int paletteIndex = this.storage == null ? 0 : this.storage.get(storageIndex);
             return paletteIndex >= 0 && paletteIndex < this.palette.length
                     ? this.palette[paletteIndex] : "invalid-palette-id:" + paletteIndex;
-        }
-
-        private static String stateName(CompoundTag stateTag) {
-            String name = stateTag.getStringOr("Name", "");
-            if (!stateTag.contains("Properties")) {
-                return name;
-            }
-            CompoundTag properties = stateTag.getCompoundOrEmpty("Properties");
-            TreeSet<String> keys = new TreeSet<>(properties.keySet());
-            StringBuilder builder = new StringBuilder(name).append('[');
-            boolean first = true;
-            for (String key : keys) {
-                if (!first) {
-                    builder.append(',');
-                }
-                first = false;
-                builder.append(key).append('=').append(properties.getStringOr(key, ""));
-            }
-            return builder.append(']').toString();
         }
 
         private static int ceilLog2(int value) {

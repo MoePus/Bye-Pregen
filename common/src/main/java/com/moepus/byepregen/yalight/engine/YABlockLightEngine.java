@@ -200,99 +200,11 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
 
     @Override
     public void propagateIncrease(long pos, long meta) {
-        int level = YALightMath.level(meta);
-        int x = BlockPos.getX(pos);
-        int y = BlockPos.getY(pos);
-        int z = BlockPos.getZ(pos);
-        boolean resident = YALightMath.isSectionInterior(x, y, z);
-        if (resident) {
-            this.runCache.prepareResidentSection(this.storage, x, y, z);
-        }
-        int stored = this.readUpdating(x, y, z, resident);
-        if (stored != level) {
-            if (!YALightMath.canWrite(meta, stored, level)) {
-                return;
-            }
-            this.writeUpdating(x, y, z, level, resident);
-        }
-
-        int fromBlock = 0;
-        boolean fromBlockLoaded = false;
-        int directions = YALightMath.directions(meta);
-        while (directions != 0) {
-            int directionIndex = Integer.numberOfTrailingZeros(directions);
-            directions &= directions - 1;
-            int toX = x + YALightMath.stepX(directionIndex);
-            int toY = y + YALightMath.stepY(directionIndex);
-            int toZ = z + YALightMath.stepZ(directionIndex);
-            int current = this.readEnabledUpdating(toX, toY, toZ, resident);
-            if (current < 0 || current >= level - 1) {
-                continue;
-            }
-            int toBlock = this.blockAt(toX, toY, toZ, resident);
-            if (this.blocks.isFull(toBlock)) {
-                continue;
-            }
-
-            int target = this.blocks.attenuatedLevel(level, toX, toY, toZ, toBlock);
-            if (target <= current) {
-                continue;
-            }
-            if (!fromBlockLoaded) {
-                fromBlock = this.blockAt(x, y, z, resident);
-                fromBlockLoaded = true;
-            }
-            if ((fromBlock | toBlock) != 0 && this.blocks.shapeOccludes(
-                    x, y, z, fromBlock, toX, toY, toZ, toBlock, YALightMath.direction(directionIndex))) {
-                continue;
-            }
-            this.writeUpdating(toX, toY, toZ, target, resident);
-            if (target > 1) {
-                this.enqueueIncrease(
-                        BlockPos.asLong(toX, toY, toZ), target, YALightMath.withoutOpposite(directionIndex), 0L);
-            }
-        }
+        YABlockLightPropagation.increase(this, pos, meta);
     }
 
     @Override
     public void propagateDecrease(long pos, long meta) {
-        int level = YALightMath.level(meta);
-        int x = BlockPos.getX(pos);
-        int y = BlockPos.getY(pos);
-        int z = BlockPos.getZ(pos);
-        int directions = YALightMath.directions(meta);
-        while (directions != 0) {
-            int directionIndex = Integer.numberOfTrailingZeros(directions);
-            directions &= directions - 1;
-            int toX = x + YALightMath.stepX(directionIndex);
-            int toY = y + YALightMath.stepY(directionIndex);
-            int toZ = z + YALightMath.stepZ(directionIndex);
-            int current = this.getEnabledCachedUpdatingLight(toX, toY, toZ);
-            if (current <= 0) {
-                continue;
-            }
-            long toPos = BlockPos.asLong(toX, toY, toZ);
-            int toBlock = this.blocks.blockAt(toX, toY, toZ);
-            if (this.blocks.isFull(toBlock)) {
-                this.setCachedUpdatingLight(toX, toY, toZ, 0);
-                continue;
-            }
-
-            int target = this.blocks.attenuatedLevel(level, toX, toY, toZ, toBlock);
-            if (current > target) {
-                this.enqueueIncrease(
-                        toPos, current, YALightMath.oppositeMask(directionIndex), YALightMath.FLAG_RECHECK);
-                continue;
-            }
-            this.setCachedUpdatingLight(toX, toY, toZ, 0);
-            if (this.blocks.isSlow(toBlock)) {
-                int source = this.blocks.toState(toBlock).getLightEmission();
-                if (source > 0) {
-                    this.enqueueIncrease(toPos, source, YALightMath.ALL_DIRECTIONS, YALightMath.FLAG_WRITE_LEVEL);
-                }
-            }
-            this.enqueueDecrease(toPos, current, YALightMath.withoutOpposite(directionIndex));
-        }
+        YABlockLightPropagation.decrease(this, pos, meta);
     }
-
 }

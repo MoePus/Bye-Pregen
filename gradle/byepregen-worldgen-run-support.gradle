@@ -168,6 +168,7 @@ ext.byepregenPrepareWorldgenRunDir = { Map options ->
                     'level-name'          : 'world',
                     'online-mode'         : false,
                     'max-tick-time'       : 0,
+                    'pause-when-empty-seconds': 0,
                     'view-distance'       : 2,
                     'simulation-distance' : 2,
                     'enable-command-block': false,

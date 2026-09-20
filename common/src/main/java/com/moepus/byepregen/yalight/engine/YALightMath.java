@@ -15,6 +15,63 @@ public final class YALightMath {
 
     private static final int LEVEL_SHIFT = 0;
     private static final int DIRECTIONS_SHIFT = 4;
+    private static final int LOCAL_INDEX_MASK = 4095;
+    private static final int CARRY_SHIFT = 12;
+    private static final int NIBBLE_UNITS = 0x111;
+    private static final int NIBBLE_HIGH_BITS = 0x888;
+    private static final long LOCAL_POSITION_MASK = (15L << 38) | (15L << 12) | 15L;
+    private static final long WORLD_Y_MASK = (1L << 12) - 1;
+    private static final long WORLD_Z_MASK = ((1L << 26) - 1) << 12;
+
+    public static long sectionKey(long pos) {
+        return pos & ~LOCAL_POSITION_MASK;
+    }
+
+    public static int localIndex(long pos) {
+        return ((int)pos & 15) << 8 | ((int)(pos >>> 8) & 240) | ((int)(pos >>> 38) & 15);
+    }
+
+    public static int localStep(int direction) {
+        return (((direction & 1) << 1) - 1) << (8 - ((direction & 6) << 1));
+    }
+
+    // Low 12 bits are the destination index; the next two encode section carry + 1.
+    public static int neighbor(int index, int direction) {
+        int shift = 8 - ((direction & 6) << 1);
+        int step = ((direction & 1) << 1) - 1;
+        int carry = (((index >>> shift) & 15) + step) >> 4;
+        int next = index + ((step - (carry << 4)) << shift);
+        return next | ((carry + 1) << CARRY_SHIFT);
+    }
+
+    public static int neighborIndex(int neighbor) {
+        return neighbor & LOCAL_INDEX_MASK;
+    }
+
+    public static int sectionCarry(int neighbor) {
+        return (neighbor >>> CARRY_SHIFT) - 1;
+    }
+
+    // Used only after target validation, when an accepted edge needs an absolute queue position.
+    public static long offset(long pos, int direction) {
+        return switch (direction) {
+            case 0 -> (pos & ~WORLD_Y_MASK) | ((pos - 1) & WORLD_Y_MASK);
+            case 1 -> (pos & ~WORLD_Y_MASK) | ((pos + 1) & WORLD_Y_MASK);
+            case 2 -> (pos & ~WORLD_Z_MASK) | ((pos - (1L << 12)) & WORLD_Z_MASK);
+            case 3 -> (pos & ~WORLD_Z_MASK) | ((pos + (1L << 12)) & WORLD_Z_MASK);
+            case 4 -> pos - (1L << 38);
+            case 5 -> pos + (1L << 38);
+            default -> throw new IllegalArgumentException();
+        };
+    }
+
+    public static boolean isSectionInterior(int index) {
+        // Borrow can mark extra fields, but the aggregate zero/full test is exact.
+        // This is not a direction mask; neighbor() computes the actual crossing.
+        int zeros = (index - NIBBLE_UNITS) & ~index;
+        int full = (~index - NIBBLE_UNITS) & index;
+        return ((zeros | full) & NIBBLE_HIGH_BITS) == 0;
+    }
 
     private YALightMath() {
     }
@@ -80,15 +137,6 @@ public final class YALightMath {
             case 3 -> 1;
             default -> 0;
         };
-    }
-
-    public static boolean isSectionInterior(int x, int y, int z) {
-        int localX = x & 15;
-        int localY = y & 15;
-        int localZ = z & 15;
-        return localX > 0 && localX < 15
-                && localY > 0 && localY < 15
-                && localZ > 0 && localZ < 15;
     }
 
     public static Direction direction(int directionIndex) {
