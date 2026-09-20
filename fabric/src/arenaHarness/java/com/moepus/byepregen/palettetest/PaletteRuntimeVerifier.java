@@ -59,7 +59,8 @@ public final class PaletteRuntimeVerifier {
         var custom = new CustomPalette();
         setData(palette, new PalettedContainer.Data<>(data.configuration(), data.storage(), custom));
         assertAllIds(palette, true);
-        if (custom.reads != 2 * SECTION_SIZE) throw new AssertionError("Custom palette mapping bypassed");
+        // Normal get and both raw-id overloads must consult the custom mapping.
+        if (custom.reads != 3 * SECTION_SIZE) throw new AssertionError("Custom palette mapping bypassed");
         return SECTION_SIZE;
     }
 
@@ -68,7 +69,7 @@ public final class PaletteRuntimeVerifier {
         for (int index = 0; index < SECTION_SIZE; index++) {
             int x = index & 15, y = index >> 8, z = index >> 4 & 15;
             int expected = Block.BLOCK_STATE_REGISTRY.getId(palette.get(x, y, z));
-            if (raw.getRawId(x, y, z) != expected) {
+            if (raw.getRawId(x, y, z) != expected || raw.getRawId(index) != expected) {
                 throw new AssertionError("Raw ID mismatch at " + index + ", custom=" + custom);
             }
         }

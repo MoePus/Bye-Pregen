@@ -117,7 +117,7 @@ final class YASkyLightPropagation {
         if ((fromBlock | toBlock) != 0 && engine.blocks.shapeOccludes(fromBlock, toBlock, YALightMath.direction(direction))) {
             return fromBlock;
         }
-        target.setLight(engine.runCache(), engine.storage, index, nextLevel);
+        target.setBoundLight(engine.storage, index, nextLevel);
         if (nextLevel > 1) {
             engine.enqueueIncrease(YALightMath.offset(pos, direction), nextLevel,
                     YALightMath.withoutOpposite(direction), childFlags);
@@ -210,7 +210,7 @@ final class YASkyLightPropagation {
         }
         int block = engine.blocks.blockAt(target, index);
         if (engine.blocks.isFull(block)) {
-            target.setLight(engine.runCache(), engine.storage, index, 0);
+            target.clearNonzeroLight(engine.storage, index);
             return;
         }
         int remaining = engine.blocks.isSlow(block) ? engine.blocks.slowAttenuatedLevel(level, block) : level - 1;
@@ -219,7 +219,7 @@ final class YASkyLightPropagation {
             engine.enqueueIncrease(toPos, current, YALightMath.oppositeMask(direction), YALightMath.FLAG_RECHECK);
             return;
         }
-        target.setLight(engine.runCache(), engine.storage, index, 0);
+        target.clearNonzeroLight(engine.storage, index);
         int source = engine.getSourceLight(target.owner(), toPos);
         if (source > 0) {
             engine.enqueueIncrease(toPos, source, engine.sources.skySourceDirections(

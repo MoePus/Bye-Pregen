@@ -39,12 +39,15 @@ final class ArenaRoundTripTest {
     private static void verifyRoundTrip(int paletteSize) {
         ArenaBlockStatePalettedContainer arena = new ArenaBlockStatePalettedContainer();
         Random random = new Random(1234);
+        int[] expectedIds = new int[Layout.SECTION_SIZE];
         for (int i = 0; i < Layout.SECTION_SIZE; ++i) {
-            arena.setRawId(i, random.nextInt(paletteSize));
+            expectedIds[i] = random.nextInt(paletteSize);
+            arena.setRawId(i, expectedIds[i]);
         }
         Map<BlockState, Integer> expectedCounts = new HashMap<>();
         for (int i = 0; i < Layout.SECTION_SIZE; ++i) {
-            expectedCounts.merge(Block.stateById(arena.rawIdAt(i)), 1, Integer::sum);
+            assertEquals(expectedIds[i], arena.getRawId(i), "linear raw ID at " + i);
+            expectedCounts.merge(Block.stateById(expectedIds[i]), 1, Integer::sum);
         }
         Map<BlockState, Integer> counts = new HashMap<>();
         arena.count(counts::put);
