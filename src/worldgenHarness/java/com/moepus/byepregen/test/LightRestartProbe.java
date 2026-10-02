@@ -258,6 +258,9 @@ final class LightRestartProbe {
         }
 
         private void inspect() throws IOException {
+            if (this.phase == Phase.PREPARE) {
+                YAOpaqueLightDecreaseProbe.verify(this.level);
+            }
             LightRestartSnapshot snapshot = LightRestartSnapshot.capture(this.level);
             LightRestartVerifier.verifyRuntimeState(this.level, snapshot.samples());
             if (this.phase == Phase.PREPARE) {
