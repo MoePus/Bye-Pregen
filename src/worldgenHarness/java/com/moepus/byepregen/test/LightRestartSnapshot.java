@@ -21,7 +21,7 @@ import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 
 record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<LightRestartSnapshot.ChunkDigest> digests) {
-    private static final String FORMAT_HEADER = "# YA light restart snapshot v2";
+    private static final String FORMAT_HEADER = "# YA light restart snapshot v3";
 
     static LightRestartSnapshot capture(ServerLevel level) {
         LevelLightEngine engine = level.getChunkSource().getLightEngine();
@@ -29,7 +29,8 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
         List<ChunkDigest> digests = new ArrayList<>();
         for (int z = -LightRestartProbe.LOAD_RADIUS; z <= LightRestartProbe.LOAD_RADIUS; ++z) {
             for (int x = -LightRestartProbe.LOAD_RADIUS; x <= LightRestartProbe.LOAD_RADIUS; ++x) {
-                digests.add(digestChunk(engine, new ChunkPos(x, z)));
+                digests.add(digestChunk(engine, new ChunkPos(x, z), LightLayer.SKY));
+                digests.add(digestChunk(engine, new ChunkPos(x, z), LightLayer.BLOCK));
             }
         }
         return new LightRestartSnapshot(List.copyOf(samples), List.copyOf(digests));
@@ -65,11 +66,11 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
         }
     }
 
-    private static ChunkDigest digestChunk(LevelLightEngine engine, ChunkPos chunkPos) {
+    private static ChunkDigest digestChunk(LevelLightEngine engine, ChunkPos chunkPos, LightLayer layer) {
         MessageDigest digest = sha256();
-        LayerLightEventListener sky = engine.getLayerListener(LightLayer.SKY);
+        LayerLightEventListener listener = engine.getLayerListener(layer);
         ClientboundLightUpdatePacketData packet = new ClientboundLightUpdatePacketData(chunkPos, engine, null, null);
-        byte[][] packetSections = packetSections(engine.getLightSectionCount(), packet);
+        byte[][] packetSections = packetSections(engine.getLightSectionCount(), packet, layer);
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         long zero = 0;
         long full = 0;
@@ -80,10 +81,12 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); ++z) {
                 for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); ++x) {
                     pos.set(x, y, z);
-                    int server = sky.getLightValue(pos);
-                    int packetValue = packetSkyLight(engine, packetSections, pos);
+                    int server = listener.getLightValue(pos);
+                    int packetValue = layer == LightLayer.SKY
+                            ? packetSkyLight(engine, packetSections, pos)
+                            : packetBlockLight(engine, packetSections, pos);
                     if (server != packetValue) {
-                        throw new IllegalStateException("Packet mismatch at " + pos
+                        throw new IllegalStateException("Packet " + layer + " mismatch at " + pos
                                 + " server=" + server + " packet=" + packetValue);
                     }
                     digest.update((byte)server);
@@ -93,14 +96,14 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
                 }
             }
         }
-        return new ChunkDigest(chunkPos.x, chunkPos.z, HexFormat.of().formatHex(digest.digest()),
+        return new ChunkDigest(chunkPos.x, chunkPos.z, layer, HexFormat.of().formatHex(digest.digest()),
                 zero, full, intermediate);
     }
 
     static int packetSkyLight(LevelLightEngine engine, BlockPos pos) {
         ClientboundLightUpdatePacketData packet = new ClientboundLightUpdatePacketData(
                 new ChunkPos(pos), engine, null, null);
-        return packetSkyLight(engine, packetSections(engine.getLightSectionCount(), packet), pos);
+        return packetSkyLight(engine, packetSections(engine.getLightSectionCount(), packet, LightLayer.SKY), pos);
     }
 
     private static int packetSkyLight(LevelLightEngine engine, byte[][] sections, BlockPos pos) {
@@ -120,14 +123,21 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
         return 15;
     }
 
-    private static byte[][] packetSections(int count, ClientboundLightUpdatePacketData packet) {
+    private static int packetBlockLight(LevelLightEngine engine, byte[][] sections, BlockPos pos) {
+        int index = (pos.getY() >> 4) - engine.getMinLightSection();
+        byte[] data = index < 0 || index >= sections.length ? null : sections[index];
+        return data == null || data.length == 0 ? 0 : nibble(data, pos);
+    }
+
+    private static byte[][] packetSections(int count, ClientboundLightUpdatePacketData packet, LightLayer layer) {
         byte[][] sections = new byte[count][];
-        BitSet updates = packet.getSkyYMask();
-        BitSet empty = packet.getEmptySkyYMask();
+        BitSet updates = layer == LightLayer.SKY ? packet.getSkyYMask() : packet.getBlockYMask();
+        BitSet empty = layer == LightLayer.SKY ? packet.getEmptySkyYMask() : packet.getEmptyBlockYMask();
+        List<byte[]> data = layer == LightLayer.SKY ? packet.getSkyUpdates() : packet.getBlockUpdates();
         int updateIndex = 0;
         for (int i = 0; i < count; ++i) {
             if (updates.get(i)) {
-                sections[i] = packet.getSkyUpdates().get(updateIndex++);
+                sections[i] = data.get(updateIndex++);
             } else if (empty.get(i)) {
                 sections[i] = new byte[0];
             }
@@ -209,19 +219,19 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
         }
     }
 
-    record ChunkDigest(int x, int z, String hash, long zero, long full, long intermediate) {
+    record ChunkDigest(int x, int z, LightLayer layer, String hash, long zero, long full, long intermediate) {
         private String encode() {
-            return "D," + this.x + "," + this.z + "," + this.hash + ","
+            return "D," + this.x + "," + this.z + "," + this.layer + "," + this.hash + ","
                     + this.zero + "," + this.full + "," + this.intermediate;
         }
 
         private static ChunkDigest parse(String value) {
             String[] parts = value.split(",");
-            if (parts.length != 7) {
+            if (parts.length != 8) {
                 throw new IllegalArgumentException("Invalid light restart digest: " + value);
             }
-            return new ChunkDigest(Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), parts[3],
-                    Long.parseLong(parts[4]), Long.parseLong(parts[5]), Long.parseLong(parts[6]));
+            return new ChunkDigest(Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), LightLayer.valueOf(parts[3]), parts[4],
+                    Long.parseLong(parts[5]), Long.parseLong(parts[6]), Long.parseLong(parts[7]));
         }
     }
 }

@@ -3,10 +3,12 @@ package com.moepus.byepregen.mixin.yalight;
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Local;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import com.moepus.byepregen.yalight.storage.YALightSaveSnapshot;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
-import javax.annotation.Nullable;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.core.SectionPos;
@@ -17,6 +19,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
@@ -31,6 +34,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(ChunkSerializer.class)
 public abstract class ChunkSerializerYALightMixin {
+    @Inject(method = "write", at = @At("HEAD"))
+    private static void byepregen$captureSaveLight(
+            ServerLevel level,
+            ChunkAccess chunk,
+            CallbackInfoReturnable<CompoundTag> cir,
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
+    ) {
+        snapshot.set(YALightSaveSnapshot.capture(chunk));
+    }
+
     @Redirect(
             method = "write",
             at = @At(
@@ -42,9 +55,9 @@ public abstract class ChunkSerializerYALightMixin {
     private static DataLayer byepregen$writeYABlockLight(
             LayerLightEventListener listener,
             SectionPos sectionPos,
-            @Local(argsOnly = true) ChunkAccess chunk
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
     ) {
-        return byepregen$visibleLayer(chunk, LightLayer.BLOCK, sectionPos.y());
+        return snapshot.get().vanillaLayer(LightLayer.BLOCK, sectionPos.y());
     }
 
     @Redirect(
@@ -58,17 +71,23 @@ public abstract class ChunkSerializerYALightMixin {
     private static DataLayer byepregen$writeYASkyLight(
             LayerLightEventListener listener,
             SectionPos sectionPos,
-            @Local(argsOnly = true) ChunkAccess chunk
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
     ) {
-        return byepregen$visibleLayer(chunk, LightLayer.SKY, sectionPos.y());
+        return snapshot.get().vanillaLayer(LightLayer.SKY, sectionPos.y());
     }
 
-    @Unique
-    @Nullable
-    private static DataLayer byepregen$visibleLayer(ChunkAccess chunk, LightLayer layer, int sectionY) {
-        YAChunkLightData data = ((YAChunkLightAccess)chunk).byepregen$yaLightData(layer, false);
-        YANibbleArray nibble = data == null ? null : data.getVisibleSection(sectionY);
-        return nibble == null ? null : nibble.toVanilla();
+    @Redirect(
+            method = "write",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/chunk/ChunkAccess;isLightCorrect()Z"
+            )
+    )
+    private static boolean byepregen$writeYALightCorrect(
+            ChunkAccess chunk,
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
+    ) {
+        return snapshot.get().valid();
     }
 
     @Redirect(
@@ -145,6 +164,12 @@ public abstract class ChunkSerializerYALightMixin {
 
     @Unique
     private static void byepregen$readYALightTags(ServerLevel level, ListTag sections, ChunkAccess chunk) {
+        // isLightOn is a trust flag, not a request to seed a relight with old bytes.
+        // Fresh lighting only adds current sources; stale interior light has no removal seed.
+        if (!chunk.isLightCorrect() || !chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
+            chunk.setLightCorrect(false);
+            return;
+        }
         YAChunkLightAccess access = (YAChunkLightAccess)chunk;
 
         YAChunkLightData blockData = null;

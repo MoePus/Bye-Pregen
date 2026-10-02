@@ -3,6 +3,7 @@ package com.moepus.byepregen.yalight.access;
 import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
+import com.moepus.byepregen.yalight.storage.YALightSaveState;
 
 import net.minecraft.world.level.LightLayer;
 
@@ -26,6 +27,10 @@ public interface YAChunkLightAccess {
         YAChunkLightData data = this.byepregen$skyLightData();
         return data == null ? YAVisibleLightReader.EMPTY_SECTIONS : data.visibleSections();
     }
+
+    YALightSaveState byepregen$yaLightSaveState();
+
+    void byepregen$setYALightSaveState(YALightSaveState state);
 
     void byepregen$setYALightData(LightLayer layer, YAChunkLightData data);
 }

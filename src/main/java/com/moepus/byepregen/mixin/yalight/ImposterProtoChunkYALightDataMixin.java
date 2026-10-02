@@ -4,6 +4,7 @@ import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.storage.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YALightSaveState;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ImposterProtoChunk;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -17,6 +18,16 @@ public abstract class ImposterProtoChunkYALightDataMixin implements YAChunkLight
     @Shadow
     @Final
     private LevelChunk wrapped;
+
+    @Override
+    public YALightSaveState byepregen$yaLightSaveState() {
+        return ((YAChunkLightAccess)this.wrapped).byepregen$yaLightSaveState();
+    }
+
+    @Override
+    public void byepregen$setYALightSaveState(YALightSaveState state) {
+        ((YAChunkLightAccess)this.wrapped).byepregen$setYALightSaveState(state);
+    }
 
     @Override
     public YAChunkLightData byepregen$yaLightData(LightLayer layer, boolean create) {

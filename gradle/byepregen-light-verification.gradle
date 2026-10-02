@@ -65,9 +65,10 @@ def scalableLuxRuntime = configurations.detachedConfiguration(
 scalableLuxRuntime.transitive = false
 
 def lightFuzzRoot = file('run/light-fuzz')
+def lightRestartRoot = file(byepregenProp('byepregenLightRestartRoot', 'run'))
 def lightRestartStandard = [
         id        : 'Standard',
-        root      : file('run/light-restart'),
+        root      : new File(lightRestartRoot, 'light-restart'),
         gcFree    : 'false',
         prepareRun: 'runLightRestartPrepare',
         verifyRun : 'runLightRestartVerify',
@@ -75,7 +76,7 @@ def lightRestartStandard = [
 ]
 def lightRestartRaw = [
         id        : 'Raw',
-        root      : file('run/light-restart-raw'),
+        root      : new File(lightRestartRoot, 'light-restart-raw'),
         gcFree    : 'true',
         prepareRun: 'runLightRestartRawPrepare',
         verifyRun : 'runLightRestartRawVerify',
@@ -311,11 +312,20 @@ def registerLightRestartDiskTask = { Map options ->
 
 lightRestartConfigs.each { config ->
     String preparedDisk = "verifyLightRestart${config.id}PreparedDisk"
+    String invalidData = "prepareLightRestart${config.id}InvalidData"
     String firstDisk = "verifyLightRestart${config.id}FirstDisk"
     String secondDisk = "verifyLightRestart${config.id}SecondDisk"
+    tasks.register(invalidData, JavaExec) {
+        group = 'verification'
+        description = 'Injects stale light only into the disposable invalid restart fixture.'
+        dependsOn(preparedDisk)
+        classpath = sourceSets.worldgenHarness.runtimeClasspath
+        mainClass.set('com.moepus.byepregen.test.LightRestartInvalidDataFixture')
+        args config.world.absolutePath
+    }
     [
             [run: config.prepareRun, prepare: true, prerequisite: null, disk: preparedDisk, lightOn: false],
-            [run: config.verifyRun, prepare: false, prerequisite: preparedDisk, disk: firstDisk, lightOn: true],
+            [run: config.verifyRun, prepare: false, prerequisite: invalidData, disk: firstDisk, lightOn: true],
             [run: config.secondRun, prepare: false, prerequisite: firstDisk, disk: secondDisk, lightOn: true],
     ].each { stage ->
         configureLightRestartServerTask([
@@ -352,7 +362,7 @@ tasks.register('testYALightC2MERestartRaw') {
 
 tasks.register('testYALightC2MERestart') {
     group = 'verification'
-    description = 'Runs the YA+C2ME standard/raw skylight restart matrix.'
+    description = 'Runs the YA+C2ME standard/raw block and sky restart/recovery matrix.'
     dependsOn('testYALightC2MERestartStandard', 'testYALightC2MERestartRaw')
 }
 

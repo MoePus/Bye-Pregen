@@ -31,6 +31,7 @@ final class LightDiffResult {
     int storageNoiseLayers;
     int invalidLayers;
     int mismatchedLayers;
+    int toleratedBottomSkyLayers;
     private String firstTerrainDifference;
 
     LightDiffResult(LightDiffOptions options) {
@@ -99,6 +100,9 @@ final class LightDiffResult {
                 + this.storageNoiseLayers + " storage-noise, "
                 + this.invalidLayers + " invalid, "
                 + this.mismatchedLayers + " mismatched");
+        System.out.println("  tolerance: " + this.toleratedBottomSkyLayers
+                + " layer(s) differ only by at most " + LightLayerComparator.BOTTOM_SKY_TOLERANCE
+                + " SkyLight levels at minimum block Y");
         if (this.firstTerrainDifference != null) {
             System.out.println("  terrain:  " + this.firstTerrainDifference);
         }

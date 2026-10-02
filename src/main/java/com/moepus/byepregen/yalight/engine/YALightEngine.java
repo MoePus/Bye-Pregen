@@ -49,15 +49,28 @@ public final class YALightEngine {
     }
 
     public int runLightUpdates() {
-        this.prepareSourceChunks();
-        int ret = 0;
-        if (this.blockEngine != null) {
-            ret += this.blockEngine.runLightUpdates();
+        boolean success = false;
+        try {
+            this.prepareSourceChunks();
+            int work = 0;
+            if (this.blockEngine != null) {
+                work += this.blockEngine.runLightUpdates();
+            }
+            if (this.skyEngine != null) {
+                work += this.skyEngine.runLightUpdates();
+            }
+            success = true;
+            return work;
+        } finally {
+            // Halo chunks can be dirtied by either layer without owning an explicit task.
+            // Keep their save state pending until BOTH layers finish publishing.
+            if (this.blockEngine != null) {
+                this.blockEngine.storage().finishPublications(success);
+            }
+            if (this.skyEngine != null) {
+                this.skyEngine.storage().finishPublications(success);
+            }
         }
-        if (this.skyEngine != null) {
-            ret += this.skyEngine.runLightUpdates();
-        }
-        return ret;
     }
 
     private void prepareSourceChunks() {

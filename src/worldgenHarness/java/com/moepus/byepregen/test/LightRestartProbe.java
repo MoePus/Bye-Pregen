@@ -188,6 +188,9 @@ final class LightRestartProbe {
             }
             if (this.phase == Phase.PREPARE) {
                 this.buildRoof();
+                // Exercise local sources and light entering the invalid chunk from a saved neighbor.
+                this.level.setBlock(new BlockPos(24, 88, 8), Blocks.SEA_LANTERN.defaultBlockState(), Block.UPDATE_CLIENTS);
+                this.level.setBlock(new BlockPos(15, 72, 8), Blocks.SEA_LANTERN.defaultBlockState(), Block.UPDATE_CLIENTS);
             }
             this.lightBarrier = this.createLightBarrier();
             this.stage = Stage.WAIT_LIGHT;

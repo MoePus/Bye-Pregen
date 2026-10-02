@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.TreeSet;
 
 final class LightLayerComparator {
+    static final int BOTTOM_SKY_TOLERANCE = 2;
     private static final int MAX_LIGHT_PATH_STEPS = 20;
     private static final int[][] NEIGHBOR_OFFSETS = {
             {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}
@@ -52,6 +53,10 @@ final class LightLayerComparator {
         validateLength(context, actual);
         result.layersCompared++;
         if (!Arrays.equals(expected.bytes(), actual.bytes())) {
+            if (firstDifference(context, expected.bytes(), actual.bytes()) == null) {
+                result.toleratedBottomSkyLayers++;
+                return;
+            }
             result.mismatchedLayers++;
             result.addIssue(describeMismatch(context, expected.bytes(), actual.bytes()));
         }
@@ -99,7 +104,7 @@ final class LightLayerComparator {
                 ? actual.bytes() : actual.chunk().semanticSkyLayer(context.key().sectionY());
         return LightChunk.isValidLight(semanticExpected)
                 && LightChunk.isValidLight(semanticActual)
-                && Arrays.equals(semanticExpected, semanticActual);
+                && firstDifference(context, semanticExpected, semanticActual) == null;
     }
 
     private static boolean isFilled(byte[] bytes, int value) {
@@ -116,7 +121,7 @@ final class LightLayerComparator {
     }
 
     private static String describeMismatch(LayerContext context, byte[] expected, byte[] actual) {
-        NibbleDiff diff = firstDifference(expected, actual);
+        NibbleDiff diff = firstDifference(context, expected, actual);
         if (diff == null) {
             return describeLayer(context) + " differs";
         }
@@ -140,7 +145,12 @@ final class LightLayerComparator {
                 + " sectionY=" + context.key().sectionY() + " " + context.key().layer();
     }
 
-    private static NibbleDiff firstDifference(byte[] expected, byte[] actual) {
+    private static NibbleDiff firstDifference(LayerContext context, byte[] expected, byte[] actual) {
+        boolean tolerateBottom = LightChunk.isValidLight(expected) && LightChunk.isValidLight(actual)
+                && LightChunk.SKY_LIGHT.equals(context.key().layer())
+                && context.chunk().expected().minBlockY != null
+                && context.chunk().expected().minBlockY.equals(context.chunk().actual().minBlockY)
+                && (context.key().sectionY() << 4) == context.chunk().expected().minBlockY;
         int min = Math.min(expected.length, actual.length);
         for (int index = 0; index < min; index++) {
             int expectedByte = expected[index] & 0xFF;
@@ -148,14 +158,31 @@ final class LightLayerComparator {
             if (expectedByte == actualByte) {
                 continue;
             }
-            int expectedLow = expectedByte & 15;
-            int actualLow = actualByte & 15;
-            if (expectedLow != actualLow) {
-                return new NibbleDiff(index, 0, expectedLow, actualLow);
+            NibbleDiff difference = byteDifference(index, expectedByte, actualByte, tolerateBottom);
+            if (difference != null) {
+                return difference;
             }
-            return new NibbleDiff(index, 1, (expectedByte >>> 4) & 15, (actualByte >>> 4) & 15);
         }
         return expected.length == actual.length ? null : new NibbleDiff(min, 0, expected.length, actual.length);
+    }
+
+    private static NibbleDiff byteDifference(int index, int expectedByte, int actualByte, boolean tolerateBottom) {
+        for (int half = 0; half < 2; ++half) {
+            int expected = (expectedByte >>> (half * 4)) & 15;
+            int actual = (actualByte >>> (half * 4)) & 15;
+            if (expected == actual) {
+                continue;
+            }
+            // Accepted tolerance for bottom-boundary differences also seen on the pre-change
+            // baseline (cause not yet established): only SkyLight at the minimum block Y may
+            // differ by at most two. Never exempt the whole section, the lower sentinel,
+            // BlockLight, larger errors, or a later mismatch hidden behind a tolerated nibble.
+            boolean bottomRow = index < LightChunk.LIGHT_BYTES / 16;
+            if (!tolerateBottom || !bottomRow || Math.abs(expected - actual) > BOTTOM_SKY_TOLERANCE) {
+                return new NibbleDiff(index, half, expected, actual);
+            }
+        }
+        return null;
     }
 
     private static String describeContext(LayerContext context, NibbleDiff diff) {

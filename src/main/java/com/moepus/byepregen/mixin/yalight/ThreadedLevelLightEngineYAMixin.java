@@ -4,6 +4,8 @@ import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.mixin.accessor.yalight.ChunkMapLightAccessor;
 import com.moepus.byepregen.yalight.access.YALightEngineHolder;
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.storage.YALightSaveState;
 import com.moepus.byepregen.yalight.engine.YALightEngine;
 import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
 import com.moepus.byepregen.yalight.scheduler.YAFreshLightRequest;
@@ -67,7 +69,9 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Unique
     private final YAThreadedLightScheduler byepregen$lightScheduler = new YAThreadedLightScheduler(
             this::byepregen$acquireTaskTicket,
-            this::byepregen$releaseTaskTicket
+            this::byepregen$releaseTaskTicket,
+            this::byepregen$resolveSaveState,
+            () -> this.byepregen$yaEngine().runLightUpdates()
     );
 
     @Unique
@@ -102,6 +106,13 @@ public abstract class ThreadedLevelLightEngineYAMixin {
                 this.byepregen$ticketReferences.put(chunkKey, references - 1);
             }
         });
+    }
+
+    @Unique
+    private YALightSaveState byepregen$resolveSaveState(long chunkKey) {
+        ChunkAccess chunk = ((YAImmediateChunkAccess)this.byepregen$level().getChunkSource())
+                .byepregen$getAnyChunkNow(ChunkPos.getX(chunkKey), ChunkPos.getZ(chunkKey));
+        return chunk == null ? null : ((YAChunkLightAccess)chunk).byepregen$yaLightSaveState();
     }
 
     @Unique
@@ -180,7 +191,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
     @Unique
     private void byepregen$drainUntilIdle() {
         while (this.byepregen$hasScheduledWork()) {
-            this.byepregen$lightScheduler.drain(this.byepregen$yaEngine(), YAThreadedLightScheduler.BATCH_SIZE);
+            this.byepregen$lightScheduler.drain(YAThreadedLightScheduler.BATCH_SIZE);
         }
     }
 
@@ -231,11 +242,12 @@ public abstract class ThreadedLevelLightEngineYAMixin {
 
     @Unique
     private void byepregen$addChunkLightPass(
-            ChunkPos chunkPos,
+            ChunkAccess chunk,
             Runnable prepare,
             Runnable complete
     ) {
-        this.byepregen$lightScheduler.enqueueLightChunk(chunkPos.toLong(), prepare, complete);
+        this.byepregen$lightScheduler.enqueueLightChunk(chunk.getPos().toLong(), prepare, complete,
+                ((YAChunkLightAccess)chunk).byepregen$yaLightSaveState());
         if (byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD) {
             this.byepregen$scheduleDrainWithKnownWork();
         }
@@ -312,7 +324,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             }
         }, () -> "YA initializeLight " + chunkPos + " " + lightEnabled);
         this.byepregen$addChunkLightPass(
-                chunkPos,
+                chunk,
                 prepare,
                 () -> future.complete(chunk)
         );
@@ -352,7 +364,20 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             }
             future.complete(chunk);
         };
-        this.byepregen$addChunkLightPass(chunkPos, prepare, complete);
+        if (freshRequest != null && chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
+            // Saved neighbors may have skipped this owner while it was not edge-ready.
+            // Once its own sources are rebuilt, import their light before declaring success.
+            Runnable reconcile = () -> {
+                if (freshRequest.succeeded() && engine.isCurrentOwner(freshRequest)) {
+                    engine.setEdgeCheckReady(chunk, true);
+                    engine.checkChunkEdges(chunk);
+                }
+            };
+            this.byepregen$addChunkLightPass(chunk, prepare,
+                    () -> this.byepregen$addChunkLightPass(chunk, reconcile, complete));
+        } else {
+            this.byepregen$addChunkLightPass(chunk, prepare, complete);
+        }
         return future;
     }
 

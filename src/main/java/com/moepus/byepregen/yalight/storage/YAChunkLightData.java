@@ -19,8 +19,15 @@ public final class YAChunkLightData {
     private volatile YANibbleArray[] visible;
     private volatile boolean lightEnabled;
     private boolean edgeCheckReady;
+    private final YALightSaveState saveState;
+    private boolean pendingPublication;
 
     public YAChunkLightData(ChunkPos pos, LevelHeightAccessor level) {
+        this(pos, level, new YALightSaveState());
+    }
+
+    public YAChunkLightData(ChunkPos pos, LevelHeightAccessor level, YALightSaveState saveState) {
+        this.saveState = saveState;
         this.pos = pos;
         this.minLightSection = YALightStorage.minLightSection(level);
         this.updating = YALightStorage.create(level);
@@ -35,6 +42,13 @@ public final class YAChunkLightData {
 
     public void setLightEnabled(boolean lightEnabled) {
         this.lightEnabled = lightEnabled;
+    }
+
+    public void finishPublication(boolean success) {
+        if (this.pendingPublication) {
+            this.pendingPublication = false;
+            this.saveState.finish(success);
+        }
     }
 
     public boolean edgeCheckReady() {
@@ -154,6 +168,10 @@ public final class YAChunkLightData {
     }
 
     public boolean markDirty(int index) {
+        if (!this.pendingPublication) {
+            this.saveState.begin();
+            this.pendingPublication = true;
+        }
         if (!this.dirtySections[index]) {
             this.dirtySections[index] = true;
             if (this.dirtyCount >= this.dirtyIndices.length) {
@@ -180,13 +198,9 @@ public final class YAChunkLightData {
         if (this.dirtyCount != 0) {
             /*
              * Publish every section and the chunk-level visible array before exposing any callback.
-             * This closes the callback-before-visible window in which a callback-triggered save could
-             * observe the previous array after the individual nibbles had already been published.
-             * It intentionally does not make serialization a transaction: an asynchronous save worker
-             * may still read a live owner, halo neighbours still have no ticket and may lose callbacks
-             * after target-status changes, a final publication may occur after the last save decision,
-             * owner replacement has no generation check, and successful serialization is not the same
-             * as confirmed I/O completion.
+             * The shared save state remains pending until the top-level pass finishes BOTH layers,
+             * including writes to halo chunks. Save capture validates its short read interval and
+             * retains immutable COW bytes; this is not a world-wide or disk-I/O transaction.
              */
             this.visible = this.updating.clone();
         }
@@ -201,6 +215,7 @@ public final class YAChunkLightData {
     }
 
     public void clear() {
+        this.saveState.begin();
         for (YANibbleArray nibble : this.updating) {
             if (nibble != null) {
                 nibble.retirePublished();
@@ -213,6 +228,8 @@ public final class YAChunkLightData {
         this.queuedDirty = false;
         this.lightEnabled = false;
         this.edgeCheckReady = false;
+        this.finishPublication(true);
+        this.saveState.finish(true);
     }
 
     private void replacePublished(int index, YANibbleArray nibble) {

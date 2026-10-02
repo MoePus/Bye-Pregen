@@ -4,6 +4,7 @@ import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.storage.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YALightSaveState;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.LightLayer;
@@ -30,6 +31,19 @@ public abstract class ChunkAccessYALightDataMixin implements YAChunkLightAccess 
     @Unique
     private volatile YAChunkLightData byepregen$skyLightData;
 
+    @Unique
+    private YALightSaveState byepregen$lightSaveState = new YALightSaveState();
+
+    @Override
+    public YALightSaveState byepregen$yaLightSaveState() {
+        return this.byepregen$lightSaveState;
+    }
+
+    @Override
+    public void byepregen$setYALightSaveState(YALightSaveState state) {
+        this.byepregen$lightSaveState = state;
+    }
+
     @Override
     public YAChunkLightData byepregen$yaLightData(LightLayer layer, boolean create) {
         if (layer == LightLayer.BLOCK) {
@@ -38,7 +52,7 @@ public abstract class ChunkAccessYALightDataMixin implements YAChunkLightAccess 
                 synchronized (this) {
                     data = this.byepregen$blockLightData;
                     if (data == null) {
-                        data = new YAChunkLightData(this.chunkPos, this.levelHeightAccessor);
+                        data = new YAChunkLightData(this.chunkPos, this.levelHeightAccessor, this.byepregen$lightSaveState);
                         this.byepregen$blockLightData = data;
                     }
                 }
@@ -50,7 +64,7 @@ public abstract class ChunkAccessYALightDataMixin implements YAChunkLightAccess 
             synchronized (this) {
                 data = this.byepregen$skyLightData;
                 if (data == null) {
-                    data = new YAChunkLightData(this.chunkPos, this.levelHeightAccessor);
+                    data = new YAChunkLightData(this.chunkPos, this.levelHeightAccessor, this.byepregen$lightSaveState);
                     this.byepregen$skyLightData = data;
                 }
             }

@@ -21,11 +21,14 @@ final class LightChunk {
     private final Map<Integer, SectionBlocks> blocks = new HashMap<>();
     boolean lightCorrect;
     String status;
+    Integer minBlockY;
 
     static LightChunk from(CompoundTag chunkTag) {
         LightChunk chunk = new LightChunk();
         chunk.lightCorrect = chunkTag.getBoolean("isLightOn");
         chunk.status = chunkTag.getString("Status");
+        // Vanilla yPos is the dimension's minimum section, not the lowest stored light section.
+        chunk.minBlockY = chunkTag.contains("yPos", 3) ? chunkTag.getInt("yPos") << 4 : null;
         ListTag sections = chunkTag.getList("sections", 10);
         for (int index = 0; index < sections.size(); index++) {
             chunk.readSection(sections.getCompound(index));

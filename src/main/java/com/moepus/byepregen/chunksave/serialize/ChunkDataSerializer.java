@@ -4,6 +4,8 @@ package com.moepus.byepregen.chunksave.serialize;
 
 import com.moepus.byepregen.integration.tectonic.TectonicCompat;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
+import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.storage.YALightSaveSnapshot;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -27,6 +29,7 @@ public final class ChunkDataSerializer {
     }
 
     public static void write(ServerLevel level, ChunkAccess chunk, NbtWriter writer) {
+        YALightSaveSnapshot light = chunk instanceof YAChunkLightAccess ? YALightSaveSnapshot.capture(chunk) : null;
         ChunkSectionSerializationContext sectionContext = new ChunkSectionSerializationContext();
         ChunkPos pos = chunk.getPos();
         writer.putInt(DATA_VERSION, SharedConstants.getCurrentVersion().getDataVersion().getVersion());
@@ -37,8 +40,8 @@ public final class ChunkDataSerializer {
         writer.putLong(INHABITED_TIME, chunk.getInhabitedTime());
         writer.putString(STATUS, statusName(chunk.getPersistedStatus()));
         ChunkInlineDataWriter.write(writer, chunk);
-        ChunkSectionDataWriter.write(writer, level, chunk, pos, sectionContext);
-        if (chunk.isLightCorrect()) {
+        ChunkSectionDataWriter.write(writer, level, chunk, pos, sectionContext, light);
+        if (light == null ? chunk.isLightCorrect() : light.valid()) {
             writer.putBoolean(IS_LIGHT_ON, true);
         }
         ChunkBlockEntityDataWriter.write(writer, level, chunk);
