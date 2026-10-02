@@ -1,11 +1,13 @@
 package com.moepus.byepregen.yalight.scheduler;
 
-import com.moepus.byepregen.yalight.engine.YALightEngine;
-
+import com.moepus.byepregen.yalight.storage.YALightSaveState;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.level.ThreadedLevelLightEngine;
+
+import java.util.function.IntSupplier;
 import java.util.function.LongConsumer;
+import java.util.function.LongFunction;
 
 public final class YAThreadedLightScheduler {
     // Fixed so one drain fits YASourceHalo's preallocated 8 * 3 * 3 entries.
@@ -18,12 +20,17 @@ public final class YAThreadedLightScheduler {
             new Long2ObjectLinkedOpenHashMap<>(INITIAL_TASK_CAPACITY);
     private final LongConsumer taskCreated;
     private final LongConsumer taskCompleted;
+    private final LongFunction<YALightSaveState> saveStateResolver;
+    private final IntSupplier runLightUpdates;
     private ChunkTask pooledTask;
     private int pooledTaskCount;
 
-    public YAThreadedLightScheduler(LongConsumer taskCreated, LongConsumer taskCompleted) {
+    public YAThreadedLightScheduler(LongConsumer taskCreated, LongConsumer taskCompleted,
+                                   LongFunction<YALightSaveState> saveStateResolver, IntSupplier runLightUpdates) {
         this.taskCreated = taskCreated;
         this.taskCompleted = taskCompleted;
+        this.saveStateResolver = saveStateResolver;
+        this.runLightUpdates = runLightUpdates;
     }
 
     public synchronized void enqueue(
@@ -34,6 +41,9 @@ public final class YAThreadedLightScheduler {
     ) {
         ChunkTask task = this.task(chunkKey, ticketed);
         if (type == ThreadedLevelLightEngine.TaskType.PRE_UPDATE) {
+            if (task.saveState == null) {
+                task.beginLightWork(this.saveStateResolver.apply(chunkKey));
+            }
             task.preOps.add(runnable);
         } else {
             task.postOps.add(runnable);
@@ -43,9 +53,11 @@ public final class YAThreadedLightScheduler {
     public synchronized void enqueueLightChunk(
             long chunkKey,
             Runnable preOp,
-            Runnable postOp
+            Runnable postOp,
+            YALightSaveState saveState
     ) {
         ChunkTask task = this.task(chunkKey, false);
+        task.beginLightWork(saveState);
         task.lightPreOps.add(preOp);
         task.postOps.add(postOp);
     }
@@ -54,23 +66,34 @@ public final class YAThreadedLightScheduler {
         return !this.tasks.isEmpty();
     }
 
-    public int drain(YALightEngine engine, int maxTasks) {
+    public int drain(int maxTasks) {
         ChunkTask firstTask = this.pollBatch(Math.max(1, maxTasks));
         if (firstTask == null) {
-            return engine.runLightUpdates();
+            return this.runLightUpdates.getAsInt();
         }
         try {
             for (ChunkTask task = firstTask; task != null; task = task.nextPooled) {
                 task.runPreOps();
             }
-            int work = engine.runLightUpdates();
+            int work = this.runLightUpdates.getAsInt();
+            this.finishBatchLightWork(firstTask, true);
             this.releaseBatchTickets(firstTask);
             for (ChunkTask task = firstTask; task != null; task = task.nextPooled) {
                 task.runPostOps();
             }
             return work;
         } finally {
+            this.finishBatchLightWork(firstTask, false);
             this.recycleBatch(firstTask);
+        }
+    }
+
+    private void finishBatchLightWork(ChunkTask first, boolean success) {
+        for (ChunkTask task = first; task != null; task = task.nextPooled) {
+            if (task.saveState != null) {
+                task.saveState.finish(success);
+                task.saveState = null;
+            }
         }
     }
 
@@ -159,7 +182,15 @@ public final class YAThreadedLightScheduler {
                 new ObjectArrayList<>(INITIAL_OPERATION_CAPACITY);
         private long chunkKey;
         private boolean ticketed;
+        private YALightSaveState saveState;
         private ChunkTask nextPooled;
+
+        private void beginLightWork(YALightSaveState state) {
+            if (this.saveState == null && state != null) {
+                state.begin();
+                this.saveState = state;
+            }
+        }
 
         private void runPreOps() {
             for (Runnable op : this.lightPreOps) {

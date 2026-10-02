@@ -5,8 +5,7 @@ import com.moepus.byepregen.palette.arena.codec.SectionWriter;
 import com.moepus.byepregen.serialization.nbt.BlockStateNbtCache;
 import com.moepus.byepregen.serialization.nbt.BiomeNbtCache;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
-import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
-import com.moepus.byepregen.yalight.storage.YAChunkLightData;
+import com.moepus.byepregen.yalight.storage.YALightSaveSnapshot;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -44,14 +43,14 @@ final class ChunkSectionDataWriter {
             ServerLevel level,
             ChunkAccess chunk,
             ChunkPos pos,
-            ChunkSectionSerializationContext context
+            ChunkSectionSerializationContext context,
+            YALightSaveSnapshot light
     ) {
         LevelChunkSection[] sections = chunk.getSections();
         LevelLightEngine lightEngine = level.getChunkSource().getLightEngine();
         Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
-        YAChunkLightAccess yaLight = chunk instanceof YAChunkLightAccess access ? access : null;
-        LayerLightEventListener blockListener = yaLight == null ? lightEngine.getLayerListener(LightLayer.BLOCK) : null;
-        LayerLightEventListener skyListener = yaLight == null ? lightEngine.getLayerListener(LightLayer.SKY) : null;
+        LayerLightEventListener blockListener = light == null ? lightEngine.getLayerListener(LightLayer.BLOCK) : null;
+        LayerLightEventListener skyListener = light == null ? lightEngine.getLayerListener(LightLayer.SKY) : null;
         long listStart = writer.startList(SECTIONS, Tag.TAG_COMPOUND);
         int count = 0;
         for (int y = lightEngine.getMinLightSection(); y < lightEngine.getMaxLightSection(); ++y) {
@@ -61,15 +60,13 @@ final class ChunkSectionDataWriter {
             byte[] skyLight;
             boolean blockFull;
             boolean skyFull;
-            if (yaLight != null) {
-                YANibbleArray block = yaLight(yaLight, LightLayer.BLOCK, y);
-                YANibbleArray sky = yaLight(yaLight, LightLayer.SKY, y);
-                int blockKind = saveKind(block);
-                int skyKind = saveKind(sky);
-                blockFull = blockKind == YANibbleArray.SAVE_FULL;
-                skyFull = skyKind == YANibbleArray.SAVE_FULL;
-                blockLight = blockKind == YANibbleArray.SAVE_DATA ? block.visibleDataForSave() : null;
-                skyLight = skyKind == YANibbleArray.SAVE_DATA ? sky.visibleDataForSave() : null;
+            if (light != null) {
+                YANibbleArray.SaveState block = light.section(LightLayer.BLOCK, y);
+                YANibbleArray.SaveState sky = light.section(LightLayer.SKY, y);
+                blockFull = block != null && block.kind() == YANibbleArray.SAVE_FULL;
+                skyFull = sky != null && sky.kind() == YANibbleArray.SAVE_FULL;
+                blockLight = block == null ? null : block.data();
+                skyLight = sky == null ? null : sky.data();
             } else {
                 SectionPos sectionPos = SectionPos.of(pos, y);
                 DataLayer block = blockListener.getDataLayerData(sectionPos);
@@ -188,15 +185,6 @@ final class ChunkSectionDataWriter {
 
     private static byte[] lightBytes(DataLayer layer, boolean full) {
         return layer == null || full || layer.isEmpty() ? null : layer.getData();
-    }
-
-    private static int saveKind(YANibbleArray nibble) {
-        return nibble == null ? YANibbleArray.SAVE_EMPTY : nibble.visibleSaveKind();
-    }
-
-    private static YANibbleArray yaLight(YAChunkLightAccess access, LightLayer layer, int sectionY) {
-        YAChunkLightData data = access.byepregen$yaLightData(layer, false);
-        return data == null ? null : data.getVisibleSection(sectionY);
     }
 
 }

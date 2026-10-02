@@ -51,10 +51,11 @@ lightGoldenConfig.relightYAJfr = file("${lightGoldenConfig.rootDir}/jfr/${byepre
         "byepregen-light-golden-ya-relight-radius${byepregenSanitizeRunName(lightGoldenConfig.radius)}.jfr"
 )}")
 def lightFuzzRoot = file('run/light-fuzz')
+def lightRestartRoot = file(byepregenProp('byepregenLightRestartRoot', 'run'))
 def lightRestartStandard = [
         id        : 'Standard',
         suite     : 'FastChunkGen',
-        root      : file('run/light-restart'),
+        root      : new File(lightRestartRoot, 'light-restart'),
         gcFree    : 'false',
         prepareRun: 'runLightRestartPrepare',
         verifyRun : 'runLightRestartVerify',
@@ -65,7 +66,7 @@ def lightRestartStandard = [
 def lightRestartRaw = [
         id        : 'Raw',
         suite     : 'FastChunkGen',
-        root      : file('run/light-restart-raw'),
+        root      : new File(lightRestartRoot, 'light-restart-raw'),
         gcFree    : 'true',
         prepareRun: 'runLightRestartRawPrepare',
         verifyRun : 'runLightRestartRawVerify',
@@ -76,7 +77,7 @@ def lightRestartRaw = [
 def lightRestartC2mefStandard = [
         id        : 'C2mefStandard',
         suite     : 'C2MEF',
-        root      : file('run/light-restart-c2mef'),
+        root      : new File(lightRestartRoot, 'light-restart-c2mef'),
         gcFree    : 'false',
         prepareRun: 'runLightRestartC2mefPrepare',
         verifyRun : 'runLightRestartC2mefVerify',
@@ -87,7 +88,7 @@ def lightRestartC2mefStandard = [
 def lightRestartC2mefRaw = [
         id        : 'C2mefRaw',
         suite     : 'C2MEF',
-        root      : file('run/light-restart-c2mef-raw'),
+        root      : new File(lightRestartRoot, 'light-restart-c2mef-raw'),
         gcFree    : 'true',
         prepareGcFree: 'false',
         prepareRun: 'runLightRestartC2mefRawPrepare',
@@ -348,11 +349,20 @@ def registerLightRestartDiskTask = { Map options ->
 
 lightRestartConfigs.each { config ->
     String preparedDisk = "verifyLightRestart${config.id}PreparedDisk"
+    String invalidData = "prepareLightRestart${config.id}InvalidData"
     String firstDisk = "verifyLightRestart${config.id}FirstDisk"
     String secondDisk = "verifyLightRestart${config.id}SecondDisk"
+    tasks.register(invalidData, JavaExec) {
+        group = 'verification'
+        description = 'Injects stale light only into the disposable invalid restart fixture.'
+        dependsOn(preparedDisk)
+        classpath = sourceSets.worldgenHarness.runtimeClasspath
+        mainClass.set('com.moepus.byepregen.test.LightRestartInvalidDataFixture')
+        args config.world.absolutePath
+    }
     [
             [run: config.prepareRun, prepare: true, prerequisite: null, disk: preparedDisk, lightOn: false],
-            [run: config.verifyRun, prepare: false, prerequisite: preparedDisk, disk: firstDisk, lightOn: true],
+            [run: config.verifyRun, prepare: false, prerequisite: invalidData, disk: firstDisk, lightOn: true],
             [run: config.secondRun, prepare: false, prerequisite: firstDisk, disk: secondDisk, lightOn: true],
     ].each { stage ->
         configureLightRestartServerTask([
@@ -395,7 +405,7 @@ tasks.register('testYALightFastChunkGenRestartRaw') {
 
 tasks.register('testYALightFastChunkGenRestart') {
     group = 'verification'
-    description = 'Runs the YA+FastChunkGen standard/raw skylight restart matrix.'
+    description = 'Runs the YA+FastChunkGen standard/raw block and sky restart/recovery matrix.'
     dependsOn('testYALightFastChunkGenRestartStandard', 'testYALightFastChunkGenRestartRaw')
 }
 
@@ -413,7 +423,7 @@ tasks.register('testYALightC2mefRestartRaw') {
 
 tasks.register('testYALightC2mefRestart') {
     group = 'verification'
-    description = 'Runs the YA+C2MEF standard/raw skylight restart matrix.'
+    description = 'Runs the YA+C2MEF standard/raw block and sky restart/recovery matrix.'
     dependsOn('testYALightC2mefRestartStandard', 'testYALightC2mefRestartRaw')
 }
 

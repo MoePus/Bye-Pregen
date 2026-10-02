@@ -221,6 +221,31 @@ public final class YANibbleArray {
         return this.visible;
     }
 
+    public SaveState captureSaveState() {
+        // The chunk publication revision is checked around the complete two-layer capture.
+        // COW keeps the captured byte reference immutable after a later publication.
+        int state = this.visibleState;
+        return switch (state) {
+            case STATE_NULL -> null;
+            case STATE_ZERO -> SaveState.ZERO;
+            case STATE_FULL -> SaveState.FULL;
+            default -> new SaveState(SAVE_DATA, this.visible);
+        };
+    }
+
+    public record SaveState(int kind, byte[] data) {
+        private static final SaveState ZERO = new SaveState(SAVE_EMPTY, null);
+        private static final SaveState FULL = new SaveState(SAVE_FULL, null);
+
+        public DataLayer toVanilla() {
+            return switch (this.kind) {
+                case SAVE_EMPTY -> new VisibleDataLayer(STATE_ZERO, 0);
+                case SAVE_FULL -> new VisibleDataLayer(STATE_FULL, 15);
+                default -> new VisibleDataLayer(STATE_INIT, this.data);
+            };
+        }
+    }
+
     public void retirePublished() {
         // This object may still be reachable through an older visible section snapshot.
         // Keep visibleState/visible immutable for racing readers; only drop writer-private state.

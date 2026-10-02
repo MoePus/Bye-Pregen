@@ -26,6 +26,7 @@ public abstract class LevelChunkYALightDataMixin {
     ) {
         YAChunkLightAccess source = (YAChunkLightAccess)chunk;
         YAChunkLightAccess target = (YAChunkLightAccess)this;
+        target.byepregen$setYALightSaveState(source.byepregen$yaLightSaveState());
         target.byepregen$setYALightData(LightLayer.BLOCK, source.byepregen$yaLightData(LightLayer.BLOCK, false));
         target.byepregen$setYALightData(LightLayer.SKY, source.byepregen$yaLightData(LightLayer.SKY, false));
     }
