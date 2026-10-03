@@ -126,6 +126,9 @@ final class YABlockLightPropagation {
         int block = blocks.blockAt(target, index);
         if (blocks.isFull(block)) {
             target.clearNonzeroLight(engine.storage, index);
+            // The block may have become opaque before its own checkBlock runs. Preserve the
+            // old level as a removal seed; that later check will only see the cleared zero.
+            engine.enqueueDecrease(YALightMath.offset(pos, direction), current, YALightMath.withoutOpposite(direction));
             return;
         }
         int remaining = blocks.isSlow(block) ? blocks.slowAttenuatedLevel(level, block) : level - 1;

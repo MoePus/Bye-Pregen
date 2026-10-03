@@ -179,6 +179,9 @@ final class LightRestartProbe {
             }
             if (this.phase == Phase.PREPARE) {
                 this.buildRoof();
+                // Exercise local sources and light entering the invalid chunk from a saved neighbor.
+                this.level.setBlock(new BlockPos(24, 88, 8), Blocks.SEA_LANTERN.defaultBlockState(), Block.UPDATE_CLIENTS);
+                this.level.setBlock(new BlockPos(15, 72, 8), Blocks.SEA_LANTERN.defaultBlockState(), Block.UPDATE_CLIENTS);
             }
             this.lightBarrier = this.createLightBarrier();
             this.stage = Stage.WAIT_LIGHT;
@@ -246,6 +249,9 @@ final class LightRestartProbe {
         }
 
         private void inspect() throws IOException {
+            if (this.phase == Phase.PREPARE) {
+                YAOpaqueLightDecreaseProbe.verify(this.level);
+            }
             LightRestartSnapshot snapshot = LightRestartSnapshot.capture(this.level);
             LightRestartVerifier.verifyRuntimeState(this.level, snapshot.samples());
             if (this.phase == Phase.PREPARE) {

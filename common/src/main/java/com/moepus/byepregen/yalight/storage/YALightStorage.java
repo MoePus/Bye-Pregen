@@ -145,8 +145,19 @@ public final class YALightStorage {
         for (YAChunkLightData data : this.dirtyChunks) {
             count += data.publishDirty(chunkGetter, layer);
         }
-        this.dirtyChunks.clear();
         return count;
+    }
+
+    public void finishPublications(boolean success) {
+        for (YAChunkLightData data : this.dirtyChunks) {
+            data.finishPublication(success);
+        }
+        if (success) {
+            this.dirtyChunks.clear();
+        } else {
+            // Unfinished chunks still have queuedDirty set and cannot enqueue themselves again.
+            this.dirtyChunks.removeIf(data -> !data.hasDirtySections());
+        }
     }
 
     public static YANibbleArray[] create(LevelHeightAccessor level) {
