@@ -245,7 +245,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             Runnable prepare,
             Runnable complete
     ) {
-        this.byepregen$lightScheduler.enqueueLightChunk(chunk.getPos().toLong(), prepare, complete,
+        this.byepregen$lightScheduler.enqueueLightChunk(chunk.getPos().pack(), prepare, complete,
                 ((YAChunkLightAccess)chunk).byepregen$yaLightSaveState());
         if (byepregen$LIGHT_SCHEDULER_WAKE_ON_ADD) {
             this.byepregen$scheduleDrainWithKnownWork();
