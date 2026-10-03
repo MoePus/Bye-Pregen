@@ -51,6 +51,10 @@ public final class YAChunkLightData {
         }
     }
 
+    boolean hasDirtySections() {
+        return this.dirtyCount != 0;
+    }
+
     public boolean edgeCheckReady() {
         return this.edgeCheckReady;
     }
