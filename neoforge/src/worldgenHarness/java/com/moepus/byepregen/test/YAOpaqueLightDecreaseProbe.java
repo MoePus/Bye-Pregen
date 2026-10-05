@@ -32,7 +32,7 @@ final class YAOpaqueLightDecreaseProbe {
     }
 
     static void verify(ServerLevel level) {
-        int[] heights = {level.getMinBuildHeight(), level.getMinBuildHeight() + 1, NORMAL_Y};
+        int[] heights = {level.getMinY(), level.getMinY() + 1, NORMAL_Y};
         int cases = 0;
         for (LightLayer layer : LightLayer.values()) {
             for (int y : heights) {
@@ -91,7 +91,7 @@ final class YAOpaqueLightDecreaseProbe {
         private Fixture(ServerLevel level, BlockPos blocker) {
             this.level = level;
             this.chunks = new LevelChunk[]{new LevelChunk(level, new ChunkPos(0, 0)), new LevelChunk(level, new ChunkPos(1, 0))};
-            for (int y = Math.max(level.getMinBuildHeight(), blocker.getY() - 1); y <= blocker.getY() + 1; ++y) {
+            for (int y = Math.max(level.getMinY(), blocker.getY() - 1); y <= blocker.getY() + 1; ++y) {
                 this.fillSlice(y);
             }
             for (int offset = -1; offset <= 2; ++offset) {

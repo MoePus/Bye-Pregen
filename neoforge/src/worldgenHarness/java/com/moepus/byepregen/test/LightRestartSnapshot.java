@@ -235,4 +235,3 @@ record LightRestartSnapshot(List<LightRestartSnapshot.Sample> samples, List<Ligh
         }
     }
 }
-

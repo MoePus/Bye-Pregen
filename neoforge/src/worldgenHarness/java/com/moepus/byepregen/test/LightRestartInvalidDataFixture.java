@@ -1,17 +1,19 @@
 package com.moepus.byepregen.test;
 
+import com.moepus.byepregen.harness.RegionStorageInfos;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.chunk.storage.RegionFile;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
@@ -19,7 +21,7 @@ import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 public final class LightRestartInvalidDataFixture {
     private static final int LIGHT_BYTES = 2048;
     private static final RegionStorageInfo REGION_INFO =
-            new RegionStorageInfo("light-restart-invalid", Level.OVERWORLD, "chunk");
+            RegionStorageInfos.overworld("light-restart-invalid");
 
     private LightRestartInvalidDataFixture() {
     }
@@ -28,6 +30,8 @@ public final class LightRestartInvalidDataFixture {
         if (args.length != 1) {
             throw new IllegalArgumentException("Expected <disposable-restart-world>");
         }
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         install(Path.of(args[0]));
     }
 
@@ -46,7 +50,7 @@ public final class LightRestartInvalidDataFixture {
                 }
                 chunk = NbtIo.read(input, NbtAccounter.unlimitedHeap());
             }
-            if (chunk.getBoolean("isLightOn")) {
+            if (chunk.getBooleanOr("isLightOn", false)) {
                 throw new IllegalStateException("Expected invalid fixture before light fault injection");
             }
             poison(chunk);
@@ -58,7 +62,7 @@ public final class LightRestartInvalidDataFixture {
     }
 
     private static void poison(CompoundTag chunk) {
-        ListTag sections = chunk.getList("sections", CompoundTag.TAG_COMPOUND);
+        ListTag sections = chunk.getListOrEmpty("sections");
         byte[] high = new byte[LIGHT_BYTES];
         Arrays.fill(high, (byte)-1);
         // Enclosed interior errors cannot be found by a chunk-border scan.
@@ -79,8 +83,8 @@ public final class LightRestartInvalidDataFixture {
 
     private static CompoundTag section(ListTag sections, int sectionY) {
         for (int i = 0; i < sections.size(); ++i) {
-            CompoundTag section = sections.getCompound(i);
-            if (section.getByte("Y") == sectionY) {
+            CompoundTag section = sections.getCompoundOrEmpty(i);
+            if (section.getByteOr("Y", (byte)0) == sectionY) {
                 return section;
             }
         }

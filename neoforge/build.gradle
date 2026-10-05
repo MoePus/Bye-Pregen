@@ -53,6 +53,21 @@ sourceSets {
     }
 }
 
+sourceSets.test {
+    compileClasspath += sourceSets.worldgenHarness.output + sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.worldgenHarness.output + sourceSets.main.runtimeClasspath
+}
+
+dependencies {
+    testImplementation(platform('org.junit:junit-bom:5.11.3'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
 configurations {
     startupHarnessCompileOnly.extendsFrom(compileOnly)
     startupHarnessAnnotationProcessor.extendsFrom(annotationProcessor)

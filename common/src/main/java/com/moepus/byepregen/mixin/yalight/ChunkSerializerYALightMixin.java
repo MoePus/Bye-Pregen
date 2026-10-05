@@ -5,9 +5,9 @@ import com.moepus.byepregen.MixinGate;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import com.moepus.byepregen.yalight.storage.YALightSaveSnapshot;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.storage.YAChunkLightData;
-import com.moepus.byepregen.yalight.storage.YALightSaveSnapshot;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 import java.util.List;
 import net.minecraft.core.SectionPos;
@@ -19,8 +19,8 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.chunk.storage.SerializableChunkData;
+import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.spongepowered.asm.mixin.Final;
@@ -35,7 +35,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @MixinGate(feature = MixinFeature.YA_LIGHT)
 @Mixin(SerializableChunkData.class)
 public abstract class ChunkSerializerYALightMixin {
-    @Shadow @Final private List<SerializableChunkData.SectionData> sectionData;
+    @Shadow
+    @Final
+    private List<SerializableChunkData.SectionData> sectionData;
 
     @Inject(method = "copyOf", at = @At("HEAD"))
     private static void byepregen$captureSaveLight(
@@ -47,44 +49,79 @@ public abstract class ChunkSerializerYALightMixin {
         snapshot.set(YALightSaveSnapshot.capture(chunk));
     }
 
-    @Redirect(method = "copyOf", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
-            ordinal = 0))
+    @Redirect(
+            method = "copyOf",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
+                    ordinal = 0
+            )
+    )
     private static DataLayer byepregen$writeYABlockLight(
-            LayerLightEventListener listener, SectionPos sectionPos,
-            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot) {
+            LayerLightEventListener listener,
+            SectionPos sectionPos,
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
+    ) {
         return snapshot.get().vanillaLayer(LightLayer.BLOCK, sectionPos.y());
     }
 
-    @Redirect(method = "copyOf", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
-            ordinal = 1))
+    @Redirect(
+            method = "copyOf",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
+                    ordinal = 1
+            )
+    )
     private static DataLayer byepregen$writeYASkyLight(
-            LayerLightEventListener listener, SectionPos sectionPos,
-            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot) {
+            LayerLightEventListener listener,
+            SectionPos sectionPos,
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
+    ) {
         return snapshot.get().vanillaLayer(LightLayer.SKY, sectionPos.y());
     }
 
-    @Redirect(method = "copyOf", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/chunk/ChunkAccess;isLightCorrect()Z"))
+    @Redirect(
+            method = "copyOf",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/chunk/ChunkAccess;isLightCorrect()Z"
+            )
+    )
     private static boolean byepregen$writeYALightCorrect(
-            ChunkAccess chunk, @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot) {
+            ChunkAccess chunk,
+            @Share("yaSaveLight") LocalRef<YALightSaveSnapshot> snapshot
+    ) {
         return snapshot.get().valid();
     }
 
-    @Redirect(method = "read", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;queueSectionData(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;Lnet/minecraft/world/level/chunk/DataLayer;)V"))
+    @Redirect(
+            method = "read",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;queueSectionData(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;Lnet/minecraft/world/level/chunk/DataLayer;)V"
+            )
+    )
     private void byepregen$skipVanillaLightQueue(
             LevelLightEngine lightEngine, LightLayer layer, SectionPos sectionPos, DataLayer data) {
     }
 
-    @Inject(method = "read", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/chunk/ChunkAccess;setLightCorrect(Z)V",
-            shift = At.Shift.AFTER))
+    @Inject(
+            method = "read",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/chunk/ChunkAccess;setLightCorrect(Z)V",
+                    shift = At.Shift.AFTER
+            )
+    )
     private void byepregen$installYALightData(
-            ServerLevel level, PoiManager poiManager, RegionStorageInfo regionStorageInfo,
-            ChunkPos chunkPos, CallbackInfoReturnable<ProtoChunk> cir,
-            @Local(ordinal = 0) ChunkAccess chunk) {
+            ServerLevel level,
+            PoiManager poiManager,
+            RegionStorageInfo regionStorageInfo,
+            ChunkPos chunkPos,
+            CallbackInfoReturnable<ProtoChunk> cir,
+            @Local(ordinal = 0) ChunkAccess chunk
+    ) {
         byepregen$readYALightData(level, this.sectionData, chunk);
     }
 
@@ -92,26 +129,37 @@ public abstract class ChunkSerializerYALightMixin {
     private static void byepregen$readYALightData(
             ServerLevel level, List<SerializableChunkData.SectionData> sections, ChunkAccess chunk) {
         // isLightOn is a trust flag, not a request to seed a relight with old bytes.
+        // Fresh lighting only adds current sources; stale interior light has no removal seed.
         if (!chunk.isLightCorrect() || !chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
             chunk.setLightCorrect(false);
             return;
         }
         YAChunkLightAccess access = (YAChunkLightAccess)chunk;
+
         YAChunkLightData blockData = null;
         YAChunkLightData skyData = null;
         boolean hasSkyLight = level.dimensionType().hasSkyLight();
         for (SerializableChunkData.SectionData section : sections) {
             if (section.blockLight() != null) {
-                if (blockData == null) blockData = access.byepregen$yaLightData(LightLayer.BLOCK);
-                blockData.loadInitialSection(section.y(), YANibbleArray.fromOwnedBytes(section.blockLight().getData()));
+                if (blockData == null) {
+                    blockData = access.byepregen$yaLightData(LightLayer.BLOCK);
+                }
+                blockData.loadInitialSection(
+                        section.y(), YANibbleArray.fromOwnedBytes(section.blockLight().getData()));
             }
             if (hasSkyLight && section.skyLight() != null) {
-                if (skyData == null) skyData = access.byepregen$yaLightData(LightLayer.SKY);
-                skyData.loadInitialSection(section.y(), YANibbleArray.fromOwnedBytes(section.skyLight().getData()));
+                if (skyData == null) {
+                    skyData = access.byepregen$yaLightData(LightLayer.SKY);
+                }
+                skyData.loadInitialSection(
+                        section.y(), YANibbleArray.fromOwnedBytes(section.skyLight().getData()));
             }
         }
-        if (blockData != null) blockData.finishInitialLoad();
-        if (skyData != null) skyData.finishInitialLoad();
+        if (blockData != null) {
+            blockData.finishInitialLoad();
+        }
+        if (skyData != null) {
+            skyData.finishInitialLoad();
+        }
     }
 }
-

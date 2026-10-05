@@ -28,8 +28,8 @@ final class LightChunk {
         chunk.lightCorrect = chunkTag.getBooleanOr("isLightOn", false);
         chunk.status = chunkTag.getStringOr("Status", "");
         // Vanilla yPos is the dimension's minimum section, not the lowest stored light section.
-        chunk.minBlockY = chunkTag.contains("yPos", 3) ? chunkTag.getInt("yPos") << 4 : null;
-        ListTag sections = chunkTag.getList("sections", 10);
+        chunk.minBlockY = chunkTag.getInt("yPos").map(y -> y << 4).orElse(null);
+        ListTag sections = chunkTag.getListOrEmpty("sections");
         for (int index = 0; index < sections.size(); index++) {
             sections.getCompound(index).ifPresent(chunk::readSection);
         }

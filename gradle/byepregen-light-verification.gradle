@@ -320,7 +320,7 @@ lightRestartConfigs.each { config ->
         group = 'verification'
         description = 'Injects stale light only into the disposable invalid restart fixture.'
         dependsOn(preparedDisk)
-        classpath = sourceSets.worldgenHarness.runtimeClasspath
+        byepregenUseStandaloneMinecraftClasspath(delegate, sourceSets.worldgenHarness)
         mainClass.set('com.moepus.byepregen.test.LightRestartInvalidDataFixture')
         args config.world.absolutePath
     }
