@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint", "biolith"}
 )
 @Mixin(NoiseChunk.class)
 public abstract class BiomeDensityNoiseChunkMixin implements BiomeColumnEvaluator {

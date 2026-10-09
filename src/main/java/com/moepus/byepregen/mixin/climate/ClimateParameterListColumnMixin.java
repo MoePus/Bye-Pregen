@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint", "biolith"}
 )
 @Mixin(Climate.ParameterList.class)
 public abstract class ClimateParameterListColumnMixin<T> implements DepthClimateParameterList<T> {
