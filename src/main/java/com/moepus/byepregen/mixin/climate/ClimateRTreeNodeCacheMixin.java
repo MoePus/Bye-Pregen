@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Unique;
 
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint", "biolith"}
 )
 @Mixin(Climate.RTree.Node.class)
 public abstract class ClimateRTreeNodeCacheMixin implements ClimateRTreeCacheNode {

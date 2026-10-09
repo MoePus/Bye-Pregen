@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint", "biolith"}
 )
 @Mixin(MultiNoiseBiomeSource.class)
 public interface MultiNoiseBiomeSourceAccessor {

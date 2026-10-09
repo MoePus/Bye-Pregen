@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint", "biolith"}
 )
 @Mixin(Climate.RTree.class)
 public abstract class ClimateRTreeColumnMixin<T> implements DepthClimateRTree<T> {
