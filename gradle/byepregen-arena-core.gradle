@@ -64,6 +64,7 @@ sourceSets.test.java {
     include(rootPackage + 'AccessRulesParityTest.java')
     include(rootPackage + 'MixinFeatureEvaluatorTest.java')
     include(rootPackage + 'MixinGateEvaluatorTest.java')
+    include(rootPackage + 'BiolithMixinCompatibilityTest.java')
     include(rootPackage + 'integration/platform/**')
     include(rootPackage + 'integration/runtime/**')
     include(rootPackage + 'integration/tectonic/**')

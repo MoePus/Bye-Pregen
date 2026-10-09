@@ -23,9 +23,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
+// Biolith resolves replacements and sub-biomes in getNoiseBiome; direct RTree lookup bypasses them.
 @MixinGate(
         feature = MixinFeature.DFC,
-        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint"}
+        conflictingMods = {"reterraforged", "freeterraforged", "terrablender", "blueprint", "biolith"}
 )
 @Mixin(value = NoiseBasedChunkGenerator.class, priority = 1100)
 public abstract class NoiseBasedChunkGeneratorBiomeColumnMixin extends ChunkGenerator {
