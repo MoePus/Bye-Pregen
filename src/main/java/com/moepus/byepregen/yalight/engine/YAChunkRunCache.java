@@ -128,6 +128,7 @@ public class YAChunkRunCache {
             if (nibble.setUpdatingAndGetDirtyTransition(nibbleIndex, value)) {
                 storage.markDirty(data, storageIndex);
             }
+            storage.markRenderChange(data, storageIndex, nibbleIndex);
         }
     }
 

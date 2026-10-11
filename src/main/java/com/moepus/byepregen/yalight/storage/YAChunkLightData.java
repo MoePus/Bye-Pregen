@@ -21,6 +21,15 @@ public final class YAChunkLightData {
     private boolean edgeCheckReady;
     private final YALightSaveState saveState;
     private boolean pendingPublication;
+    // Allocated only for client chunks that receive a render-affecting light write.
+    private int[] renderMasks;
+
+    void markRenderMask(int index, int mask) {
+        if (this.renderMasks == null) {
+            this.renderMasks = new int[this.updating.length];
+        }
+        this.renderMasks[index] |= mask;
+    }
 
     public YAChunkLightData(ChunkPos pos, LevelHeightAccessor level) {
         this(pos, level, new YALightSaveState());
@@ -123,6 +132,7 @@ public final class YAChunkLightData {
         }
         this.replacePublished(index, nibble);
         storage.markDirty(this, index);
+        storage.markRenderSection(this, index);
     }
 
     public void loadInitialSection(int sectionY, YANibbleArray nibble) {
@@ -155,6 +165,7 @@ public final class YAChunkLightData {
         }
         this.replacePublished(index, YANibbleArray.fullArray());
         storage.markDirty(this, index);
+        storage.markRenderSection(this, index);
     }
 
     public void removeSection(int sectionY, YALightStorage storage) {
@@ -169,6 +180,7 @@ public final class YAChunkLightData {
         old.retirePublished();
         this.updating[index] = null;
         storage.markDirty(this, index);
+        storage.markRenderSection(this, index);
     }
 
     public boolean markDirty(int index) {
@@ -191,6 +203,10 @@ public final class YAChunkLightData {
     }
 
     public int publishDirty(LightChunkGetter chunkGetter, LightLayer layer) {
+        return this.publishDirty(chunkGetter, layer, null);
+    }
+
+    int publishDirty(LightChunkGetter chunkGetter, LightLayer layer, YALightRenderUpdates renderUpdates) {
         for (int i = 0; i < this.dirtyCount; ++i) {
             int index = this.dirtyIndices[i];
             this.dirtySections[index] = false;
@@ -211,7 +227,15 @@ public final class YAChunkLightData {
         int count = this.dirtyCount;
         for (int i = 0; i < count; ++i) {
             int index = this.dirtyIndices[i];
-            chunkGetter.onLightUpdate(layer, SectionPos.of(this.pos, this.sectionY(index)));
+            if (renderUpdates == null) {
+                chunkGetter.onLightUpdate(layer, SectionPos.of(this.pos, this.sectionY(index)));
+            } else {
+                int mask = this.renderMasks == null ? 0 : this.renderMasks[index];
+                renderUpdates.add(this.pos, this.sectionY(index), mask | YALightRenderUpdates.CENTER);
+                if (this.renderMasks != null) {
+                    this.renderMasks[index] = 0;
+                }
+            }
         }
         this.dirtyCount = 0;
         this.queuedDirty = false;
@@ -227,6 +251,9 @@ public final class YAChunkLightData {
         }
         Arrays.fill(this.updating, null);
         Arrays.fill(this.dirtySections, false);
+        if (this.renderMasks != null) {
+            Arrays.fill(this.renderMasks, 0);
+        }
         this.visible = this.updating.clone();
         this.dirtyCount = 0;
         this.queuedDirty = false;
