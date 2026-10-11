@@ -218,7 +218,7 @@ final class ColumnBytecodeAuditTest {
 
         CompiledColumnEvaluator evaluator = instantiate(generated);
         ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(new double[3], 0, 0, 0, 4, source -> new double[3]);
+        context.prepare(new double[3], 0, 0, 0, 4, source -> { throw new AssertionError("Unexpected interpolation source"); });
         IndexOutOfBoundsException failure = assertThrows(
                 IndexOutOfBoundsException.class, () -> evaluator.evalColumn(context));
         assertTrue(failure.getMessage().contains("memoized index"));

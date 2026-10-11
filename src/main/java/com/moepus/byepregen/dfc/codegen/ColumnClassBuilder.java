@@ -10,7 +10,11 @@ import com.moepus.byepregen.dfc.ast.AstNode;
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
+import com.moepus.byepregen.dfc.ast.AstNodes.SourceMode;
+import com.moepus.byepregen.dfc.ast.AstNodes.SourceNode;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import org.objectweb.asm.ClassWriter;
@@ -46,11 +50,27 @@ public final class ColumnClassBuilder {
     }
 
     public BuildResult build(AstNode root) {
+        this.points.setInterpolationUseCounts(collectInterpolationUseCounts(root));
         String rootMethod = this.columns.method(root);
         this.emitEvalColumn(rootMethod);
         this.emitConstructor();
         this.writer.visitEnd();
         return new BuildResult(this.className, this.writer.toByteArray(), this.bindings.bindings());
+    }
+
+    private static Map<DensityFunction, Integer> collectInterpolationUseCounts(AstNode root) {
+        Map<DensityFunction, Integer> counts = new IdentityHashMap<>();
+        collectInterpolationUseCounts(root, counts);
+        return counts;
+    }
+
+    private static void collectInterpolationUseCounts(
+            AstNode node, Map<DensityFunction, Integer> counts
+    ) {
+        if (node instanceof SourceNode source && source.mode() == SourceMode.INTERPOLATED) {
+            counts.merge(source.source(), 1, Integer::sum);
+        }
+        for (AstNode child : node.children()) collectInterpolationUseCounts(child, counts);
     }
 
     private void emitConstructor() {

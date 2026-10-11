@@ -17,7 +17,9 @@ public final class ColumnEvaluationContext {
     private final MutablePointContext point = new MutablePointContext();
     private double[] memoizedValues = new double[0];
     private boolean[] memoizedReady = new boolean[0];
-    private double[][] interpolationColumns = new double[0][];
+    private InterpolatedColumn[] interpolationColumns = new InterpolatedColumn[0];
+    private double[][] materializedInterpolationColumns = new double[0][];
+    private boolean[] materializedInterpolationReady = new boolean[0];
     private double[][] scratchArrays = new double[4][];
     private InterpolationProvider interpolationProvider;
     private double[] output;
@@ -27,20 +29,20 @@ public final class ColumnEvaluationContext {
     private int blockX;
     private int blockZ;
     private int minY;
-    private int cellHeight;
+    private int blockStep;
     private boolean active;
 
-    public void prepare(double[] output, int blockX, int blockZ, int minY, int cellHeight,
+    public void prepare(double[] output, int blockX, int blockZ, int minY, int blockStep,
                         InterpolationProvider interpolationProvider) {
         if (this.active) throw new IllegalStateException("Density column context is already active");
         this.output = Objects.requireNonNull(output, "output");
         this.interpolationProvider = Objects.requireNonNull(interpolationProvider, "interpolationProvider");
         if (output.length == 0) throw new IllegalArgumentException("Column output must not be empty");
-        if (cellHeight <= 0) throw new IllegalArgumentException("Column cell height must be positive");
+        if (blockStep <= 0) throw new IllegalArgumentException("Column block step must be positive");
         this.blockX = blockX;
         this.blockZ = blockZ;
         this.minY = minY;
-        this.cellHeight = cellHeight;
+        this.blockStep = blockStep;
         this.active = true;
     }
 
@@ -55,7 +57,12 @@ public final class ColumnEvaluationContext {
 
     public void prepareInterpolationCount(int count) {
         if (count < 0) throw new IllegalArgumentException("Negative interpolation count");
-        if (this.interpolationColumns.length < count) this.interpolationColumns = new double[count][];
+        if (this.interpolationColumns.length < count) this.interpolationColumns = new InterpolatedColumn[count];
+        if (this.materializedInterpolationColumns.length < count) {
+            this.materializedInterpolationColumns = new double[count][];
+            this.materializedInterpolationReady = new boolean[count];
+        }
+        Arrays.fill(this.materializedInterpolationReady, 0, count, false);
         this.interpolationCount = count;
     }
 
@@ -84,24 +91,39 @@ public final class ColumnEvaluationContext {
 
     public double interpolatedValue(int index, DensityFunction source, int blockY) {
         int delta = blockY - this.minY;
-        if (delta % this.cellHeight != 0) throw outsideColumn(blockY);
-        int valueIndex = delta / this.cellHeight;
-        double[] values = this.interpolatedColumn(index, source);
-        if (valueIndex < 0 || valueIndex >= values.length) throw outsideColumn(blockY);
-        return values[valueIndex];
+        if (delta % this.blockStep != 0) throw outsideColumn(blockY);
+        int valueIndex = delta / this.blockStep;
+        InterpolatedColumn values = this.interpolatedColumn(index, source);
+        if (valueIndex < 0 || valueIndex >= values.length()) throw outsideColumn(blockY);
+        return values.valueAt(valueIndex);
     }
 
     public void copyInterpolatedColumnRange(int index, DensityFunction source, double[] target,
                                             int fromInclusive, int toExclusive) {
-        double[] values = this.interpolatedColumn(index, source);
-        if (target.length != values.length) {
+        InterpolatedColumn values = this.interpolatedColumn(index, source);
+        if (target.length != values.length()) {
             throw new IllegalArgumentException("Interpolation target length mismatch");
         }
-        if (fromInclusive < 0 || toExclusive < fromInclusive || toExclusive > values.length) {
+        if (fromInclusive < 0 || toExclusive < fromInclusive || toExclusive > values.length()) {
             throw new IndexOutOfBoundsException("Interpolation column range: "
                     + fromInclusive + ".." + toExclusive);
         }
-        System.arraycopy(values, fromInclusive, target, fromInclusive, toExclusive - fromInclusive);
+        values.fillRange(target, fromInclusive, toExclusive);
+    }
+
+    public void copyCachedInterpolatedColumnRange(int index, DensityFunction source, double[] target,
+                                                  int fromInclusive, int toExclusive) {
+        InterpolatedColumn values = this.interpolatedColumn(index, source);
+        this.checkInterpolationRange(values, target, fromInclusive, toExclusive);
+        double[] cached = this.materializedInterpolationColumns[index];
+        if (!this.materializedInterpolationReady[index] || cached == null
+                || cached.length != values.length()) {
+            cached = new double[values.length()];
+            values.fillRange(cached, 0, cached.length);
+            this.materializedInterpolationColumns[index] = cached;
+            this.materializedInterpolationReady[index] = true;
+        }
+        System.arraycopy(cached, fromInclusive, target, fromInclusive, toExclusive - fromInclusive);
     }
 
     public double delegateValue(DensityFunction function, int x, int y, int z) {
@@ -145,7 +167,7 @@ public final class ColumnEvaluationContext {
     public int x() { return this.blockX; }
     public int z() { return this.blockZ; }
     public int minY() { return this.minY; }
-    public int cellHeight() { return this.cellHeight; }
+    public int blockStep() { return this.blockStep; }
 
     public void clear() {
         if (!this.active) return;
@@ -158,20 +180,31 @@ public final class ColumnEvaluationContext {
         this.active = false;
     }
 
-    private double[] interpolatedColumn(int index, DensityFunction source) {
+    private InterpolatedColumn interpolatedColumn(int index, DensityFunction source) {
         if (index < 0 || index >= this.interpolationCount) {
             throw new IndexOutOfBoundsException("Column interpolation index: " + index);
         }
-        double[] existing = this.interpolationColumns[index];
+        InterpolatedColumn existing = this.interpolationColumns[index];
         if (existing != null) return existing;
-        double[] resolved = Objects.requireNonNull(
+        InterpolatedColumn resolved = Objects.requireNonNull(
                 this.interpolationProvider.byepregen$getColumn(source),
                 "interpolationProvider returned null");
-        if (resolved.length != this.output.length) {
+        if (resolved.length() != this.output.length) {
             throw new IllegalArgumentException("Interpolation source length mismatch");
         }
         this.interpolationColumns[index] = resolved;
         return resolved;
+    }
+
+    private void checkInterpolationRange(InterpolatedColumn values, double[] target,
+                                         int fromInclusive, int toExclusive) {
+        if (target.length != values.length()) {
+            throw new IllegalArgumentException("Interpolation target length mismatch");
+        }
+        if (fromInclusive < 0 || toExclusive < fromInclusive || toExclusive > values.length()) {
+            throw new IndexOutOfBoundsException("Interpolation column range: "
+                    + fromInclusive + ".." + toExclusive);
+        }
     }
 
     private void checkMemoizedIndex(int index) {
@@ -185,7 +218,7 @@ public final class ColumnEvaluationContext {
     }
 
     public interface InterpolationProvider {
-        double[] byepregen$getColumn(DensityFunction source);
+        InterpolatedColumn byepregen$getColumn(DensityFunction source);
     }
 
     private static final class MutablePointContext implements DensityFunction.FunctionContext {

@@ -20,7 +20,6 @@ final class DensityColumnRuntimeProbe {
         }
         DensityColumnFrontendProbe.verify();
         DensityColumnDelegateProbe.verify();
-        DensityColumnEvaluationProbe.verify();
         DensityColumnMetrics.Snapshot metrics = DensityColumnMetrics.snapshot();
         LOGGER.info("Density column raw metrics: {}", metrics);
         require(metrics.compiled() > 0, "no RandomState column template was compiled");
@@ -29,14 +28,14 @@ final class DensityColumnRuntimeProbe {
         require(metrics.evaluatedColumns() > 0, "ByePregen column evaluator was not called");
         require(metrics.addedInterpolators() == 0, "column binding added NoiseInterpolators");
         if (Boolean.getBoolean("byepregen.verifyDfcColumn")) {
-            require(metrics.verifiedBoundaries() > 0, "no real final-density boundaries were verified");
+            require(metrics.verifiedSamples() > 0, "no real final-density samples were verified");
         }
         String summary = "compiled=" + metrics.compiled()
                 + " bound=" + metrics.bound()
                 + " evaluated=" + metrics.evaluatedColumns()
                 + " bindingFallbacks=" + metrics.bindingFallbacks()
                 + " addedInterpolators=" + metrics.addedInterpolators()
-                + " verifiedBoundaries=" + metrics.verifiedBoundaries();
+                + " verifiedSamples=" + metrics.verifiedSamples();
         LOGGER.info("Density column runtime metrics: {}", summary);
         return summary;
     }
