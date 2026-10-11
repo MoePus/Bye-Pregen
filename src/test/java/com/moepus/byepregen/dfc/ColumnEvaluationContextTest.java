@@ -58,7 +58,7 @@ final class ColumnEvaluationContextTest {
 
     private static ColumnEvaluationContext activeContext() {
         ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(new double[1], 0, 0, 0, 1, source -> new double[1]);
+        context.prepare(new double[1], 0, 0, 0, 1, source -> { throw new AssertionError("Unexpected interpolation source"); });
         return context;
     }
 }

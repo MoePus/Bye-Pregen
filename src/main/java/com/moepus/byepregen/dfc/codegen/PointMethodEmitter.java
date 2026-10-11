@@ -36,6 +36,7 @@ final class PointMethodEmitter {
     private final SplineMethodEmitter splines;
     private final Map<AstNode, String> methods = new IdentityHashMap<>();
     private final Map<DensityFunction, Integer> interpolationSlots = new IdentityHashMap<>();
+    private Map<DensityFunction, Integer> interpolationUseCounts = Map.of();
 
     PointMethodEmitter(GenerationContext context) {
         this.owner = context.owner();
@@ -56,6 +57,14 @@ final class PointMethodEmitter {
 
     int interpolationCount() {
         return this.interpolationSlots.size();
+    }
+
+    void setInterpolationUseCounts(Map<DensityFunction, Integer> useCounts) {
+        this.interpolationUseCounts = new IdentityHashMap<>(useCounts);
+    }
+
+    boolean shouldCacheInterpolation(DensityFunction source) {
+        return this.interpolationUseCounts.getOrDefault(source, 0) > 1;
     }
 
     private void generate(AstNode node, String name) {

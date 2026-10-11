@@ -84,8 +84,7 @@ final class ColumnMethodEmitter {
         } else if (node instanceof MaxShortNode max) {
             this.conditionals.emitShortBinary(method, max, max.rightMax(), true);
         } else if (node instanceof UnaryNode unary && supportsColumnUnary(unary)) {
-            this.call(method, unary.operand(), 2, 3, 4);
-            this.emitUnaryLoop(method, unary);
+            this.emitUnaryChain(method, unary);
         } else if (node instanceof BinaryNode binary) {
             this.emitBinary(method, binary);
         } else {
@@ -106,7 +105,7 @@ final class ColumnMethodEmitter {
             return;
         }
         loadContextInt(method, "minY", 5);
-        loadContextInt(method, "cellHeight", 6);
+        loadContextInt(method, "blockStep", 6);
         Loop loop = emitLoopStart(method, 7, 3, 4);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 7);
@@ -138,7 +137,9 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 3);
         method.visitVarInsn(Opcodes.ILOAD, 4);
-        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, "copyInterpolatedColumnRange",
+        String copyMethod = this.points.shouldCacheInterpolation(node.source())
+                ? "copyCachedInterpolatedColumnRange" : "copyInterpolatedColumnRange";
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CONTEXT, copyMethod,
                 "(IL" + DENSITY_FUNCTION + ";[DII)V", false);
     }
 
@@ -154,7 +155,7 @@ final class ColumnMethodEmitter {
 
     private void emitGradient(MethodVisitor method, YClampedGradientNode node) {
         loadContextInt(method, "minY", 5);
-        loadContextInt(method, "cellHeight", 6);
+        loadContextInt(method, "blockStep", 6);
         Loop loop = emitLoopStart(method, 7, 3, 4);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 7);
@@ -182,6 +183,23 @@ final class ColumnMethodEmitter {
         method.visitVarInsn(Opcodes.ILOAD, 5);
         method.visitInsn(Opcodes.DALOAD);
         emitUnaryOperation(method, node);
+        method.visitInsn(Opcodes.DASTORE);
+        emitLoopEnd(method, 5, loop);
+    }
+
+    private void emitUnaryChain(MethodVisitor method, UnaryNode outer) {
+        java.util.ArrayList<UnaryNode> chain = new java.util.ArrayList<>();
+        AstNode base = outer;
+        while (base instanceof UnaryNode unary && supportsColumnUnary(unary)) {
+            chain.add(unary);
+            base = unary.operand();
+        }
+        this.call(method, base, 2, 3, 4);
+        Loop loop = emitLoopStart(method, 5, 3, 4);
+        method.visitVarInsn(Opcodes.ALOAD, 2);
+        method.visitVarInsn(Opcodes.ILOAD, 5);
+        loadArrayValue(method, 2, 5);
+        for (int i = chain.size() - 1; i >= 0; --i) emitUnaryOperation(method, chain.get(i));
         method.visitInsn(Opcodes.DASTORE);
         emitLoopEnd(method, 5, loop);
     }
@@ -245,7 +263,7 @@ final class ColumnMethodEmitter {
         loadContextInt(method, "x", 5);
         loadContextInt(method, "z", 6);
         loadContextInt(method, "minY", 7);
-        loadContextInt(method, "cellHeight", 8);
+        loadContextInt(method, "blockStep", 8);
         Loop loop = emitLoopStart(method, 9, 3, 4);
         method.visitVarInsn(Opcodes.ALOAD, 2);
         method.visitVarInsn(Opcodes.ILOAD, 9);

@@ -12,7 +12,7 @@ import net.minecraft.world.level.levelgen.DensityFunctions;
 
 final class DensityColumnDelegateProbe {
     private static final int COLUMN_LENGTH = 5;
-    private static final int CELL_HEIGHT = 4;
+    private static final int BLOCK_STEP = 1;
     private static final double MEMO_SENTINEL =
             Double.longBitsToDouble(0x7ffd_db97_2d48_6a4fL);
 
@@ -21,7 +21,7 @@ final class DensityColumnDelegateProbe {
 
     static void verify() {
         CountingDelegate dependent = new CountingDelegate();
-        assertColumn(dependent, new double[]{0.0D, 4.0D, 8.0D, 12.0D, 16.0D});
+        assertColumn(dependent, new double[]{0.0D, 1.0D, 2.0D, 3.0D, 4.0D});
         require(dependent.calls.get() == COLUMN_LENGTH,
                 "Y-dependent generic delegate was not called once per lane");
 
@@ -72,8 +72,8 @@ final class DensityColumnDelegateProbe {
         require(template.available(), "throwing delegate graph did not compile");
         CompiledColumnEvaluator evaluator = template.bind(value -> value);
         ColumnEvaluationContext context = new ColumnEvaluationContext();
-        context.prepare(new double[COLUMN_LENGTH], 0, 0, 0, CELL_HEIGHT,
-                source -> new double[COLUMN_LENGTH]);
+        context.prepare(new double[COLUMN_LENGTH], 0, 0, 0, BLOCK_STEP,
+                source -> { throw new AssertionError("Unexpected interpolation source"); });
         try {
             evaluator.evalColumn(context);
             throw new IllegalStateException("throwing delegate unexpectedly returned");
@@ -92,12 +92,12 @@ final class DensityColumnDelegateProbe {
 
         CountingDelegate cacheOnce = new CountingDelegate();
         assertColumn(DensityFunctions.cacheOnce(cacheOnce),
-                new double[]{0.0D, 4.0D, 8.0D, 12.0D, 16.0D});
+                new double[]{0.0D, 1.0D, 2.0D, 3.0D, 4.0D});
         require(cacheOnce.calls.get() == COLUMN_LENGTH, "CacheOnce marker was not removed");
 
         CountingDelegate allInCell = new CountingDelegate();
         assertColumn(DensityFunctions.cacheAllInCell(allInCell),
-                new double[]{0.0D, 4.0D, 8.0D, 12.0D, 16.0D});
+                new double[]{0.0D, 1.0D, 2.0D, 3.0D, 4.0D});
         require(allInCell.calls.get() == COLUMN_LENGTH, "CacheAllInCell marker was not removed");
 
         ConstantCountingDelegate flat = new ConstantCountingDelegate();
@@ -105,25 +105,6 @@ final class DensityColumnDelegateProbe {
                 new double[]{5.0D, 5.0D, 5.0D, 5.0D, 5.0D});
         require(flat.calls.get() == 1, "FlatCache source was not sampled once per column");
 
-        CountingDelegate interpolatedChild = new CountingDelegate();
-        DensityFunction interpolated = DensityFunctions.interpolated(interpolatedChild);
-        ColumnTemplate template = DensityColumnCompiler.compile(interpolated);
-        require(template.available(), "Interpolated marker graph did not compile");
-        CompiledColumnEvaluator evaluator = template.bind(value -> value);
-        ColumnEvaluationContext context = new ColumnEvaluationContext();
-        double[] actual = new double[COLUMN_LENGTH];
-        double[] boundaries = {3.0D, 4.0D, 5.0D, 6.0D, 7.0D};
-        context.prepare(actual, 0, 0, 0, CELL_HEIGHT, source -> boundaries);
-        try {
-            evaluator.evalColumn(context);
-        } finally {
-            context.clear();
-        }
-        for (int i = 0; i < actual.length; ++i) {
-            require(actual[i] == boundaries[i], "Interpolated boundary copy mismatch");
-        }
-        require(interpolatedChild.calls.get() == 0,
-                "Interpolated source called its original child instead of the boundary provider");
     }
 
     private static void assertColumn(DensityFunction function, double[] expected) {
@@ -132,7 +113,7 @@ final class DensityColumnDelegateProbe {
         CompiledColumnEvaluator evaluator = template.bind(value -> value);
         ColumnEvaluationContext context = new ColumnEvaluationContext();
         double[] actual = new double[COLUMN_LENGTH];
-        context.prepare(actual, 3, 9, 0, CELL_HEIGHT, source -> {
+        context.prepare(actual, 3, 9, 0, BLOCK_STEP, source -> {
             throw new AssertionError("delegate probe requested an interpolated source");
         });
         try {

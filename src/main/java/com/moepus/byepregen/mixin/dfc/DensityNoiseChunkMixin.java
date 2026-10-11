@@ -7,9 +7,11 @@ import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.ColumnTemplate;
 import com.moepus.byepregen.dfc.runtime.CompiledColumnEvaluator;
 import com.moepus.byepregen.dfc.runtime.FinalDensityColumnProvider;
+import com.moepus.byepregen.dfc.runtime.InterpolatedColumn;
 import com.moepus.byepregen.dfc.runtime.NoiseChunkColumnBinder;
 import com.moepus.byepregen.dfc.runtime.RandomStateColumnProvider;
 import com.moepus.byepregen.dfc.runtime.DensityColumnMetrics;
+import com.moepus.byepregen.dfc.runtime.DensityColumnVerification;
 import com.moepus.byepregen.worldgen.arena.InterpolatedMarkerAccess;
 import com.mojang.logging.LogUtils;
 import java.util.IdentityHashMap;
@@ -39,7 +41,6 @@ public abstract class DensityNoiseChunkMixin
         implements FinalDensityColumnProvider, NoiseChunkColumnBinder {
     @Unique private static final boolean byepregen$VERIFY_COLUMN =
             Boolean.getBoolean("byepregen.verifyDfcColumn");
-    @Unique private static final double byepregen$VERIFY_TOLERANCE = 1.0E-6D;
     @Unique private static final Logger byepregen$LOGGER = LogUtils.getLogger();
     @Shadow @Final private Map<DensityFunction, DensityFunction> wrapped;
     @Shadow @Final private List<NoiseChunk.NoiseInterpolator> interpolators;
@@ -214,7 +215,7 @@ public abstract class DensityNoiseChunkMixin
             int blockX,
             int blockZ,
             int minY,
-            int cellHeight,
+            int blockStep,
             ColumnEvaluationContext.InterpolationProvider interpolationProvider
     ) {
         CompiledColumnEvaluator evaluator = this.byepregen$finalDensityColumnEvaluator;
@@ -222,12 +223,12 @@ public abstract class DensityNoiseChunkMixin
         if (evaluator == null || context == null) {
             throw new IllegalStateException("Final density has no compiled column evaluator");
         }
-        context.prepare(output, blockX, blockZ, minY, cellHeight, interpolationProvider);
+        context.prepare(output, blockX, blockZ, minY, blockStep, interpolationProvider);
         try {
             DensityColumnMetrics.recordEvaluatedColumn();
             evaluator.evalColumn(context);
             this.byepregen$verifyColumn(
-                    output, blockX, blockZ, minY, cellHeight, interpolationProvider);
+                    output, blockX, blockZ, minY, blockStep, interpolationProvider);
         } finally {
             context.clear();
         }
@@ -239,13 +240,13 @@ public abstract class DensityNoiseChunkMixin
             int blockX,
             int blockZ,
             int minY,
-            int cellHeight,
+            int blockStep,
             ColumnEvaluationContext.InterpolationProvider interpolationProvider
     ) {
         DensityFunction root = this.byepregen$verificationRoot;
         if (root == null) return;
         double[] savedValues = new double[this.interpolators.size()];
-        double[][] columns = new double[this.interpolators.size()][];
+        InterpolatedColumn[] columns = new InterpolatedColumn[this.interpolators.size()];
         for (int index = 0; index < this.interpolators.size(); ++index) {
             NoiseChunk.NoiseInterpolator interpolator = this.interpolators.get(index);
             savedValues[index] = interpolator.value;
@@ -262,16 +263,16 @@ public abstract class DensityNoiseChunkMixin
             this.arrayInterpolationCounter = baseCounter - 1L;
             this.arrayIndex = 0;
             for (int lane = 0; lane < output.length; ++lane) {
-                int blockY = minY + lane * cellHeight;
+                int blockY = minY + lane * blockStep;
                 this.cellStartBlockY = blockY + 1;
                 this.inCellY = -1;
                 this.interpolationCounter = baseCounter + lane;
                 for (int index = 0; index < this.interpolators.size(); ++index) {
-                    this.interpolators.get(index).value = columns[index][lane];
+                    this.interpolators.get(index).value = columns[index].valueAt(lane);
                 }
                 double expected = root.compute((NoiseChunk) (Object) this);
                 double actual = output[lane] + this.beardifier.compute((NoiseChunk) (Object) this);
-                if (!byepregen$equivalent(expected, actual)) {
+                if (!DensityColumnVerification.equivalent(expected, actual)) {
                     throw new IllegalStateException("Final-density column mismatch at "
                             + blockX + ',' + blockY + ',' + blockZ + ": expected="
                             + expected + ", actual=" + actual);
@@ -287,15 +288,7 @@ public abstract class DensityNoiseChunkMixin
                 this.interpolators.get(index).value = savedValues[index];
             }
         }
-        DensityColumnMetrics.recordVerifiedBoundaries(output.length);
+        DensityColumnMetrics.recordVerifiedSamples(output.length);
     }
 
-    @Unique
-    private static boolean byepregen$equivalent(double expected, double actual) {
-        if (Double.doubleToRawLongBits(expected) == Double.doubleToRawLongBits(actual)) return true;
-        if (Double.isNaN(expected) && Double.isNaN(actual)) return true;
-        if (!Double.isFinite(expected) || !Double.isFinite(actual)) return false;
-        double tolerance = byepregen$VERIFY_TOLERANCE * (1.0D + Math.abs(expected));
-        return Math.abs(expected - actual) <= tolerance;
-    }
 }

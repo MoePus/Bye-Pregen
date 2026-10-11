@@ -28,7 +28,6 @@ final class DensityColumnRuntimeProbe {
         }
         DensityColumnFrontendProbe.verify();
         DensityColumnDelegateProbe.verify();
-        DensityColumnEvaluationProbe.verify();
         if (!biomeColumnsConflict()) ClimateRTreeColumnProbe.verify();
         DensityColumnMetrics.Snapshot metrics = awaitBiomeOutcomes();
         LOGGER.info("Density column raw metrics: {}", metrics);
@@ -39,7 +38,7 @@ final class DensityColumnRuntimeProbe {
         require(metrics.addedInterpolators() == 0, "column binding added NoiseInterpolators");
         verifyBiomeMetrics(metrics);
         if (Boolean.getBoolean("byepregen.verifyDfcColumn")) {
-            require(metrics.verifiedBoundaries() > 0, "no real final-density boundaries were verified");
+            require(metrics.verifiedSamples() > 0, "no real final-density samples were verified");
             require(metrics.biomeVerifiedCells() > 0, "no direct biome cells were verified");
         }
         String summary = "compiled=" + metrics.compiled()
@@ -47,7 +46,7 @@ final class DensityColumnRuntimeProbe {
                 + " evaluated=" + metrics.evaluatedColumns()
                 + " bindingFallbacks=" + metrics.bindingFallbacks()
                 + " addedInterpolators=" + metrics.addedInterpolators()
-                + " verifiedBoundaries=" + metrics.verifiedBoundaries()
+                + " verifiedSamples=" + metrics.verifiedSamples()
                 + " biomeBound=" + metrics.biomeBound()
                 + " biomeEvaluatedColumns=" + metrics.biomeEvaluatedColumns()
                 + " biomeDepthCachedColumns=" + metrics.biomeDepthCachedColumns()

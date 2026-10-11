@@ -8,7 +8,7 @@ public interface FinalDensityColumnProvider {
             int blockX,
             int blockZ,
             int minY,
-            int cellHeight,
+            int blockStep,
             ColumnEvaluationContext.InterpolationProvider interpolationProvider
     );
 }

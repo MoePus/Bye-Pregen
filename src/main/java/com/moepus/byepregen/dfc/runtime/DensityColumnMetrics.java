@@ -9,7 +9,7 @@ public final class DensityColumnMetrics {
     private static final LongAdder BINDING_FALLBACKS = new LongAdder();
     private static final LongAdder ADDED_INTERPOLATORS = new LongAdder();
     private static final LongAdder EVALUATED_COLUMNS = new LongAdder();
-    private static final LongAdder VERIFIED_BOUNDARIES = new LongAdder();
+    private static final LongAdder VERIFIED_SAMPLES = new LongAdder();
     private static final LongAdder BIOME_BOUND = new LongAdder();
     private static final LongAdder BIOME_EVALUATED_COLUMNS = new LongAdder();
     private static final LongAdder BIOME_DEPTH_CACHED_COLUMNS = new LongAdder();
@@ -30,7 +30,7 @@ public final class DensityColumnMetrics {
     public static void recordBindingFallback() { BINDING_FALLBACKS.increment(); }
     public static void recordAddedInterpolators(long count) { ADDED_INTERPOLATORS.add(count); }
     public static void recordEvaluatedColumn() { EVALUATED_COLUMNS.increment(); }
-    public static void recordVerifiedBoundaries(long count) { VERIFIED_BOUNDARIES.add(count); }
+    public static void recordVerifiedSamples(long count) { VERIFIED_SAMPLES.add(count); }
     public static void recordBiomeBound(long count) {
         BOUND.add(count);
         BIOME_BOUND.add(count);
@@ -56,7 +56,7 @@ public final class DensityColumnMetrics {
         long biomeFills = BIOME_FILLS.sum();
         return new Snapshot(COMPILED.sum(), BOUND.sum(), BIND_FAILURES.sum(),
                 BINDING_FALLBACKS.sum(), ADDED_INTERPOLATORS.sum(), EVALUATED_COLUMNS.sum(),
-                VERIFIED_BOUNDARIES.sum(), BIOME_BOUND.sum(), BIOME_EVALUATED_COLUMNS.sum(),
+                VERIFIED_SAMPLES.sum(), BIOME_BOUND.sum(), BIOME_EVALUATED_COLUMNS.sum(),
                 BIOME_DEPTH_CACHED_COLUMNS.sum(), BIOME_FILL_ATTEMPTS.sum(),
                 biomeArenaFallbacks, biomeSourceFallbacks,
                 biomeBindFallbacks, biomeEvaluationFallbacks, biomeFills,
@@ -70,7 +70,7 @@ public final class DensityColumnMetrics {
             long bindingFallbacks,
             long addedInterpolators,
             long evaluatedColumns,
-            long verifiedBoundaries,
+            long verifiedSamples,
             long biomeBound,
             long biomeEvaluatedColumns,
             long biomeDepthCachedColumns,

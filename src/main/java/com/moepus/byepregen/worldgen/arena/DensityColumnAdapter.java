@@ -2,7 +2,8 @@ package com.moepus.byepregen.worldgen.arena;
 
 import com.moepus.byepregen.dfc.runtime.ColumnEvaluationContext;
 import com.moepus.byepregen.dfc.runtime.FinalDensityColumnProvider;
-import java.util.Arrays;
+import com.moepus.byepregen.dfc.runtime.InterpolatedColumn;
+import com.moepus.byepregen.palette.arena.Layout;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 
 public final class DensityColumnAdapter {
+    private static final int BLOCK_STEP = 1;
     private final FinalDensityColumnProvider provider;
     private final ColumnBounds bounds;
     private final SourceColumns sourceColumns;
@@ -23,7 +25,7 @@ public final class DensityColumnAdapter {
         this.provider = provider;
         this.bounds = bounds;
         this.sourceColumns = sourceColumns;
-        this.output = new double[bounds.length()];
+        this.output = new double[bounds.blockCount()];
     }
 
     public static DensityColumnAdapter tryCreate(
@@ -36,7 +38,7 @@ public final class DensityColumnAdapter {
             return null;
         }
         return new DensityColumnAdapter(provider, bounds,
-                new SourceColumns(sources, bounds.length()));
+                new SourceColumns(sources, bounds));
     }
 
     public double[] output() {
@@ -46,77 +48,49 @@ public final class DensityColumnAdapter {
     public void evaluate(int blockX, int blockZ, int inCellZ) {
         this.sourceColumns.prepare(inCellZ);
         this.provider.byepregen$evalFinalDensityColumn(this.output, blockX, blockZ,
-                this.bounds.minY(), this.bounds.cellHeight(), this.sourceColumns);
-    }
-
-    private static void materializeBoundaries(
-            double[] zBaseSteps,
-            double[] output,
-            int inCellZ
-    ) {
-        for (int pointY = 0; pointY < output.length; ++pointY) {
-            int edgeIndex = pointY * 2;
-            output[pointY] = zBaseSteps[edgeIndex] + inCellZ * zBaseSteps[edgeIndex + 1];
-        }
+                this.bounds.minY(), BLOCK_STEP, this.sourceColumns);
     }
 
     private static final class SourceColumns implements ColumnEvaluationContext.InterpolationProvider {
-        private final InterpolationSources sources;
-        private final double[][] values;
-        private final int[] materializedGeneration;
-        private final Map<DensityFunction, Integer> indices = new IdentityHashMap<>();
-        private final int columnLength;
+        private final Map<DensityFunction, ArenaInterpolationColumn> lookup = new IdentityHashMap<>();
         private int inCellZ;
-        private int generation;
+        private long generation;
 
-        private SourceColumns(InterpolationSources sources, int columnLength) {
-            this.sources = sources;
-            this.values = new double[sources.interpolators().length][];
-            this.materializedGeneration = new int[sources.interpolators().length];
-            this.columnLength = columnLength;
+        private SourceColumns(InterpolationSources sources, ColumnBounds bounds) {
             for (int i = 0; i < sources.interpolators().length; ++i) {
-                this.indices.put(sources.interpolators()[i], i);
+                ArenaInterpolationColumn column = new ArenaInterpolationColumn(
+                        sources.zBaseSteps()[i], bounds.cellHeight(), bounds.blockCount());
+                this.lookup.put(sources.interpolators()[i], column);
             }
         }
 
         private void prepare(int inCellZ) {
             this.inCellZ = inCellZ;
-            if (++this.generation == 0) {
-                Arrays.fill(this.materializedGeneration, 0);
-                this.generation = 1;
-            }
+            this.generation++;
         }
 
         @Override
-        public double[] byepregen$getColumn(DensityFunction source) {
-            Integer index = this.indices.get(source);
-            if (index == null) {
+        public InterpolatedColumn byepregen$getColumn(DensityFunction source) {
+            ArenaInterpolationColumn column = this.lookup.get(source);
+            if (column == null) {
                 throw new IllegalArgumentException("Unknown interpolated density column source: "
                         + source.getClass().getName());
             }
-            double[] result = this.values[index];
-            if (result == null) {
-                result = new double[this.columnLength];
-                this.values[index] = result;
-            }
-            if (this.materializedGeneration[index] != this.generation) {
-                materializeBoundaries(this.sources.zBaseSteps()[index], result, this.inCellZ);
-                this.materializedGeneration[index] = this.generation;
-            }
-            return result;
+            column.prepareIfChanged(this.inCellZ, this.generation);
+            return column;
         }
     }
 
     public record ColumnBounds(int minY, int maxY, int cellHeight) {
         public ColumnBounds {
             int height = maxY - minY;
-            if (cellHeight <= 0 || height < 0 || height % cellHeight != 0) {
+            if (cellHeight <= 0 || cellHeight % Layout.PAGE_HEIGHT != 0 || height <= 0 || height % cellHeight != 0) {
                 throw new IllegalArgumentException("Column bounds must align to a positive cell height");
             }
         }
 
-        int length() {
-            return (this.maxY - this.minY) / this.cellHeight + 1;
+        int blockCount() {
+            return this.maxY - this.minY;
         }
     }
 

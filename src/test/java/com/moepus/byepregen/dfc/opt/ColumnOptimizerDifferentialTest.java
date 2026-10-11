@@ -165,7 +165,7 @@ final class ColumnOptimizerDifferentialTest {
         double[] output = new double[range.length()];
         ColumnEvaluationContext context = new ColumnEvaluationContext();
         context.prepare(output, 0, 0, range.minY(), range.cellHeight(),
-                source -> new double[range.length()]);
+                source -> { throw new AssertionError("Unexpected interpolation source"); });
         try {
             evaluator.evalColumn(context);
         } finally {
