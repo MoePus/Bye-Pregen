@@ -58,7 +58,8 @@ public abstract class ClientPacketListenerYALightMixin {
             } else {
                 holder.byepregen$getYALightEngine().queueZeroSectionData(layer, sectionPos);
             }
-            this.level.setSectionDirtyWithNeighbors(chunkX, sectionY, chunkZ);
+            // The installed section records its mesh halo. Invalidate after YA publishes it,
+            // together with any local light work, rather than before the new bytes are visible.
         }
     }
 

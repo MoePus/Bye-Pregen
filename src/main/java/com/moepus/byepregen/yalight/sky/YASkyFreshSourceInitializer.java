@@ -33,7 +33,7 @@ final class YASkyFreshSourceInitializer {
         int top = bottom | 15;
         for (int dz = 0; dz < 16; ++dz) {
             for (int dx = 0; dx < 16; ++dx) {
-                this.fillColumn(nibble, dx, dz, bottom, top);
+                this.fillColumn(data, nibble, dx, dz, bottom, top);
             }
         }
         this.engine.storage.markDirtySection(data, sectionY);
@@ -49,12 +49,16 @@ final class YASkyFreshSourceInitializer {
         }
     }
 
-    private void fillColumn(YANibbleArray nibble, int localX, int localZ, int bottom, int top) {
+    private void fillColumn(YAChunkLightData data, YANibbleArray nibble, int localX, int localZ, int bottom, int top) {
         int yStart = this.sourceCodeRunStart(this.sources.sourceCode(localX, localZ), bottom);
         if (yStart > top) {
             return;
         }
         nibble.fillColumnRun(localX, localZ, yStart & 15, top & 15, 15);
+        // A vertical run has fixed X/Z; its endpoints cover every section boundary it touches.
+        int sectionIndex = this.engine.storage.sectionIndex(bottom >> 4);
+        this.engine.storage.markRenderChange(data, sectionIndex, YANibbleArray.index(localX, yStart, localZ));
+        this.engine.storage.markRenderChange(data, sectionIndex, YANibbleArray.index(localX, top, localZ));
     }
 
     private void emitColumnFrontier(

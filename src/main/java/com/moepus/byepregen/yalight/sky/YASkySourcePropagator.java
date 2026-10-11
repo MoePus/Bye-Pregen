@@ -146,7 +146,7 @@ final class YASkySourcePropagator {
         boolean changed = false;
         for (int dz = 0; dz < 16; ++dz) {
             for (int dx = 0; dx < 16; ++dx) {
-                changed |= this.updatePartialColumn(nibble, sectionIndex, minX, minZ, dx, dz);
+                changed |= this.updatePartialColumn(data, nibble, sectionIndex, minX, minZ, dx, dz);
             }
         }
         if (changed) {
@@ -155,6 +155,7 @@ final class YASkySourcePropagator {
     }
 
     private boolean updatePartialColumn(
+            YAChunkLightData data,
             YANibbleArray nibble,
             int sectionIndex,
             int minX,
@@ -176,13 +177,18 @@ final class YASkySourcePropagator {
         for (int localY = 15; localY >= 0; --localY) {
             int current = nibble.getUpdating(localIndex);
             int yCode = this.sourceYCode(y);
+            boolean cellChanged = false;
             if (yCode >= lowest) {
                 int directions = this.skySourceDirectionsFromVisible(
                         yCode, lowest, north, south, west, east);
-                changed |= this.setSourceCell(nibble, x, y, z, localIndex, current, directions);
+                cellChanged = this.setSourceCell(nibble, x, y, z, localIndex, current, directions);
             } else if (current > 0) {
                 nibble.setUpdating(localIndex, 0);
                 this.engine.enqueueDecrease(BlockPos.asLong(x, y, z), current, YALightMath.ALL_DIRECTIONS);
+                cellChanged = true;
+            }
+            if (cellChanged) {
+                this.engine.storage.markRenderChange(data, sectionIndex, localIndex);
                 changed = true;
             }
             --y;

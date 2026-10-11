@@ -89,6 +89,8 @@ public final class YASectionAccess {
         if (current.setUpdatingAndGetDirtyTransition(localIndex, value)) {
             storage.markDirty(this.data, this.storageIndex);
         }
+        // A later write can touch a new boundary even when this section is already dirty.
+        storage.markRenderChange(this.data, this.storageIndex, localIndex);
     }
 
     // A positive light read proves the nibble exists and is not STATE_NULL.
@@ -96,6 +98,7 @@ public final class YASectionAccess {
         if (this.nibble.setUpdatingAndGetDirtyTransition(localIndex, 0)) {
             storage.markDirty(this.data, this.storageIndex);
         }
+        storage.markRenderChange(this.data, this.storageIndex, localIndex);
     }
 
     int rawId(int localIndex) {

@@ -7,10 +7,12 @@ import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
+import com.moepus.byepregen.yalight.storage.YALightRenderUpdates;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LightChunkGetter;
@@ -23,15 +25,38 @@ public final class YALightEngine {
     private final YASkyLightEngine skyEngine;
     private final YABlockLightEngine blockEngine;
     private final YASourceHalo sourceHalo = new YASourceHalo();
+    private final YALightRenderUpdates renderUpdates;
 
     public YALightEngine(
             LightChunkGetter chunkGetter,
             YABlockLightEngine blockEngine,
             YASkyLightEngine skyEngine
     ) {
+        this(chunkGetter, blockEngine, skyEngine,
+                chunkGetter.getLevel() instanceof Level level && level.isClientSide());
+    }
+
+    // Test harnesses can model a client light cache with server-backed detached chunks.
+    public YALightEngine(
+            LightChunkGetter chunkGetter,
+            YABlockLightEngine blockEngine,
+            YASkyLightEngine skyEngine,
+            boolean clientRenderUpdates
+    ) {
         this.chunkGetter = chunkGetter;
         this.blockEngine = blockEngine;
         this.skyEngine = skyEngine;
+        this.renderUpdates = clientRenderUpdates
+                ? new YALightRenderUpdates(chunkGetter.getLevel().getMinSection(),
+                        chunkGetter.getLevel().getMaxSection(), section -> chunkGetter.onLightUpdate(
+                                LightLayer.BLOCK, SectionPos.of(section)))
+                : null;
+        if (blockEngine != null) {
+            blockEngine.storage().setRenderUpdates(this.renderUpdates);
+        }
+        if (skyEngine != null) {
+            skyEngine.storage().setRenderUpdates(this.renderUpdates);
+        }
     }
 
     public void checkBlock(BlockPos pos) {
@@ -58,6 +83,10 @@ public final class YALightEngine {
             }
             if (this.skyEngine != null) {
                 work += this.skyEngine.runLightUpdates();
+            }
+            // Meshes may sample either layer and neighboring chunks: publish all before notifying.
+            if (this.renderUpdates != null) {
+                this.renderUpdates.flush();
             }
             success = true;
             return work;
