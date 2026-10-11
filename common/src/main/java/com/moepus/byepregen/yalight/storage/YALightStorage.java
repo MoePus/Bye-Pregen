@@ -18,6 +18,7 @@ public final class YALightStorage {
     private final int maxLightSection;
     private final int lightSectionCount;
     private final ArrayList<YAChunkLightData> dirtyChunks = new ArrayList<>();
+    private YALightRenderUpdates renderUpdates;
 
     public YALightStorage(LightChunkGetter chunkGetter, LevelHeightAccessor level, LightLayer layer) {
         this.chunkGetter = chunkGetter;
@@ -30,6 +31,22 @@ public final class YALightStorage {
     public ChunkAccess chunkAccess(int chunkX, int chunkZ) {
         LightChunk chunk = this.chunkGetter.getChunkForLighting(chunkX, chunkZ);
         return chunk == null ? null : (ChunkAccess)chunk;
+    }
+
+    public void setRenderUpdates(YALightRenderUpdates renderUpdates) {
+        this.renderUpdates = renderUpdates;
+    }
+
+    public void markRenderChange(YAChunkLightData data, int sectionIndex, int localIndex) {
+        if (this.renderUpdates != null) {
+            data.markRenderMask(sectionIndex, YALightRenderUpdates.maskForBlock(localIndex));
+        }
+    }
+
+    void markRenderSection(YAChunkLightData data, int sectionIndex) {
+        if (this.renderUpdates != null) {
+            data.markRenderMask(sectionIndex, YALightRenderUpdates.WHOLE_SECTION);
+        }
     }
 
     public LightChunkGetter chunkGetter() {
@@ -143,7 +160,7 @@ public final class YALightStorage {
     public int publishDirty(LightChunkGetter chunkGetter, LightLayer layer) {
         int count = 0;
         for (YAChunkLightData data : this.dirtyChunks) {
-            count += data.publishDirty(chunkGetter, layer);
+            count += data.publishDirty(chunkGetter, layer, this.renderUpdates);
         }
         return count;
     }
