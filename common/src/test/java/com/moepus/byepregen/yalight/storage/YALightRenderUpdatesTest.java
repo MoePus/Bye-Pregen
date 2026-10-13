@@ -131,8 +131,8 @@ class YALightRenderUpdatesTest {
         updates.add(CHUNK, -5, mask(8, 15, 8));
         updates.add(CHUNK, 20, mask(8, 0, 8));
         updates.flush();
-        assertEquals(Set.of(SectionPos.asLong(CHUNK.x, -4, CHUNK.z),
-                SectionPos.asLong(CHUNK.x, 19, CHUNK.z)), notifications);
+        assertEquals(Set.of(SectionPos.asLong(CHUNK.x(), -4, CHUNK.z()),
+                SectionPos.asLong(CHUNK.x(), 19, CHUNK.z())), notifications);
     }
 
     private static void publishCell(YAChunkLightData data, int value, LightLayer layer, YALightRenderUpdates updates) {
@@ -148,7 +148,7 @@ class YALightRenderUpdatesTest {
     }
 
     private static long section(int dx, int dy, int dz) {
-        return SectionPos.asLong(CHUNK.x + dx, SECTION_Y + dy, CHUNK.z + dz);
+        return SectionPos.asLong(CHUNK.x() + dx, SECTION_Y + dy, CHUNK.z() + dz);
     }
 
     private static Set<Long> expectedHalo(int index) {

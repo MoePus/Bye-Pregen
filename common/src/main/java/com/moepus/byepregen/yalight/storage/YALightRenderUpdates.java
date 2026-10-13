@@ -39,8 +39,8 @@ public final class YALightRenderUpdates {
             mask &= mask - 1;
             int y = sectionY + bit / Y_STRIDE - 1;
             if (y >= this.minSection && y < this.maxSection) {
-                this.sections.add(SectionPos.asLong(pos.x + bit % AXIS_STATES - 1,
-                        y, pos.z + bit / AXIS_STATES % AXIS_STATES - 1));
+                this.sections.add(SectionPos.asLong(pos.x() + bit % AXIS_STATES - 1,
+                        y, pos.z() + bit / AXIS_STATES % AXIS_STATES - 1));
             }
         }
     }

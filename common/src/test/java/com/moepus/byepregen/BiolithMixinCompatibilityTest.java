@@ -50,7 +50,7 @@ final class BiolithMixinCompatibilityTest {
                 BiolithMixinCompatibilityTest::readClassNode, mods::contains, ignored -> true);
         MixinGateEvaluator.GateEvaluation gate =
                 gates.evaluate("unused.Target", MIXIN_PACKAGE + mixin, config);
-        MixinFeatureEvaluator features = new MixinFeatureEvaluator(mods::contains, ignored -> false);
+        MixinFeatureEvaluator features = new MixinFeatureEvaluator(mods::contains, () -> true);
         return gate.annotationEnabled() && features.isEnabled(gate.feature(), config);
     }
 

@@ -47,8 +47,8 @@ public final class YALightEngine {
         this.blockEngine = blockEngine;
         this.skyEngine = skyEngine;
         this.renderUpdates = clientRenderUpdates
-                ? new YALightRenderUpdates(chunkGetter.getLevel().getMinSection(),
-                        chunkGetter.getLevel().getMaxSection(), section -> chunkGetter.onLightUpdate(
+                ? new YALightRenderUpdates(chunkGetter.getLevel().getMinSectionY(),
+                        chunkGetter.getLevel().getMaxSectionY() + 1, section -> chunkGetter.onLightUpdate(
                                 LightLayer.BLOCK, SectionPos.of(section)))
                 : null;
         if (blockEngine != null) {
