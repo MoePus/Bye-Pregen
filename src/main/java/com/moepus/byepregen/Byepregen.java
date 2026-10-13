@@ -5,6 +5,8 @@ import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import net.minecraft.world.level.block.Block;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.registries.IdMappingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -20,7 +22,16 @@ public class Byepregen {
     public Byepregen() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(Byepregen::onLoadComplete);
+        MinecraftForge.EVENT_BUS.addListener(Byepregen::onIdMapping);
         GcFreeCompat.register();
+    }
+
+    private static void onIdMapping(IdMappingEvent event) {
+        Config config = ConfigManager.getConfig();
+        if (MixinPlugin.MIXIN_FEATURE_EVALUATOR.isEnabled(MixinFeature.YA_LIGHT, config)) {
+            // Forge has finished baking the state ID map, including snapshot restores.
+            YABlockStateLightClass.rebuild();
+        }
     }
 
     private static void onLoadComplete(FMLLoadCompleteEvent event) {

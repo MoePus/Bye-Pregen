@@ -30,36 +30,41 @@ public final class YABlockStateLightClass {
             }
         }
     };
-    private static final int[] PACKED = buildPackedTable();
+    private static volatile Table table = buildPackedTable();
+
+    private record Table(int size, int[] packed) {
+    }
 
     private YABlockStateLightClass() {
     }
 
     public static void initialize() {
-        // The static call is intentional: class initialization builds PACKED at a known lifecycle point.
+        // Class initialization builds the first snapshot; Forge remaps publish replacements.
+    }
+
+    public static void rebuild() {
+        table = buildPackedTable();
     }
 
     public static int fromRawId(int rawId) {
-        if (rawId < 0 || rawId >= Block.BLOCK_STATE_REGISTRY.size()) {
+        Table snapshot = table;
+        if (rawId < 0 || rawId >= snapshot.size()) {
             return SLOW;
         }
         int wordIndex = rawId / VALUES_PER_WORD;
-        if (wordIndex >= PACKED.length) {
-            return SLOW;
-        }
-        int word = PACKED[wordIndex];
+        int word = snapshot.packed()[wordIndex];
         int shift = (rawId % VALUES_PER_WORD) * BITS_PER_VALUE;
         return (word >>> shift) & VALUE_MASK;
     }
 
-    private static int[] buildPackedTable() {
+    private static Table buildPackedTable() {
         int size = Block.BLOCK_STATE_REGISTRY.size();
         int[] packed = new int[(size + VALUES_PER_WORD - 1) / VALUES_PER_WORD];
         for (int rawId = 0; rawId < size; ++rawId) {
             int lightClass = classifySafely(Block.stateById(rawId));
             packed[rawId / VALUES_PER_WORD] |= lightClass << ((rawId % VALUES_PER_WORD) * BITS_PER_VALUE);
         }
-        return packed;
+        return new Table(size, packed);
     }
 
     private static int classifySafely(BlockState state) {

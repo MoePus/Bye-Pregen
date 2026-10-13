@@ -58,6 +58,7 @@ final class LightRestartProbe {
     }
 
     private static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        YALightRegistryRemapProbe.verify();
         LOGGER.info("Starting light restart harness before the overworld is available");
     }
 
