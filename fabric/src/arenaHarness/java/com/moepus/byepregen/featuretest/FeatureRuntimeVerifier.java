@@ -5,6 +5,7 @@ import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.worldgen.feature.FastDiskFeature;
 import com.moepus.byepregen.worldgen.feature.FastPlacedFeature;
 import com.moepus.byepregen.worldgen.feature.FastPlacementModifier;
+import com.moepus.byepregen.worldgen.feature.DiskFeaturePlan;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -112,6 +113,7 @@ public final class FeatureRuntimeVerifier {
                 && ((Object) disk instanceof FastDiskFeature) != (config.enabled() || config.localOptimizations())) {
             throw new AssertionError("Disk fast path missing");
         }
+        verifyPlanCapability(scenario, placed);
         boolean success = new FeaturePlacer(world.level(), level.getChunkSource().getGenerator())
                 .placeWithBiomeCheck(placed, random, scenario.origin());
         if (scenario.name().equals("disk-null-chain") && world.writeCount() == 0) {
@@ -122,6 +124,14 @@ public final class FeatureRuntimeVerifier {
         if (!scenario.name().startsWith("tree-")) return exact;
         exactTrees.put(scenario.name() + '/' + seed, exact);
         return prefix + world.treeSignature();
+    }
+
+    private static void verifyPlanCapability(Scenario scenario, PlacedFeature placed) {
+        var config = ConfigManager.getConfig().worldgen().placedFeatures();
+        if (!config.enabled() || !config.memoizedDiskPlan() || !scenario.name().startsWith("disk-plan-")) return;
+        boolean compiled = ((FastPlacedFeature) (Object) placed).byepregen$featurePlan() instanceof DiskFeaturePlan;
+        boolean supported = !scenario.name().equals("disk-plan-unsupported");
+        if (compiled != supported) throw new AssertionError("Incorrect disk plan capability: " + scenario.name());
     }
 
     private static List<Scenario> scenarios(ServerLevel level) {
@@ -183,6 +193,13 @@ public final class FeatureRuntimeVerifier {
                 repeated, false, new BlockPos(15, 62, -1)));
         cases.add(new Scenario("disk-build-limit", new DiskFeature(Holder.direct(nullableChain), BlockPredicate.alwaysTrue(), ConstantInt.of(2), 4),
                 repeated, false, new BlockPos(15, 94, -1)));
+        DiskFeature disk = new DiskFeature(Holder.direct(nullableChain), target, ConstantInt.of(2), 3);
+        cases.add(new Scenario("disk-plan-fixed", disk,
+                List.of(FixedPlacement.of(new BlockPos(1, 62, 1), new BlockPos(2, 62, 3))), false));
+        cases.add(new Scenario("disk-plan-layers", disk,
+                List.of(CountOnEveryLayerPlacement.of(2)), true));
+        cases.add(new Scenario("disk-plan-unsupported", disk,
+                List.of(new BurstPlacement(false)), false));
     }
 
     private record Scenario(String name, Feature feature, List<PlacementModifier> modifiers, boolean layers, BlockPos origin) {

@@ -92,6 +92,15 @@ final class MixinFeatureEvaluatorTest {
     }
 
     @Test
+    void blueprintDisablesOnlyTheSurfaceRuleCompiler() {
+        MixinFeatureEvaluator evaluator = evaluator(Set.of("blueprint"), true);
+        assertTrue(enabled(MixinFeature.SURFACE_RULE_COMPILER, new Config()));
+        assertFalse(evaluator.isEnabled(MixinFeature.SURFACE_RULE_COMPILER, new Config()));
+        assertTrue(evaluator.isEnabled(MixinFeature.SURFACE_BIOME_CACHE, new Config()));
+        assertTrue(evaluator.isEnabled(MixinFeature.DFC, new Config()));
+    }
+
+    @Test
     void yaLightYieldsToScalableLux() {
         Config enabled = new ConfigTestBuilder().yaLight(true).build();
 

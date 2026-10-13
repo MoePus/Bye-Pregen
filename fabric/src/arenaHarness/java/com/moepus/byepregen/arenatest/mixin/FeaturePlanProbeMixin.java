@@ -5,12 +5,12 @@ import com.moepus.byepregen.worldgen.feature.PredicateMemoizedDiskPlacement;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = PredicateMemoizedDiskPlacement.class, remap = false)
 public abstract class FeaturePlanProbeMixin {
     @Inject(method = "placeOrigin", at = @At("HEAD"))
-    private void byepregen$recordDisk(CallbackInfo callback) {
+    private void byepregen$recordDisk(CallbackInfoReturnable<Boolean> callback) {
         FeatureRuntimeVerifier.recordMemoizedDisk();
     }
 }

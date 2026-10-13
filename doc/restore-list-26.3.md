@@ -1,5 +1,9 @@
 # 26.3 归档配置与访问规则：退役记录 / 待恢复清单
 
+> 这是早期迁移的历史清单，部分模块后来已经恢复。2026-10-13 的 master 同步与
+> interpolator/DFC 核对见 [master-sync-26.3.md](master-sync-26.3.md)；当前编译与注册状态以
+> `gradle/byepregen-arena-core.gradle` 和实际分片 mixin 配置为准。
+
 本文件替代原来放在 `common/src/main/resources/` 下的三份"归档输入"，它们已在本轮删除：
 
 | 已删除文件 | 原作用 | 现在谁负责 |

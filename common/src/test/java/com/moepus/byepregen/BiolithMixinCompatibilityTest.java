@@ -45,6 +45,18 @@ final class BiolithMixinCompatibilityTest {
         assertTrue(enabled(mixin, Set.of("biolith", "nomansland"), Config.defaults()));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "arena.NoiseBasedChunkGeneratorArenaMixin",
+            "climate.ClimateRTreeColumnMixin",
+            "climate.ClimateRTreeNodeCacheMixin"
+    })
+    void nativeTerrainAndClimateHooksYieldToFreeTerraForged(String mixin) {
+        assertTrue(enabled(mixin, Set.of(), Config.defaults()));
+        assertFalse(enabled(mixin, Set.of("freeterraforged"), Config.defaults()));
+        assertFalse(enabled(mixin, Set.of("reterraforged"), Config.defaults()));
+    }
+
     private static boolean enabled(String mixin, Set<String> mods, Config config) {
         MixinGateEvaluator gates = new MixinGateEvaluator(
                 BiolithMixinCompatibilityTest::readClassNode, mods::contains, ignored -> true);
