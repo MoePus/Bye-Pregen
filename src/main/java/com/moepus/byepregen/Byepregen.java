@@ -4,6 +4,7 @@ import com.moepus.byepregen.integration.c2me.GcFreeCompat;
 import com.moepus.byepregen.config.Config;
 import com.moepus.byepregen.config.ConfigManager;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
+import net.minecraft.world.level.block.Block;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -32,6 +33,9 @@ public class Byepregen {
                     + "despite lighting.ya.enabled=true");
             return;
         }
-        event.enqueueWork(() -> YABlockStateLightClass.initialize());
+        event.enqueueWork(() -> {
+            // Forge can populate block-state IDs after load-complete; leave initialization lazy then.
+            if (Block.BLOCK_STATE_REGISTRY.size() != 0) YABlockStateLightClass.initialize();
+        });
     }
 }

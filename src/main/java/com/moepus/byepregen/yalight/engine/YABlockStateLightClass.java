@@ -18,7 +18,6 @@ public final class YABlockStateLightClass {
     private static final int VALUES_PER_WORD = 16;
     private static final int BITS_PER_VALUE = 2;
     private static final int VALUE_MASK = 3;
-    private static final int[] PACKED = buildPackedTable();
     private static final ClassValue<Boolean> DYNAMIC_LIGHT_BLOCKS = new ClassValue<>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
@@ -31,6 +30,7 @@ public final class YABlockStateLightClass {
             }
         }
     };
+    private static final int[] PACKED = buildPackedTable();
 
     private YABlockStateLightClass() {
     }
