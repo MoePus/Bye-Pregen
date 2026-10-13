@@ -375,7 +375,7 @@ public abstract class ThreadedLevelLightEngineYAMixin {
             ((ChunkMapLightAccessor)this.chunkMap).byepregen$releaseLightTicket(chunkPos);
             future.complete(chunk);
         };
-        if (freshRequest != null && chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
+        if (freshRequest != null && chunk.getStatus().isOrAfter(ChunkStatus.LIGHT)) {
             // Saved neighbors may have skipped this owner while it was not edge-ready.
             // Once its own sources are rebuilt, import their light before declaring success.
             Runnable reconcile = () -> {

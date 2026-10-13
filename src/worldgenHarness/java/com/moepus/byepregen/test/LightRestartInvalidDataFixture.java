@@ -11,15 +11,11 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.storage.RegionFile;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 /** Test-only fault injection after clean baseline capture and server shutdown. */
 public final class LightRestartInvalidDataFixture {
     private static final int LIGHT_BYTES = 2048;
-    private static final RegionStorageInfo REGION_INFO =
-            new RegionStorageInfo("light-restart-invalid", Level.OVERWORLD, "chunk");
 
     private LightRestartInvalidDataFixture() {
     }
@@ -38,13 +34,13 @@ public final class LightRestartInvalidDataFixture {
         if (!Files.isRegularFile(file)) {
             throw new IOException("Missing restart fixture region: " + file);
         }
-        try (RegionFile region = new RegionFile(REGION_INFO, file, directory, false)) {
+        try (RegionFile region = new RegionFile(file, directory, false)) {
             CompoundTag chunk;
             try (DataInputStream input = region.getChunkDataInputStream(pos)) {
                 if (input == null) {
                     throw new IOException("Missing invalid-light fixture: " + pos);
                 }
-                chunk = NbtIo.read(input, NbtAccounter.unlimitedHeap());
+                chunk = NbtIo.read(input, NbtAccounter.UNLIMITED);
             }
             if (chunk.getBoolean("isLightOn")) {
                 throw new IllegalStateException("Expected invalid fixture before light fault injection");

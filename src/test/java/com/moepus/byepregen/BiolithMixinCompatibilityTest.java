@@ -41,10 +41,8 @@ final class BiolithMixinCompatibilityTest {
             "arena.NoiseBasedChunkGeneratorArenaMixin",
             "dfc.DensityRandomStateMixin",
             "dfc.DensityNoiseChunkMixin",
-            "climate.ClimateRTreeBuildMixin",
             "climate.ClimateRTreeSearchMixin",
             "climate.ClimateParameterListSearchMixin",
-            "surface.SurfaceSystemRuleCompilerMixin",
             "surface.biome.SurfaceSystemBiomeCacheMixin"
     })
     void biolithKeepsIndependentOptimizations(String mixin) {

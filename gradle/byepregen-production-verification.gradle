@@ -34,6 +34,9 @@ def verificationOutputs = verificationSourceSets.collect { verification ->
 def requiredEntries = [
         'com/moepus/byepregen/Byepregen.class',
         'com/moepus/byepregen/api/dfc/ColumnDensityFunctionRegistry.class',
+        'com/moepus/byepregen/worldgen/biome/BiomeColumnFiller.class',
+        'com/moepus/byepregen/mixin/worldgen/biome/NoiseBasedChunkGeneratorBiomeColumnMixin.class',
+        'com/moepus/byepregen/yalight/storage/YALightRenderUpdates.class',
         'com/moepus/byepregen/mixin/surface/biome/SurfaceSystemBiomeCacheMixin.class',
         'byepregen.mixins.json',
         'byepregen.refmap.json',
@@ -43,11 +46,8 @@ def requiredEntries = [
         'pack.mcmeta',
 ]
 def forbiddenPrefixes = [
-        'com/moepus/byepregen/mixin/climate/',
         'com/moepus/byepregen/mixin/surface/SurfaceRules',
         'com/moepus/byepregen/worldgen/surface/',
-        'com/moepus/byepregen/worldgen/biome/FastClimateRTree',
-        'com/moepus/byepregen/worldgen/biome/ClimateRTree',
         'com/moepus/byepregen/worldgen/arena/ArenaOpenCL',
         'com/moepus/byepregen/mixin/arena/compat/fastnoise/',
         'com/moepus/byepregen/mixin/arena/compat/voxy/',

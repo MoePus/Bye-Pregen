@@ -19,7 +19,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.ProtoChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.storage.ChunkSerializer;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
 import org.spongepowered.asm.mixin.Mixin;
@@ -162,7 +162,7 @@ public abstract class ChunkSerializerYALightMixin {
     private static void byepregen$readYALightTags(ServerLevel level, ListTag sections, ChunkAccess chunk) {
         // isLightOn is a trust flag, not a request to seed a relight with old bytes.
         // Fresh lighting only adds current sources; stale interior light has no removal seed.
-        if (!chunk.isLightCorrect() || !chunk.getPersistedStatus().isOrAfter(ChunkStatus.LIGHT)) {
+        if (!chunk.isLightCorrect() || !chunk.getStatus().isOrAfter(ChunkStatus.LIGHT)) {
             chunk.setLightCorrect(false);
             return;
         }
