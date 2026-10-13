@@ -38,7 +38,10 @@ def compareValues = { String name, int size, DataInputStream a, DataInputStream 
         ++stats.samples
         if (Float.floatToIntBits(x) == Float.floatToIntBits(y)) continue
         ++stats.changed
-        if ((x > 0) != (y > 0)) ++stats.signs
+        if ((x > 0) != (y > 0)) {
+            ++stats.signs
+            throw new GradleException("DFC density sign mismatch: ${name}[${i}] ${x} -> ${y}")
+        }
         double error = Math.abs((double)x - y)
         double tolerance = 3.0e-5 * Math.max(1.0, Math.abs((double)x))
         if (!Float.isFinite(x) || !Float.isFinite(y) || error > tolerance) {
@@ -67,10 +70,40 @@ def compareSamples = { File reference, File optimized ->
     return stats
 }
 
+tasks.register('testDfcComparison') {
+    group = 'verification'
+    description = 'Checks numerical tolerance without accepting changes to the positive-density boundary.'
+    doLast {
+        def input = { float value ->
+            def bytes = new ByteArrayOutputStream()
+            new DataOutputStream(bytes).writeFloat(value)
+            new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))
+        }
+        def accepts = { float expected, float actual ->
+            try {
+                compareValues('comparison-probe', 1, input(expected), input(actual),
+                        [samples: 0L, changed: 0L, signs: 0L, maximumError: 0.0D])
+                return true
+            } catch (GradleException ignored) {
+                return false
+            }
+        }
+        assert accepts(1.0F, 1.000001F)
+        assert accepts(0.0F, -0.0F)
+        assert !accepts(1.0e-7F, -1.0e-7F)
+        assert !accepts(-1.0e-7F, 1.0e-7F)
+        assert !accepts(0.0F, 1.0e-7F)
+        assert !accepts(1.0F, 1.001F)
+        assert !accepts(1.0F, Float.NaN)
+    }
+}
+
+tasks.named('check') { dependsOn('testDfcComparison') }
+
 tasks.register('testDfcRuntime') {
     group = 'verification'
     description = 'Checks RC2 density samplers numerically and generates terrain with DFC in all three dimensions.'
-    dependsOn('runDfcBaseline', 'runDfcOptimized', 'runArenaDfc', 'runArenaDfcFeatures')
+    dependsOn('testDfcComparison', 'runDfcBaseline', 'runDfcOptimized', 'runArenaDfc', 'runArenaDfcFeatures')
     doLast {
         def stats = compareSamples(new File(resultDir, 'dfcBaseline.txt.samples'),
                 new File(resultDir, 'dfcOptimized.txt.samples'))

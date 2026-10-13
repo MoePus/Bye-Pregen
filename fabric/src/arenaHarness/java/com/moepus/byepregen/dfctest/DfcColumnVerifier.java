@@ -44,6 +44,7 @@ final class DfcColumnVerifier {
 
     private static boolean equivalent(float a, float b) {
         if (Float.floatToIntBits(a) == Float.floatToIntBits(b)) return true;
+        if ((a > 0) != (b > 0)) return false;
         return Float.isFinite(a) && Float.isFinite(b) && Math.abs(a - b) <= TOLERANCE * Math.max(1.0F, Math.abs(a));
     }
 }
