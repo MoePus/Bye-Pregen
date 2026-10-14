@@ -20,7 +20,7 @@ import net.minecraft.world.level.lighting.LayerLightSectionStorage;
 public final class YABlockLightEngine extends BlockLightEngine implements YALightLayerEngine {
     final LightChunkGetter chunkGetter;
     final YALightStorage storage;
-    final YAChunkRunCache runCache = new YAChunkRunCache();
+    final YAChunkRunCache runCache;
     private final YALightQueue lightQueue = new YALightQueue(LightLayer.BLOCK);
     private final YADLongQueue decreaseQueue = new YADLongQueue();
     private final YADLongQueue increaseQueue = new YADLongQueue();
@@ -29,6 +29,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     public YABlockLightEngine(LightChunkGetter chunkGetter) {
         super(chunkGetter, null);
         this.chunkGetter = chunkGetter;
+        this.runCache = new YAChunkRunCache(chunkGetter);
         this.storage = new YALightStorage(chunkGetter, chunkGetter.getLevel(), LightLayer.BLOCK);
         this.blocks = new YALightBlockAccess(this.runCache, chunkGetter);
     }

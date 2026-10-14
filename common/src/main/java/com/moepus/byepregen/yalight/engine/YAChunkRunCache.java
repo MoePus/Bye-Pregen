@@ -6,6 +6,7 @@ import com.moepus.byepregen.yalight.storage.YALightStorage;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
+import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
@@ -33,9 +34,20 @@ public class YAChunkRunCache {
     private int chunkLoadedMask;
     private int lightDataLoadedMask;
 
-    private final YASectionAccess resident = new YASectionAccess();
-    private final YASectionAccess neighbor = new YASectionAccess();
+    private final YASectionAccess resident;
+    private final YASectionAccess neighbor;
+    private final boolean paletteReads;
+    private final YAVirtualBlockReader pointReader;
     private long residentSectionKey = UNBOUND_SECTION;
+
+    public YAChunkRunCache(LightChunkGetter source) {
+        // Our immediate-access mixins target the real client/server chunk caches only.
+        // Other sources may expose virtual blocks which are absent from their palettes.
+        this.paletteReads = source instanceof YAImmediateChunkAccess;
+        this.resident = new YASectionAccess(this.paletteReads);
+        this.neighbor = new YASectionAccess(this.paletteReads);
+        this.pointReader = this.paletteReads ? null : new YAVirtualBlockReader();
+    }
 
     public void clear() {
         this.pinnedOwners.clear();
@@ -48,6 +60,9 @@ public class YAChunkRunCache {
         this.residentSectionKey = UNBOUND_SECTION;
         this.resident.clear();
         this.neighbor.clear();
+        if (this.pointReader != null) {
+            this.pointReader.clear();
+        }
     }
 
     protected LightChunk chunk(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
@@ -144,7 +159,11 @@ public class YAChunkRunCache {
 
     int getRawId(LightChunkGetter chunkGetter, int x, int y, int z) {
         int index = this.chunkIndex(chunkGetter, x >> 4, z >> 4);
-        return rawIdAt(this.chunks[index], x, y, z);
+        if (this.paletteReads) {
+            return rawIdAt(this.chunks[index], x, y, z);
+        }
+        BlockStateRawIdAccess access = this.pointReader.bind(this.chunks[index], y >> 4);
+        return access == null ? -1 : access.getRawId(x & 15, y & 15, z & 15);
     }
 
     public YASectionAccess prepareSource(YALightStorage storage, long pos) {
@@ -275,6 +294,7 @@ public class YAChunkRunCache {
         return sections[sectionIndex].getStates() instanceof BlockStateRawIdAccess access ? access : null;
     }
 
+    /** Palette-only lookup for the ordinary client world's renderer; engines use their selected reader. */
     public static int rawIdAt(ChunkAccess chunk, int x, int y, int z) {
         BlockStateRawIdAccess access = blockAccessAt(chunk, y >> 4);
         if (access == null) {

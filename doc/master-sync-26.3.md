@@ -55,3 +55,25 @@ feature 差分额外覆盖 fixed/layer 多 origin disk plan，以及不支持的
 render sink 测试不等同于人工客户端画面检查。
 
 日志存放于 `F:\.codex-tmp\port-26.3-*.log`，没有推送分支。
+
+## 增量同步（2026-10-19）
+
+基线：`26.3/dev@272f096`；来源：`master@2c8fef7`。
+上次已核对至 `64a6c84`，本次仅补入其后的两个提交：
+
+- `7e1b7ae`：虚拟世界 YA 方块读取与客户端亮度回退。公共代码和单元测试映射至
+  `common/src`，运行探针映射至 `neoforge/src/worldgenHarness`；旧版 LevelRenderer
+  修复落在 26.3 的 `LightCoordsUtilYALightMixin`，只对精确的 ClientLevel 使用快速路径。
+  保留真实 chunk cache 的直接 palette 访问，其他来源通过虚拟 ChunkAccess 查询方块。
+  高度 API 使用 `getMinSectionY/getMaxSectionY` 和 `getMinY/getMaxY` 的包含式上界，
+  `ChunkPos(BlockPos)` 改用 `ChunkPos.containing`。
+- `2c8fef7`：版本升级至 `1.1.3.3`。
+
+验证全部离线完成：`:common:test :fabric:build :neoforge:build
+:neoforge:compileWorldgenHarnessJava`；单元测试 282 项通过（common 270、NeoForge 12），
+无失败或跳过。YA+C2ME 标准/raw 两套各两次重启及磁盘验证通过；新增探针覆盖
+map/palette/imposter、负坐标、chunk/section 边界、光源扫描、墙体开闭和移除光源。
+这些运行探针不等同于图形客户端的人工验证。
+
+测试世界位于 `F:\.codex-tmp\master-sync-26.3-20261019`，日志为同名前缀的
+`-light.log` 和 `-light-raw-retry.log`（raw 矩阵因工具服务重启中断后整套重跑）。
