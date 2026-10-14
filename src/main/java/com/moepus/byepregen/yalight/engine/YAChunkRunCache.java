@@ -6,6 +6,7 @@ import com.moepus.byepregen.yalight.storage.YALightStorage;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
 
 import com.moepus.byepregen.palette.access.BlockStateRawIdAccess;
+import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
@@ -15,7 +16,6 @@ import net.minecraft.world.level.chunk.LightChunk;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 
 import java.util.Arrays;
-import java.util.function.Supplier;
 
 public class YAChunkRunCache {
     private static final int UNSET = Integer.MIN_VALUE;
@@ -36,14 +36,17 @@ public class YAChunkRunCache {
 
     private final YASectionAccess resident;
     private final YASectionAccess neighbor;
-    private final YASectionBlockReader pointReader;
+    private final boolean paletteReads;
+    private final YAVirtualBlockReader pointReader;
     private long residentSectionKey = UNBOUND_SECTION;
 
     public YAChunkRunCache(LightChunkGetter source) {
-        Supplier<YASectionBlockReader> readers = YASectionBlockReader.factoryFor(source);
-        this.resident = new YASectionAccess(readers.get());
-        this.neighbor = new YASectionAccess(readers.get());
-        this.pointReader = readers.get();
+        // Our immediate-access mixins target the real client/server chunk caches only.
+        // Other sources may expose virtual blocks which are absent from their palettes.
+        this.paletteReads = source instanceof YAImmediateChunkAccess;
+        this.resident = new YASectionAccess(this.paletteReads);
+        this.neighbor = new YASectionAccess(this.paletteReads);
+        this.pointReader = this.paletteReads ? null : new YAVirtualBlockReader();
     }
 
     public void clear() {
@@ -57,7 +60,9 @@ public class YAChunkRunCache {
         this.residentSectionKey = UNBOUND_SECTION;
         this.resident.clear();
         this.neighbor.clear();
-        this.pointReader.bind(null, 0);
+        if (this.pointReader != null) {
+            this.pointReader.clear();
+        }
     }
 
     protected LightChunk chunk(LightChunkGetter chunkGetter, int chunkX, int chunkZ) {
@@ -154,6 +159,9 @@ public class YAChunkRunCache {
 
     int getRawId(LightChunkGetter chunkGetter, int x, int y, int z) {
         int index = this.chunkIndex(chunkGetter, x >> 4, z >> 4);
+        if (this.paletteReads) {
+            return rawIdAt(this.chunks[index], x, y, z);
+        }
         BlockStateRawIdAccess access = this.pointReader.bind(this.chunks[index], y >> 4);
         return access == null ? -1 : access.getRawId(x & 15, y & 15, z & 15);
     }

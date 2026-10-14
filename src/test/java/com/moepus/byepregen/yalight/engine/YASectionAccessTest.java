@@ -104,8 +104,19 @@ class YASectionAccessTest {
         assertEquals(15, nibble.getVisible(15, 0, 1));
     }
 
+    @Test
+    void missingOwnerReadsAsUnavailableBeforeAndAfterClearInBothModes() {
+        for (boolean paletteReads : new boolean[]{true, false}) {
+            YASectionAccess access = new YASectionAccess(paletteReads);
+            access.bind(this.storage, null, this.data, 0);
+            assertEquals(-1, access.rawId(0));
+            access.clear();
+            assertEquals(-1, access.rawId(4095));
+        }
+    }
+
     private YASectionAccess access(int sectionY) {
-        YASectionAccess access = new YASectionAccess(YASectionBlockReader.factoryFor(null).get());
+        YASectionAccess access = new YASectionAccess(false);
         access.bind(this.storage, null, this.data, sectionY);
         return access;
     }
