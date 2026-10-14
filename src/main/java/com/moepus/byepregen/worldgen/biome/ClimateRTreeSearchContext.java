@@ -38,16 +38,6 @@ public final class ClimateRTreeSearchContext<T> extends ThreadLocal<Climate.RTre
         private int[] fixedDistanceEpochs = new int[0];
         private int fixedDistanceEpoch;
 
-        public void setTarget(final Climate.TargetPoint target) {
-            this.values[0] = target.temperature();
-            this.values[1] = target.humidity();
-            this.values[2] = target.continentalness();
-            this.values[3] = target.erosion();
-            this.values[4] = target.depth();
-            this.values[5] = target.weirdness();
-            this.values[6] = 0L;
-        }
-
         public void setTarget(final long[] target) {
             System.arraycopy(target, 0, this.values, 0, PARAMETER_COUNT);
         }
