@@ -22,7 +22,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     final LightChunkGetter chunkGetter;
     final BlockGetter levelReader;
     final YALightStorage storage;
-    final YAChunkRunCache runCache = new YAChunkRunCache();
+    final YAChunkRunCache runCache;
     final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
     private final YALightQueue lightQueue = new YALightQueue(LightLayer.BLOCK);
     private final YADLongQueue decreaseQueue = new YADLongQueue();
@@ -32,6 +32,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     public YABlockLightEngine(LightChunkGetter chunkGetter) {
         super(chunkGetter, null);
         this.chunkGetter = chunkGetter;
+        this.runCache = new YAChunkRunCache(chunkGetter);
         this.levelReader = chunkGetter.getLevel();
         this.storage = new YALightStorage(chunkGetter, chunkGetter.getLevel(), LightLayer.BLOCK);
         this.blocks = new YALightBlockAccess(this.runCache, chunkGetter, this.levelReader, this.mutablePos);

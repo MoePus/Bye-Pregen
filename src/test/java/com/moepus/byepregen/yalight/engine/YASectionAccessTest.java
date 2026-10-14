@@ -18,7 +18,7 @@ class YASectionAccessTest {
     private final LevelHeightAccessor height = LevelHeightAccessor.create(-64, 384);
     private final YALightStorage storage = new YALightStorage(null, this.height, LightLayer.BLOCK);
     private final YAChunkLightData data = new YAChunkLightData(new ChunkPos(0, 0), this.height);
-    private final YAChunkRunCache cache = new YAChunkRunCache();
+    private final YAChunkRunCache cache = new YAChunkRunCache(null);
 
     @Test
     void firstWriteMaterializesTheSameSectionUsedBySubsequentReads() {
@@ -105,7 +105,7 @@ class YASectionAccessTest {
     }
 
     private YASectionAccess access(int sectionY) {
-        YASectionAccess access = new YASectionAccess();
+        YASectionAccess access = new YASectionAccess(YASectionBlockReader.factoryFor(null).get());
         access.bind(this.storage, null, this.data, sectionY);
         return access;
     }

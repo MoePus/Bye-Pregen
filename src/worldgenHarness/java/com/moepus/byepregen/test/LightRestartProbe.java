@@ -260,6 +260,7 @@ final class LightRestartProbe {
             if (this.phase == Phase.PREPARE) {
                 YAOpaqueLightDecreaseProbe.verify(this.level);
                 YALightRenderProbe.verify(this.level);
+                YAVirtualLightProbe.verify(this.level);
             }
             LightRestartSnapshot snapshot = LightRestartSnapshot.capture(this.level);
             LightRestartVerifier.verifyRuntimeState(this.level, snapshot.samples());

@@ -8,6 +8,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 
 /** Writer-local access for one propagation item or edge, never a published section snapshot. */
 public final class YASectionAccess {
+    private final YASectionBlockReader blockReader;
     private ChunkAccess owner;
     private YAChunkLightData data;
     private int sectionY;
@@ -16,6 +17,10 @@ public final class YASectionAccess {
     private BlockStateRawIdAccess blocks;
     private boolean blocksResolved;
     private boolean enabled;
+
+    YASectionAccess(YASectionBlockReader blockReader) {
+        this.blockReader = blockReader;
+    }
 
     void bind(YALightStorage storage, ChunkAccess owner, YAChunkLightData data, int sectionY) {
         this.owner = owner;
@@ -38,6 +43,7 @@ public final class YASectionAccess {
         this.owner = null;
         this.data = null;
         this.storageIndex = -1;
+        this.blockReader.bind(null, 0);
         this.refresh();
     }
 
@@ -103,7 +109,7 @@ public final class YASectionAccess {
 
     int rawId(int localIndex) {
         if (!this.blocksResolved) {
-            this.blocks = YAChunkRunCache.blockAccessAt(this.owner, this.sectionY);
+            this.blocks = this.blockReader.bind(this.owner, this.sectionY);
             this.blocksResolved = true;
         }
         BlockStateRawIdAccess access = this.blocks;

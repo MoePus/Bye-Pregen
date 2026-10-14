@@ -14,6 +14,10 @@ import net.minecraft.world.level.chunk.LightChunkGetter;
 // their per-chunk source prefetch (e.g. lowestByColumn) before driving propagation that
 // can wander to other chunks. YASkyLightEngine already follows this order.
 final class YASkySourceCache extends YAChunkRunCache {
+    YASkySourceCache(LightChunkGetter source) {
+        super(source);
+    }
+
     YAChunkSkyLightSources enabledSources(YALightStorage storage, int chunkX, int chunkZ) {
         LightChunk chunk = this.enabledChunk(storage, chunkX, chunkZ);
         return chunk == null ? null : (YAChunkSkyLightSources)chunk.getSkyLightSources();
