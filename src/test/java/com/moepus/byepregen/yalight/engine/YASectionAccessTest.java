@@ -18,7 +18,7 @@ class YASectionAccessTest {
     private final LevelHeightAccessor height = LevelHeightAccessor.create(-64, 384);
     private final YALightStorage storage = new YALightStorage(null, this.height, LightLayer.BLOCK);
     private final YAChunkLightData data = new YAChunkLightData(new ChunkPos(0, 0), this.height);
-    private final YAChunkRunCache cache = new YAChunkRunCache();
+    private final YAChunkRunCache cache = new YAChunkRunCache(null);
 
     @Test
     void firstWriteMaterializesTheSameSectionUsedBySubsequentReads() {
@@ -104,8 +104,19 @@ class YASectionAccessTest {
         assertEquals(15, nibble.getVisible(15, 0, 1));
     }
 
+    @Test
+    void missingOwnerReadsAsUnavailableBeforeAndAfterClearInBothModes() {
+        for (boolean paletteReads : new boolean[]{true, false}) {
+            YASectionAccess access = new YASectionAccess(paletteReads);
+            access.bind(this.storage, null, this.data, 0);
+            assertEquals(-1, access.rawId(0));
+            access.clear();
+            assertEquals(-1, access.rawId(4095));
+        }
+    }
+
     private YASectionAccess access(int sectionY) {
-        YASectionAccess access = new YASectionAccess();
+        YASectionAccess access = new YASectionAccess(false);
         access.bind(this.storage, null, this.data, sectionY);
         return access;
     }

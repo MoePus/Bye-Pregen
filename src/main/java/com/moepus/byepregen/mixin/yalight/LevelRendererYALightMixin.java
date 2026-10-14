@@ -9,6 +9,7 @@ import com.moepus.byepregen.yalight.storage.YALightStorage;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.access.YAImmediateChunkAccess;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.BlockAndTintGetter;
@@ -30,7 +31,9 @@ public abstract class LevelRendererYALightMixin {
      */
     @Overwrite
     public static int getLightColor(BlockAndTintGetter blockGetter, BlockPos pos) {
-        if (blockGetter instanceof Level level) {
+        // Virtual levels may override brightness (external light, or no sky engine).
+        if (blockGetter.getClass() == ClientLevel.class) {
+            Level level = (Level)blockGetter;
             int x = pos.getX();
             int y = pos.getY();
             int z = pos.getZ();
@@ -55,7 +58,8 @@ public abstract class LevelRendererYALightMixin {
     @Overwrite
     public static int getLightColor(BlockAndTintGetter blockGetter, BlockState state, BlockPos pos) {
         int light;
-        if (blockGetter instanceof Level level) {
+        if (blockGetter.getClass() == ClientLevel.class) {
+            Level level = (Level)blockGetter;
             ChunkAccess chunk = byepregen$getChunkNow(level, pos.getX(), pos.getZ());
             light = byepregen$levelLightColor(level, chunk, pos);
         } else {

@@ -27,7 +27,7 @@ import net.minecraft.world.level.lighting.SkyLightEngine;
 public final class YASkyLightEngine extends SkyLightEngine implements YALightLayerEngine {
     final LightChunkGetter chunkGetter;
     final YALightStorage storage;
-    final YASkySourceCache sourceCache = new YASkySourceCache();
+    final YASkySourceCache sourceCache;
     final int minLightSection;
     final int maxLightSection;
     final YALightBlockAccess blocks;
@@ -40,6 +40,7 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
     public YASkyLightEngine(LightChunkGetter chunkGetter) {
         super(chunkGetter, null);
         this.chunkGetter = chunkGetter;
+        this.sourceCache = new YASkySourceCache(chunkGetter);
         BlockGetter levelReader = chunkGetter.getLevel();
         this.storage = new YALightStorage(chunkGetter, chunkGetter.getLevel(), LightLayer.SKY);
         this.minLightSection = this.storage.minLightSection();
