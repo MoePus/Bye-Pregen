@@ -147,6 +147,19 @@ def verifyProductionJar = tasks.register('verifyProductionJar') {
     }
 }
 
+def verifyProductionMixinMappings = tasks.register('verifyProductionMixinMappings', JavaExec) {
+    group = 'verification'
+    description = 'Checks that generated Mixin member mappings were applied to the production jar.'
+    dependsOn(tasks.named('reobfJarJar'), sourceSets.worldgenHarness.classesTaskName)
+    classpath = sourceSets.worldgenHarness.runtimeClasspath
+    mainClass.set('com.moepus.byepregen.test.ProductionMixinMappingVerifier')
+    def mappings = layout.buildDirectory.file('tmp/compileJava/compileJava-mappings.tsrg')
+    inputs.file(productionJar)
+    inputs.file(mappings)
+    args productionJar.get().asFile.absolutePath, mappings.get().asFile.absolutePath,
+            sourceSets.main.output.classesDirs.singleFile.absolutePath
+}
+
 tasks.named('check') {
-    dependsOn(verifyProductionJar)
+    dependsOn(verifyProductionJar, verifyProductionMixinMappings)
 }
