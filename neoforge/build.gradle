@@ -162,8 +162,7 @@ dependencies {
     implementation("org.mixinlite:mixinlite:${mixinlite_version}")
     annotationProcessor("org.mixinlite:mixinlite:${mixinlite_version}")
     jarJar("org.mixinlite:mixinlite:${mixinlite_version}")
-    // TODO(26.3): Restore after the mod and its compatibility code support this version.
-    // compileOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}")
+    compileOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}") { transitive = false }
 
     if (optionalRuntimeEnabled) {
         runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_neoforge_version}")
@@ -172,7 +171,8 @@ dependencies {
         runtimeOnly("maven.modrinth:chunky:${chunky_neoforge_version}")
         // Sodium ships a 26.3 build, so the palette contract surface is exercised against it again.
         runtimeOnly("maven.modrinth:sodium:${sodium_neoforge_version}")
-        // TODO(26.3): Restore FastNoise and TerraBlender compatibility when they update.
+        runtimeOnly("maven.modrinth:terrablender:${terrablender_neoforge_version}") { transitive = false }
+        // TODO(26.3): Restore FastNoise compatibility when it updates.
         // FastNoise is runtime-only here (never a compile input): enable this line to run the runtime
         // checks with it installed, once a build for this Minecraft version exists.
         // runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_neoforge_version}")
@@ -192,6 +192,7 @@ apply from: rootProject.file('gradle/byepregen-worldgen-run-support.gradle')
 apply from: rootProject.file('gradle/byepregen-startup-verification.gradle')
 apply from: rootProject.file('gradle/byepregen-worldgen-smoke.gradle')
 apply from: rootProject.file('gradle/byepregen-light-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-terrablender-verification.gradle')
 
 // GC-free saving is off by default; opt the startup check into it so the NeoForge save gate and the
 // C2ME raw-IO branch are exercised when the optional runtime mods are installed.

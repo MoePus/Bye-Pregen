@@ -99,7 +99,7 @@ mixin/yalight/ThreadedLevelLightEngineYAMixin.java:109/123/195、yalight/schedul
 
 ## 4.1 已按本节清单删除的兼容代码
 
-- `worldgen/surface/TerraBlenderCompat.java`、`integration/tectonic/TectonicCompat.java` 及其测试：依赖的 TerraBlender/Tectonic 在 26.3 没有可用工件，且前者还引用 26.3 已删除的旧 surface 编译类型。等工件可用时按新 API 重写，而不是恢复旧文件。
+- `worldgen/surface/TerraBlenderCompat.java` 已按 TerraBlender 26.3.0.0.9 的 `MaterialRule` API 重写：保留原生 namespace 分发、空结果回退、规则 identity 绑定复用、possible-biome 裁剪和惰性条件守卫，只在原生编译器的材质子树绑定入口优化。旧 `SurfaceRules` 适配及旧 surface harness 不恢复；双加载器使用新的 `testTerraBlenderRuntime` 验证。NeoForge 同步更新至 26.3.0.94，旧 26.3.0.4-beta 缺少新版 TerraBlender 使用的 `NewDatapackRegistryEvent`。
 - `common/src/test/java/.../api/dfc/ColumnDensityFunctionRegistryTest.java`：被测的 `ColumnDensityFunctionRegistry` 已随旧 density-column 设计删除。
 
 ## 4.2 仍在磁盘、但当前**无法编译**的文件（W16 的对象）

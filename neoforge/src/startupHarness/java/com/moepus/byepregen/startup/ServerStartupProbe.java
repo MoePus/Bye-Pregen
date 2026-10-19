@@ -23,6 +23,9 @@ public final class ServerStartupProbe {
             );
 
     public ServerStartupProbe(IEventBus modEventBus) {
+        if (System.getProperty("byepregen.terraBlenderHarness.result") != null) {
+            com.moepus.byepregen.harness.terrablender.TerraBlenderSurfaceChecks.registerRules();
+        }
         DynamicLightTestBlock.register(modEventBus, MOD_ID);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
     }
@@ -33,6 +36,10 @@ public final class ServerStartupProbe {
     }
 
     private static void finish(MinecraftServer server) {
+        if (System.getProperty("byepregen.terraBlenderHarness.result") != null) {
+            com.moepus.byepregen.harness.terrablender.TerraBlenderSurfaceChecks.run(server);
+            return;
+        }
         HarnessServerLifecycle.execute(server, FAILURE, () -> {
             StartupResult.pass("server", "levels=" + server.getAllLevels().spliterator().getExactSizeIfKnown());
             LOGGER.info("BYEPREGEN_STARTUP_SERVER_PASS");

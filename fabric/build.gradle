@@ -38,6 +38,7 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabric_api_version}")
     compileOnly("maven.modrinth:tectonic:${tectonic_fabric_version}")
+    compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}") { transitive = false }
     implementation("org.mixinlite:mixinlite:${mixinlite_version}")
     include("org.mixinlite:mixinlite:${mixinlite_version}")
 
@@ -54,7 +55,8 @@ dependencies {
         // Sodium and Lithium no longer remove the palette lock behind our back: the palette-lock option
         // covers the no-Lithium case and Lithium's own chunk.no_locking wins when it is installed.
         runtimeOnly("maven.modrinth:sodium:${sodium_fabric_version}")
-        // TODO(26.3): Restore FastNoise and TerraBlender compatibility when they update.
+        runtimeOnly("maven.modrinth:terrablender:${terrablender_fabric_version}") { transitive = false }
+        // TODO(26.3): Restore FastNoise compatibility when it updates.
         // FastNoise is runtime-only here (never a compile input): enable this line to run the runtime
         // checks with it installed, once a build for this Minecraft version exists.
         // runtimeOnly("maven.modrinth:zfastnoise:${zfastnoise_fabric_version}")
@@ -201,3 +203,4 @@ apply from: rootProject.file('gradle/byepregen-harness-verification.gradle')
 apply from: rootProject.file('gradle/byepregen-feature-verification.gradle')
 apply from: rootProject.file('gradle/byepregen-dfc-verification.gradle')
 apply from: rootProject.file('gradle/byepregen-worldgen-verification.gradle')
+apply from: rootProject.file('gradle/byepregen-terrablender-verification.gradle')

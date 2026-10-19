@@ -6,7 +6,11 @@
 
 目标版本为 Minecraft 26.3。工作范围包括 Arena 的方块存储、terrain 批量填充、必要高度图和保存加载，DFC 的 float 密度编译，Features 的放置调度、placement、方块谓词、Disk 和树木集合优化，以及 Climate R-tree 查询、表面 biome 缓存、材质规则编译和生成后处理。
 
-YA 光照、GC-free 区块保存与原始 I/O 已迁移完成，Fabric 与 NeoForge 两侧都有运行验证。专用 biome 列填充不迁移：26.3 的 biome 步骤在 `ChunkGenerator.doCreateBiomes` 里用 `RandomState.createClimateSampler` + `BiomeSource.createResolverForChunk` 完成（后者本身就是按块的六条气候根预采样），全程不再创建 `NoiseChunk`，`LevelChunkSection.fillBiomesFromNoise` 也已覆盖旧实现手写的调色板填充；对应 26.2 文件保留在盘上但未进编译集。第三方模组兼容（Tectonic/FastNoise/Voxy/TerraBlender）与 surface 测试/基准 harness 不属于当前范围。未迁移模块通过构建和 mixin 注册边界停用，恢复位置标注 TODO。
+YA 光照、GC-free 区块保存与原始 I/O 已迁移完成，Fabric 与 NeoForge 两侧都有运行验证。专用 biome 列填充不迁移：26.3 的 biome 步骤在 `ChunkGenerator.doCreateBiomes` 里用 `RandomState.createClimateSampler` + `BiomeSource.createResolverForChunk` 完成（后者本身就是按块的六条气候根预采样），全程不再创建 `NoiseChunk`，`LevelChunkSection.fillBiomesFromNoise` 也已覆盖旧实现手写的调色板填充；对应 26.2 文件保留在盘上但未进编译集。第三方模组兼容（Tectonic/FastNoise/Voxy）与旧 surface 测试/基准 harness 不属于当前范围。未迁移模块通过构建和 mixin 注册边界停用，恢复位置标注 TODO。
+
+TerraBlender 26.3.0.0.9 已适配 Fabric、NeoForge；仍为可选依赖，不随模组打包。保留原生 namespace 分发、规则 identity 绑定复用、possible-biome 裁剪和惰性条件守卫，仅在原生编译器的材质子树绑定入口接入模板缓存，不接管其 biome region 逻辑。TerraBlender 存在时继续禁用不兼容的 climate 深度列缓存。NeoForge 默认版本更新至 26.3.0.94。
+
+运行验证：`./gradlew :fabric:testTerraBlenderRuntime :neoforge:testTerraBlenderRuntime --offline --no-parallel -PbyepregenTerraBlenderRoot=F:/.codex-tmp/byepregen-terrablender`。任务只为专用运行加载对应 TerraBlender，注册测试 namespace 规则，检查分发/回退、共享子规则的绑定次数与状态、跨 context 隔离、条件守卫、真实材质规则对拍和三个维度的区块生成。`verifyTerraBlenderRuntimeIsolation` 同时检查普通运行的 classpath 未被污染；可与 `:fabric:testWorldgenRuntime`、`:neoforge:startupCheck` 在同一次 Gradle 调用中运行。省略路径参数时使用根项目的 `build/terrablender-verification/`；两个加载器分别使用独立子目录。Fabric 的普通 worldgen 验证目录可用 `-PbyepregenWorldgenRoot=...` 指定。
 
 已经回到 26.3 的 26.2 能力（此前被停用或删掉）：palette 锁移除（`worldgen.misc.palette-lock` 再次生效，Lithium 存在时由其接管）、世界生成期的树叶邻居更新跳过（新开关 `worldgen.misc.leaf-worldgen-tick`）、后处理排序+去重、`MatchingBlocksPredicate` 的单/双方块展开、C2ME 的 chunk-status 预归一化钩子、YA 光的手写 halo/任务队列容器、DFC 的列分析、优化 pass 与 spline 专用字节码生成以及 surface 条件内联（`worldgen/material/ConditionPlan` + `MaterialBindings`，7 类条件进生成代码、bandlands 直连 `context.getBand`、无可达 CEILING 检查时用 `@ModifyConstant` 缩短列扫描）。
 

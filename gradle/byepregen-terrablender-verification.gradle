@@ -1,0 +1,94 @@
+def terraBlenderRuntime = configurations.create('terraBlenderVerificationRuntime') {
+    canBeConsumed = false
+    canBeResolved = true
+    transitive = false
+}
+dependencies.add(terraBlenderRuntime.name, "maven.modrinth:terrablender:${project.name == 'fabric'
+        ? terrablender_fabric_version : terrablender_neoforge_version}")
+
+def verificationRoot = file(providers.gradleProperty('byepregenTerraBlenderRoot')
+        .orElse(rootProject.layout.buildDirectory.dir('terrablender-verification').get().asFile.absolutePath).get())
+def root = new File(verificationRoot, project.name)
+def result = new File(root, 'terrablender.result')
+if (project.name == 'fabric') {
+    sourceSets.arenaHarness.java.srcDir(project(':common').file('src/harnessCommon/java'))
+    loom.runs.register('terraBlenderVerification') {
+        server()
+        source(sourceSets.arenaHarness)
+        ideConfigGenerated(false)
+        runDir(root.absolutePath)
+        programArgs('--nogui')
+        vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
+                "-Dbyepregen.terraBlenderHarness.result=${result.absolutePath}")
+    }
+    tasks.named('runTerraBlenderVerification') { classpath(terraBlenderRuntime) }
+} else {
+    sourceSets.create('terraBlenderHarness') {
+        java.setSrcDirs([])
+        resources.setSrcDirs([])
+        runtimeClasspath += sourceSets.startupHarness.output + sourceSets.startupHarness.runtimeClasspath
+        runtimeClasspath += terraBlenderRuntime
+    }
+    neoForge.runs.register('terraBlenderVerification') {
+        server()
+        byepregenUseTestConfig(delegate)
+        sourceSet.set(sourceSets.terraBlenderHarness)
+        loadedMods.set([neoForge.mods.named(project.mod_id).get(),
+                        neoForge.mods.named('byepregen_startup_harness').get()] as Set)
+        gameDirectory = root
+        programArgument '--nogui'
+        systemProperty 'byepregen.terraBlenderHarness.result', result.absolutePath
+    }
+}
+
+def verifyIsolation = tasks.register('verifyTerraBlenderRuntimeIsolation') {
+    group = 'verification'
+    description = 'Checks that the TerraBlender fixture cannot contaminate ordinary run classpaths.'
+    doLast {
+        def containsTerraBlender = { files ->
+            files.files.any { it.name.toLowerCase(Locale.ROOT).startsWith('terrablender-') }
+        }
+        boolean optionalRuntime = providers.gradleProperty('byepregen.enableOptionalRuntime')
+                .map(String::toBoolean).orElse(false).get()
+        if (containsTerraBlender(sourceSets.main.runtimeClasspath) != optionalRuntime) {
+            throw new GradleException('TerraBlender fixture contaminated the main runtime classpath')
+        }
+        def fixtureClasspath = project.name == 'fabric'
+                ? tasks.named('runTerraBlenderVerification').get().classpath
+                : sourceSets.terraBlenderHarness.runtimeClasspath
+        def ordinaryClasspath = project.name == 'fabric'
+                ? tasks.named('runWorldgenVerification').get().classpath
+                : sourceSets.startupHarness.runtimeClasspath
+        if (!containsTerraBlender(fixtureClasspath)
+                || containsTerraBlender(ordinaryClasspath) != optionalRuntime) {
+            throw new GradleException('TerraBlender fixture/ordinary runtime isolation failed')
+        }
+    }
+}
+
+tasks.named('runTerraBlenderVerification') {
+    group = 'verification'
+    dependsOn(verifyIsolation)
+    doFirst {
+        // Use a fresh world without recursively deleting a user-configurable directory.
+        root.mkdirs()
+        delete(result)
+        new File(root, 'eula.txt').setText('eula=true\n', 'UTF-8')
+        new File(root, 'server.properties').setText(
+                "level-name=world-${UUID.randomUUID()}\nlevel-seed=8675309\nonline-mode=false\n" +
+                        'server-port=0\nmax-tick-time=0\nview-distance=2\nsimulation-distance=2\n' +
+                        'spawn-chunk-radius=0\n', 'UTF-8')
+    }
+    doLast {
+        if (!result.isFile() || !result.getText('UTF-8').startsWith('PASS\n')) {
+            throw new GradleException("TerraBlender verification failed: ${result}")
+        }
+        logger.lifecycle(result.getText('UTF-8').trim())
+    }
+}
+
+tasks.register('testTerraBlenderRuntime') {
+    group = 'verification'
+    description = 'Checks native TerraBlender dispatch, compiled branches, lazy guards and live worldgen.'
+    dependsOn('runTerraBlenderVerification')
+}

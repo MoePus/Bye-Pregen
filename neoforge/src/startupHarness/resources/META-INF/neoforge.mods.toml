@@ -8,6 +8,9 @@ version = "1"
 displayName = "ByePregen Startup Harness"
 description = '''Test-only ordinary server and client startup probe.'''
 
+[[mixins]]
+config = "byepregen.startup-harness.mixins.json"
+
 [[dependencies."byepregen_startup_harness"]]
 modId = "byepregen"
 type = "required"

@@ -1,5 +1,6 @@
 package com.moepus.byepregen.worldgen.surface;
 
+import com.moepus.byepregen.integration.runtime.ModEnvironment;
 import java.util.Objects;
 import net.minecraft.world.level.levelgen.material.MaterialRuleContext;
 import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
@@ -62,6 +63,17 @@ public final class SurfaceTemplateCache {
     }
 
     private Entry compile(MaterialRule source) {
+        if (ModEnvironment.isModLoaded("terrablender")) {
+            try {
+                SurfaceCompiledTemplate template = TerraBlenderCompat.compile(source);
+                if (template != null) {
+                    return new Entry(source, template);
+                }
+            } catch (LinkageError | RuntimeException exception) {
+                LOGGER.warn("Cannot compile TerraBlender branches; retaining native dispatch", exception);
+                return new Entry(source, null);
+            }
+        }
         try {
             SurfaceRulePlan plan = SurfaceRuleAnalyzer.analyze(source);
             SurfaceDirectTemplate template = SurfaceScalarAsmCompiler.compile(plan);

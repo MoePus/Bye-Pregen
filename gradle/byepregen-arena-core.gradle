@@ -1,6 +1,6 @@
 // Active modules: Arena, DFC, Features, climate search, surface caching/material compilation,
 // postprocessing, YA light, GC-free raw chunk save/IO and the Tectonic/Voxy save and world-conversion compat.
-// TODO(26.3): Third-party compat (FastNoise/TerraBlender), the density-column biome path
+// TODO(26.3): FastNoise compat, the density-column biome path
 // and the surface test/benchmark source sets stay unbuilt; restore them with their tests after migration.
 def rootPackage = 'com/moepus/byepregen/'
 def arenaMixins = [
@@ -26,6 +26,7 @@ sourceSets.main.java {
     include(rootPackage + 'worldgen/postprocess/**')
     include(rootPackage + 'mixin/surface/MaterialSystemRuleCompilerMixin.java')
     include(rootPackage + 'mixin/surface/MaterialRuleContextAccessMixin.java')
+    include(rootPackage + 'mixin/surface/TerraBlenderMaterialRuleCompilerMixin.java')
     include(rootPackage + 'worldgen/feature/**')
     include(rootPackage + 'mixin/climate/ClimateParameterListSearchMixin.java')
     include(rootPackage + 'mixin/climate/ClimateRTreeSearchMixin.java')

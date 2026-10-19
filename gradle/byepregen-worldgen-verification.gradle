@@ -1,10 +1,10 @@
-def directory = file('run/worldgen-verification')
+def directory = file(providers.gradleProperty('byepregenWorldgenRoot').orElse('run/worldgen-verification').get())
 def result = layout.buildDirectory.file('worldgen-verification/result.txt').get().asFile
 loom.runs.register('worldgenVerification') {
     server()
     source(sourceSets.arenaHarness)
     ideConfigGenerated(false)
-    runDir(project.relativePath(directory))
+    runDir(directory.absolutePath)
     programArgs('--nogui')
     vmArgs('-Xmx2G', '-Dbyepregen.testConfig=true',
             "-Dbyepregen.worldgenHarness.result=${result.absolutePath}")

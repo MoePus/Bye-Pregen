@@ -59,10 +59,11 @@ dependencies {
     compileOnly("maven.modrinth:architectury-api:${architectury_fabric_version}") {
         transitive = false
     }
-    // TODO(26.3): Restore asyncutil and TerraBlender with their compatibility code.
+    // TODO(26.3): Restore asyncutil with its compatibility code.
     // compileOnly('com.ibm.async:asyncutil:0.1.0')
     compileOnly("maven.modrinth:tectonic:${tectonic_neoforge_version}")
-    // compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}")
+    compileOnly("maven.modrinth:terrablender:${terrablender_fabric_version}") { transitive = false }
+    testRuntimeOnly("maven.modrinth:terrablender:${terrablender_fabric_version}") { transitive = false }
     // Voxy has no 26.3 build yet: compile against the 26.2 NeoForge artifact vendored in libs/. The mixin
     // targets Minecraft classes whose shape did not change, so the 26.2 method signatures still line up.
     compileOnly files(rootProject.file('libs/voxy-0.2.15-beta+1.21.1-neoforge.jar'))

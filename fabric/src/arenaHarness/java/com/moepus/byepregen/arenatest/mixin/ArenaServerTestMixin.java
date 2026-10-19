@@ -35,7 +35,9 @@ public abstract class ArenaServerTestMixin {
         if (this.byepregen$tested || ++this.byepregen$ticks < byepregen$startupTicks) return;
         this.byepregen$tested = true;
         MinecraftServer server = (MinecraftServer) (Object) this;
-        if (System.getProperty("byepregen.worldgenHarness.result") != null) {
+        if (System.getProperty("byepregen.terraBlenderHarness.result") != null) {
+            com.moepus.byepregen.harness.terrablender.TerraBlenderSurfaceChecks.run(server);
+        } else if (System.getProperty("byepregen.worldgenHarness.result") != null) {
             com.moepus.byepregen.worldgentest.WorldgenRuntimeVerifier.verify(server);
         } else if (System.getProperty("byepregen.dfcHarness.result") != null) {
             DfcRuntimeVerifier.verify(server);

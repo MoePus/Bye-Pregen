@@ -14,6 +14,7 @@
     "surface.biome.SurfaceSystemBiomeCacheMixin",
     "surface.MaterialSystemRuleCompilerMixin",
     "surface.MaterialRuleContextAccessMixin",
+    "surface.TerraBlenderMaterialRuleCompilerMixin",
     "postprocess.ChunkStatusPostProcessingPreNormMixin",
     "postprocess.LevelChunkPostProcessMixin",
     "postprocess.compat.c2me.C2MEServerBlockTickingMixin"

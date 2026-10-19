@@ -3,6 +3,7 @@
   "id": "byepregen_arena_harness",
   "version": "1.0",
   "environment": "server",
+  "entrypoints": { "main": ["com.moepus.byepregen.arenatest.TerraBlenderHarnessBootstrap"] },
   "mixins": ["byepregen.arena-harness.mixins.json"],
   "depends": { "byepregen": "*" }
 }
