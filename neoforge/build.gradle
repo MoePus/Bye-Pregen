@@ -16,6 +16,7 @@ repositories {
 sourceSets {
     startupHarness {
         java.setSrcDirs(['src/startupHarness/java', project(':common').file('src/harnessCommon/java')])
+        java.srcDir('src/lightHarness/java')
         resources.setSrcDirs(['src/startupHarness/resources'])
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
@@ -38,6 +39,7 @@ sourceSets {
     }
     worldgenHarness {
         java.setSrcDirs(['src/worldgenHarness/java', project(':common').file('src/harnessCommon/java')])
+        java.srcDir('src/lightHarness/java')
         // The density column and climate column probes were written against the removed per-column
         // codegen; the float sampler port replaces them with the Fabric-side DFC verification.
         java.exclude('**/test/DensityColumn*.java')
@@ -131,6 +133,7 @@ neoForge {
 
 def worldgenValidationTasks = [
         'runTestWorldGen', 'runtimeCheck', 'ciCheck',
+        'testYADynamicLight',
         'runArenaPaletteDifferential', 'testArenaPaletteDifferential',
         'runChunkNbtParity', 'testChunkNbtParity',
         'runFastTickRuntime', 'testFastTickRuntime',
@@ -138,6 +141,7 @@ def worldgenValidationTasks = [
 def requestedValidationTasks = gradle.startParameter.taskNames.collect {
     it.tokenize(':').last()
 }
+def dynamicLightValidationRequested = requestedValidationTasks.any { it in ['testYADynamicLight', 'ciCheck'] }
 def worldgenValidationRequested = requestedValidationTasks.any {
     it in worldgenValidationTasks
             || it.startsWith('runLight')
@@ -209,7 +213,8 @@ if (providers.gradleProperty('byepregen.startupServerArena').map(String::toBoole
     }
 }
 // YA light is off by default; the start-up checks can load its mixins, including the client-side ones.
-if (providers.gradleProperty('byepregen.startupYaLight').map(String::toBoolean).orElse(false).get()) {
+if (dynamicLightValidationRequested
+        || providers.gradleProperty('byepregen.startupYaLight').map(String::toBoolean).orElse(false).get()) {
     neoForge.runs.named('startupServer') {
         systemProperty 'byepregen.testConfig.lighting.ya.enabled', 'True'
     }
@@ -231,7 +236,13 @@ def runtimeCheck = tasks.register('runtimeCheck') {
 tasks.register('ciCheck') {
     group = 'verification'
     description = 'Runs production, startup, and runtime verification for continuous integration.'
-    dependsOn(tasks.named('check'), tasks.named('startupCheck'), runtimeCheck)
+    dependsOn(tasks.named('check'), tasks.named('startupCheck'), runtimeCheck, 'testYADynamicLight')
+}
+
+tasks.register('testYADynamicLight') {
+    group = 'verification'
+    description = 'Verifies NeoForge dynamic emission through YA propagation and the real client light helpers.'
+    dependsOn('runLightRestartPrepare', 'runStartupClient')
 }
 
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)

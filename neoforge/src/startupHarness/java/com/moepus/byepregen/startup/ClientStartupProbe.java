@@ -1,10 +1,13 @@
 package com.moepus.byepregen.startup;
 
 import com.mojang.logging.LogUtils;
+import com.moepus.byepregen.config.ConfigManager;
+import com.moepus.byepregen.lighttest.DynamicLightTestBlock;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ErrorScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.ModLoadingIssue;
 import net.neoforged.fml.common.Mod;
@@ -25,7 +28,8 @@ public final class ClientStartupProbe {
     private boolean reportedIssues;
     private int warnings;
 
-    public ClientStartupProbe() {
+    public ClientStartupProbe(IEventBus modEventBus) {
+        DynamicLightTestBlock.register(modEventBus, MOD_ID);
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
     }
 
@@ -75,6 +79,9 @@ public final class ClientStartupProbe {
 
     private void passAndStop(Minecraft minecraft) {
         try {
+            if (ConfigManager.getConfig().lighting().ya().enabled()) {
+                DynamicLightRenderProbe.verify();
+            }
             StartupResult.pass("client", "screen=" + minecraft.gui.screen().getClass().getName()
                     + "\nresourcesLoaded=true\nstableTicks=" + this.stableTicks
                     + "\nloadingErrors=0\nloadingWarnings=" + this.warnings);

@@ -253,6 +253,7 @@ final class LightRestartProbe {
                 YAOpaqueLightDecreaseProbe.verify(this.level);
                 YALightRenderProbe.verify(this.level);
                 YAVirtualLightProbe.verify(this.level);
+                YADynamicLightProbe.verify(this.level);
             }
             LightRestartSnapshot snapshot = LightRestartSnapshot.capture(this.level);
             LightRestartVerifier.verifyRuntimeState(this.level, snapshot.samples());

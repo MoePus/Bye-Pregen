@@ -1,4 +1,4 @@
-def startupRoot = file('run/startup')
+def startupRoot = file(providers.gradleProperty('byepregenStartupRoot').orElse('run/startup').get())
 def serverStartupRoot = file("${startupRoot}/server")
 def clientStartupRoot = file("${startupRoot}/client")
 def serverStartupResult = file("${serverStartupRoot}/startup.result")

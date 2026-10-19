@@ -139,7 +139,7 @@ final class YABlockLightPropagation {
         }
         target.clearNonzeroLight(engine.storage, index);
         if (blocks.isSlow(block)) {
-            int emitted = blocks.toState(block).getLightEmission();
+            int emitted = engine.sourceLight(toPos, block);
             if (emitted > 0) {
                 engine.enqueueIncrease(toPos, emitted, YALightMath.ALL_DIRECTIONS, YALightMath.FLAG_WRITE_LEVEL);
             }

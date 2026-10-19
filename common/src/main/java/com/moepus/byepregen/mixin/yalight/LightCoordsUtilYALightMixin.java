@@ -2,6 +2,7 @@ package com.moepus.byepregen.mixin.yalight;
 
 import com.moepus.byepregen.MixinFeature;
 import com.moepus.byepregen.MixinGate;
+import com.moepus.byepregen.integration.platform.PlatformServices;
 import com.moepus.byepregen.yalight.engine.YABlockStateLightClass;
 import com.moepus.byepregen.yalight.engine.YAChunkRunCache;
 import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
@@ -80,7 +81,7 @@ public abstract class LightCoordsUtilYALightMixin {
         if (state.emissiveRendering()) {
             return 0xF000F0; // FULL_BRIGHT_LIGHT_COLOR
         }
-        return byepregen$applyStateLight(light, state.getLightEmission());
+        return byepregen$applyStateLight(light, PlatformServices.get().lightEmission(state, blockGetter, pos));
     }
 
     @Unique

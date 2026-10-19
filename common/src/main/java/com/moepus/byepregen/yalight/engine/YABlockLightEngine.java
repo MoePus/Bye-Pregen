@@ -1,5 +1,7 @@
 package com.moepus.byepregen.yalight.engine;
 
+import com.moepus.byepregen.integration.platform.PlatformBridge;
+import com.moepus.byepregen.integration.platform.PlatformServices;
 import com.moepus.byepregen.yalight.storage.YAChunkLightData;
 import com.moepus.byepregen.yalight.storage.YALightStorage;
 import com.moepus.byepregen.yalight.storage.YANibbleArray;
@@ -8,6 +10,7 @@ import com.moepus.byepregen.yalight.storage.YAVisibleLightReader;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
@@ -25,10 +28,14 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     private final YADLongQueue decreaseQueue = new YADLongQueue();
     private final YADLongQueue increaseQueue = new YADLongQueue();
     private final YALightBlockAccess blocks;
+    private final PlatformBridge platform = PlatformServices.get();
+    private final BlockGetter levelReader;
+    private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
 
     public YABlockLightEngine(LightChunkGetter chunkGetter) {
         super(chunkGetter, null);
         this.chunkGetter = chunkGetter;
+        this.levelReader = chunkGetter.getLevel();
         this.runCache = new YAChunkRunCache(chunkGetter);
         this.storage = new YALightStorage(chunkGetter, chunkGetter.getLevel(), LightLayer.BLOCK);
         this.blocks = new YALightBlockAccess(this.runCache, chunkGetter);
@@ -80,7 +87,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
             return 0;
         }
         BlockState state = this.blocks.toState(block);
-        return state.getLightEmission();
+        return this.platform.lightEmission(state, this.levelReader, this.mutablePos.set(pos));
     }
 
     @Override
@@ -166,12 +173,8 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
         }
 
         int block = this.blocks.blockAt(x, y, z);
-        int emitted = 0;
         // Fast classes are guaranteed non-emissive; only slow blocks need a BlockState source query.
-        if (this.blocks.isSlow(block)) {
-            BlockState state = this.blocks.toState(block);
-            emitted = state.getLightEmission();
-        }
+        int emitted = this.sourceLight(pos, block);
         int current = this.getCachedUpdatingLight(x, y, z);
         if (current > emitted) {
             this.setCachedUpdatingLight(x, y, z, 0);
@@ -187,7 +190,7 @@ public final class YABlockLightEngine extends BlockLightEngine implements YALigh
     @Override
     public void propagateLightSourcesInternal(ChunkAccess chunk, boolean fresh) {
         chunk.findBlockLightSources((pos, state) -> {
-            int emitted = state.getLightEmission();
+            int emitted = this.platform.lightEmission(state, this.levelReader, pos);
             if (emitted <= 0) {
                 return;
             }

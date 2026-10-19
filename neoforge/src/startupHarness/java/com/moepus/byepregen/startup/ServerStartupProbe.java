@@ -1,9 +1,11 @@
 package com.moepus.byepregen.startup;
 
 import com.moepus.byepregen.harness.HarnessServerLifecycle;
+import com.moepus.byepregen.lighttest.DynamicLightTestBlock;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -20,7 +22,8 @@ public final class ServerStartupProbe {
                     "BYEPREGEN_STARTUP_FAIL server"
             );
 
-    public ServerStartupProbe() {
+    public ServerStartupProbe(IEventBus modEventBus) {
+        DynamicLightTestBlock.register(modEventBus, MOD_ID);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
     }
 

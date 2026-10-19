@@ -3,6 +3,9 @@ package com.moepus.byepregen.integration.neoforge;
 import com.moepus.byepregen.integration.platform.PlatformBridge;
 import java.nio.file.Path;
 import java.util.Objects;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.fml.loading.LoadingModList;
 import net.neoforged.fml.loading.moddiscovery.ModFileInfo;
@@ -34,6 +37,16 @@ public final class NeoForgePlatformBridge implements PlatformBridge {
     @Override
     public boolean canUseGcFreeRawChunkSave() {
         return NeoForgeChunkSaveHookGate.canUseRawSave();
+    }
+
+    @Override
+    public boolean hasDynamicLightEmission(BlockState state) {
+        return state.hasDynamicLightEmission();
+    }
+
+    @Override
+    public int lightEmission(BlockState state, BlockGetter world, BlockPos pos) {
+        return state.getLightEmission(world, pos);
     }
 
     @Override
