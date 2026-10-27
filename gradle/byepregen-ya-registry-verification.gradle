@@ -1,0 +1,41 @@
+def registryProbeRoot = file(byepregenProp('byepregenYARegistryProbeDir', 'run/ya-registry-remap'))
+def registryProbeResult = new File(registryProbeRoot, 'startup.result')
+
+neoForge {
+    runs {
+        yaRegistryRemap {
+            server()
+            byepregenUseTestConfig(delegate, [lighting: [ya: [enabled: true]]])
+            sourceSet.set(sourceSets.startupHarness)
+            loadedMods.set([
+                    neoForge.mods.named(project.mod_id).get(),
+                    neoForge.mods.named('byepregen_startup_harness').get(),
+            ] as Set)
+            gameDirectory = registryProbeRoot
+            programArgument '--nogui'
+            systemProperty 'byepregen.testYALightRegistryRemap', 'true'
+            systemProperty 'byepregen.startupResult', registryProbeResult.absolutePath
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+}
+
+tasks.named('runYaRegistryRemap') {
+    group = 'verification'
+    description = 'Verifies YA raw-ID classifications through NeoForge registry clear, snapshot sync, and restore.'
+    notCompatibleWithConfigurationCache('Prepares and validates a disposable registry regression server')
+    doFirst {
+        delete(registryProbeResult)
+        prepareDisposableServer([
+                directory: registryProbeRoot,
+                serverProperties: ['online-mode': false, 'max-tick-time': 0],
+        ])
+    }
+    doLast {
+        byepregenAssertPassResult(registryProbeResult, 'YA registry remap startup')
+        File log = new File(registryProbeRoot, 'logs/latest.log')
+        if (!log.getText('UTF-8').contains('YA_REGISTRY_REMAP_PASS')) {
+            throw new GradleException('YA registry remap probe did not complete')
+        }
+    }
+}

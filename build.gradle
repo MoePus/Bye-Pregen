@@ -127,6 +127,7 @@ neoForge {
 }
 
 apply from: 'gradle/byepregen-startup-verification.gradle'
+apply from: 'gradle/byepregen-ya-registry-verification.gradle'
 apply from: 'gradle/byepregen-packaged-surface-linkage.gradle'
 apply from: 'gradle/byepregen-worldgen-smoke.gradle'
 apply from: 'gradle/byepregen-light-verification.gradle'

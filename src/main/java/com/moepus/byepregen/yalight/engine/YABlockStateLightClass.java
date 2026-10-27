@@ -1,10 +1,11 @@
 package com.moepus.byepregen.yalight.engine;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.BlockGetter;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.registries.callback.BakeCallback;
 
 public final class YABlockStateLightClass {
     public static final int CLEAR = 0;
@@ -15,24 +16,30 @@ public final class YABlockStateLightClass {
     private static final int VALUES_PER_WORD = 16;
     private static final int BITS_PER_VALUE = 2;
     private static final int VALUE_MASK = 3;
-    private static final int[] PACKED = buildPackedTable();
+    private static volatile int[] packed = buildPackedTable();
+
+    static {
+        // NeoForge's earlier BlockCallbacks rebuilds BLOCK_STATE_REGISTRY before this callback.
+        BuiltInRegistries.BLOCK.addCallback((BakeCallback<Block>)registry -> packed = buildPackedTable());
+    }
 
     private YABlockStateLightClass() {
     }
 
     public static void initialize() {
-        // The static call is intentional: class initialization builds PACKED at a known lifecycle point.
+        // Initialize the table and register its bake callback once, at load-complete.
     }
 
     public static int fromRawId(int rawId) {
         if (rawId < 0 || rawId >= Block.BLOCK_STATE_REGISTRY.size()) {
             return SLOW;
         }
+        int[] table = packed;
         int wordIndex = rawId / VALUES_PER_WORD;
-        if (wordIndex >= PACKED.length) {
+        if (wordIndex >= table.length) {
             return SLOW;
         }
-        int word = PACKED[wordIndex];
+        int word = table[wordIndex];
         int shift = (rawId % VALUES_PER_WORD) * BITS_PER_VALUE;
         return (word >>> shift) & VALUE_MASK;
     }
