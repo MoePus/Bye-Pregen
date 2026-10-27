@@ -34,7 +34,7 @@ public abstract class ClientPacketListenerYALightMixin {
      * @reason Feed packet light bytes directly into YA light storage without constructing vanilla DataLayer objects.
      */
     @Overwrite
-    private void readSectionList(
+    public void readSectionList(
             int chunkX,
             int chunkZ,
             LevelLightEngine lightEngine,

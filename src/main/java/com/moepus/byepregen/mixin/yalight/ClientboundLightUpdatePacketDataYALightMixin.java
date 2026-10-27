@@ -25,7 +25,7 @@ public abstract class ClientboundLightUpdatePacketDataYALightMixin {
      * @reason Write packet light bytes directly from YA light storage without materializing vanilla DataLayer objects.
      */
     @Overwrite
-    private void prepareSectionData(
+    public void prepareSectionData(
             ChunkPos chunkPos,
             LevelLightEngine lightEngine,
             LightLayer layer,

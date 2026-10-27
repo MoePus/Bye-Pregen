@@ -46,7 +46,7 @@ public abstract class MatchingBlocksPredicateMixin {
      * @reason Avoid HolderSet/Holder indirection in hot worldgen block predicate checks.
      */
     @Overwrite
-    protected boolean test(BlockState state) {
+    public boolean test(BlockState state) {
         Block[] fastBlocks = this.byepregen$fastBlocks;
         if (fastBlocks != null) {
             Block block = state.getBlock();

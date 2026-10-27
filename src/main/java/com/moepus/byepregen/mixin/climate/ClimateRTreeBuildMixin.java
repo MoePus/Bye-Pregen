@@ -13,7 +13,7 @@ public abstract class ClimateRTreeBuildMixin {
      * @reason Evaluate split candidates without constructing discarded temporary subtrees.
      */
     @Overwrite
-    private static <T> Climate.RTree.Node<T> build(
+    public static <T> Climate.RTree.Node<T> build(
             final int parameterCount,
             final List<? extends Climate.RTree.Node<T>> children
     ) {
@@ -25,7 +25,7 @@ public abstract class ClimateRTreeBuildMixin {
      * @reason Aggregate primitive bounds before allocating the final seven parameters.
      */
     @Overwrite
-    static <T> List<Climate.Parameter> buildParameterSpace(
+    public static <T> List<Climate.Parameter> buildParameterSpace(
             final List<? extends Climate.RTree.Node<T>> children
     ) {
         return ClimateRTreeBuildOptimizer.buildParameterSpace(children);
