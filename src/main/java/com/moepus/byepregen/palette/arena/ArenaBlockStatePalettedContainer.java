@@ -76,9 +76,7 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
     @Override
     public @NotNull BlockState getAndSetUnchecked(int x, int y, int z, @NotNull BlockState state) {
         int index = localIndex(x, y, z);
-        BlockState oldState = this.get(index);
-        this.setRawId(index, rawId(state));
-        return oldState;
+        return Block.stateById(this.storage.setRawId(index, rawId(state)));
     }
 
     @Override

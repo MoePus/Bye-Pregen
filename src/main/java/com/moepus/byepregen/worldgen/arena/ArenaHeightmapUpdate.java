@@ -12,7 +12,7 @@ public final class ArenaHeightmapUpdate {
             BlockState state,
             int heightComparison
     ) {
-        return isNeeded(type.isOpaque().test(state), heightComparison);
+        return heightComparison >= 0 && isNeeded(type.isOpaque().test(state), heightComparison);
     }
 
     public static boolean isNeeded(boolean opaque, int heightComparison) {

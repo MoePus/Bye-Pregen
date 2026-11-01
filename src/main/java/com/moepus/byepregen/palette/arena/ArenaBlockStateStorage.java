@@ -82,17 +82,16 @@ final class ArenaBlockStateStorage {
                 pageArena, base, localPaletteIndex(pageArena, base, local));
     }
 
-    void setRawId(int index, int rawId) {
+    int setRawId(int index, int rawId) {
         int[] dense = this.denseIds;
         if (dense != null) {
-            this.writeDense(index, rawId, dense);
-            return;
+            return this.writeDense(index, rawId, dense);
         }
 
         int[] pageArena = this.arena;
         if (pageArena == null) {
             if (rawId == this.uniformRawId) {
-                return;
+                return this.uniformRawId;
             }
             pageArena = this.ensureArena();
         }
@@ -103,7 +102,7 @@ final class ArenaBlockStateStorage {
         int oldPaletteIndex = localPaletteIndex(pageArena, base, local);
         int oldRawId = ArenaPaletteConversions.rawIdForPaletteIndex(pageArena, base, oldPaletteIndex);
         if (oldRawId == rawId) {
-            return;
+            return oldRawId;
         }
 
         int paletteIndex = ArenaPaletteConversions.findPaletteIndex(pageArena, base, rawId);
@@ -112,14 +111,15 @@ final class ArenaBlockStateStorage {
         }
         if (paletteIndex < 0 && ArenaPaletteConversions.tryReuseDeadSlot(
                 pageArena, base, local, oldPaletteIndex, rawId)) {
-            return;
+            return oldRawId;
         }
         if (paletteIndex < 0) {
             this.promoteToDense();
             UnsafeIntArrayAccess.set(this.denseIds, index, rawId);
-            return;
+            return oldRawId;
         }
         setLocalPaletteIndex(pageArena, base, local, paletteIndex);
+        return oldRawId;
     }
 
     void batchWriteRawId(int page, int pageLocalIndex, int rawId, int airRawId) {
@@ -239,15 +239,15 @@ final class ArenaBlockStateStorage {
         return this.arena == null && rawId == this.uniformRawId;
     }
 
-    private void writeDense(int index, int rawId, int[] dense) {
+    private int writeDense(int index, int rawId, int[] dense) {
         int oldRawId = UnsafeIntArrayAccess.get(dense, index);
         if (oldRawId == rawId) {
-            return;
+            return oldRawId;
         }
         UnsafeIntArrayAccess.set(dense, index, rawId);
         Int2IntOpenHashMap counts = this.denseRawIdCounts;
         if (counts == null) {
-            return;
+            return oldRawId;
         }
         int oldCount = counts.get(oldRawId);
         if (oldCount <= 1) {
@@ -256,5 +256,6 @@ final class ArenaBlockStateStorage {
             counts.put(oldRawId, oldCount - 1);
         }
         counts.addTo(rawId, 1);
+        return oldRawId;
     }
 }
