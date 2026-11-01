@@ -12,9 +12,10 @@ import java.lang.ref.Cleaner;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import net.minecraft.nbt.Tag;
+import com.moepus.byepregen.api.chunksave.ChunkSaveWriter;
 import sun.misc.Unsafe;
 
-public final class NbtWriter implements DataOutput {
+public final class NbtWriter implements DataOutput, ChunkSaveWriter {
     private static final int DEFAULT_CAPACITY = 64 * 1024;
     private static final int GROWTH_FACTOR = 2;
     private static final Unsafe UNSAFE = loadUnsafe();
