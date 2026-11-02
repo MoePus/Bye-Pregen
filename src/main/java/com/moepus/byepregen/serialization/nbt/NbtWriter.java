@@ -2,6 +2,7 @@ package com.moepus.byepregen.serialization.nbt;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
+import com.moepus.byepregen.api.chunksave.ChunkSaveWriter;
 import it.unimi.dsi.fastutil.longs.LongCollection;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import java.io.DataOutput;
@@ -11,8 +12,8 @@ import java.lang.reflect.Field;
 import java.lang.ref.Cleaner;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Objects;
 import net.minecraft.nbt.Tag;
-import com.moepus.byepregen.api.chunksave.ChunkSaveWriter;
 import sun.misc.Unsafe;
 
 public final class NbtWriter implements DataOutput, ChunkSaveWriter {
@@ -153,6 +154,10 @@ public final class NbtWriter implements DataOutput, ChunkSaveWriter {
     }
 
     public void putTag(byte[] name, Tag tag) {
+        Objects.requireNonNull(tag, "tag");
+        if (tag.getId() == Tag.TAG_END) {
+            throw new IllegalArgumentException("TAG_End cannot be written as a named tag");
+        }
         this.writeNamedType(tag.getId(), name);
         this.writeTagPayload(tag);
     }
@@ -285,13 +290,7 @@ public final class NbtWriter implements DataOutput, ChunkSaveWriter {
     }
 
     public static byte[] asciiName(String value) {
-        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-        for (byte b : bytes) {
-            if (b <= 0) {
-                throw new IllegalArgumentException("NBT name is not ascii-safe: " + value);
-            }
-        }
-        return wrapUtfBytes(bytes);
+        return ChunkSaveWriter.name(value);
     }
 
     public static byte[] stringBytes(String value) {
@@ -395,14 +394,6 @@ public final class NbtWriter implements DataOutput, ChunkSaveWriter {
             bytes[index++] = (byte) (128 | (c & 63));
         }
         return index;
-    }
-
-    private static byte[] wrapUtfBytes(byte[] bytes) {
-        byte[] wrapped = new byte[bytes.length + 2];
-        wrapped[0] = (byte) (bytes.length >>> 8);
-        wrapped[1] = (byte) bytes.length;
-        System.arraycopy(bytes, 0, wrapped, 2, bytes.length);
-        return wrapped;
     }
 
     private static Unsafe loadUnsafe() {

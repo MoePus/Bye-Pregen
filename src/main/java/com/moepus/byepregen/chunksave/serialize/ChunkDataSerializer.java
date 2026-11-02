@@ -2,8 +2,8 @@ package com.moepus.byepregen.chunksave.serialize;
 
 /* Adapted from C2ME's GC-free chunk serializer. MIT License, copyright (c) 2021-2024 ishland. */
 
-import com.moepus.byepregen.integration.tectonic.TectonicCompat;
 import com.moepus.byepregen.api.chunksave.ChunkSaveHandlerRegistry;
+import com.moepus.byepregen.integration.tectonic.TectonicCompat;
 import com.moepus.byepregen.serialization.nbt.NbtWriter;
 import com.moepus.byepregen.yalight.access.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.storage.YALightSaveSnapshot;
@@ -53,6 +53,7 @@ public final class ChunkDataSerializer {
         ChunkAttachmentWriter.write(writer, level, chunk);
         ChunkStructureDataWriter.write(writer, level, pos, chunk);
         TectonicCompat.writeChunkData(writer);
+        // Raw path only; ChunkSaveHandlerRegistry.isActive() reports whether handlers run.
         ChunkSaveHandlerRegistry.write(level, chunk, writer);
     }
 
