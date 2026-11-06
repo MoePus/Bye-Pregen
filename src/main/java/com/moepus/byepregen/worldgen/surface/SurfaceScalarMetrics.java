@@ -3,6 +3,7 @@ package com.moepus.byepregen.worldgen.surface;
 import java.util.concurrent.atomic.LongAdder;
 
 public final class SurfaceScalarMetrics {
+    private static final boolean ENABLED = Boolean.getBoolean("byepregen.surface.metrics");
     private static final LongAdder COMPILED = new LongAdder();
     private static final LongAdder REJECTED = new LongAdder();
     private static final LongAdder BINDINGS = new LongAdder();
@@ -15,21 +16,23 @@ public final class SurfaceScalarMetrics {
     }
 
     static void compiled(SurfaceDirectTemplate.Statistics statistics) {
+        if (!ENABLED) return;
         COMPILED.increment();
         latest = statistics;
     }
 
     static void rejected() {
-        REJECTED.increment();
+        if (ENABLED) REJECTED.increment();
     }
 
     static void binding(SurfaceDirectTemplate.Statistics statistics) {
+        if (!ENABLED) return;
         BINDINGS.increment();
         latest = statistics;
     }
 
     static void bindFailure() {
-        BIND_FAILURES.increment();
+        if (ENABLED) BIND_FAILURES.increment();
     }
 
     static void outputComparison() {

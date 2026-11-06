@@ -179,6 +179,7 @@ neoForge {
                     surfaceBiomeCache: worldGenConfig.surfaceBiomeCache,
                     surfaceScalar: worldGenConfig.surfaceScalar,
                     surfaceOutputDifferential: worldGenConfig.surfaceOutputDifferential,
+                    surfaceMetrics: 'true',
                     surfaceBiomeProfile: worldGenConfig.surfaceBiomeProfile,
                     verifyDfcColumn: worldGenConfig.verifyDfcColumn,
                     enablePlacedFeatureMixin: worldGenConfig.enablePlacedFeatureMixin,

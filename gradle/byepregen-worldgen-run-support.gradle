@@ -116,6 +116,7 @@ ext.byepregenConfigureWorldgenRun = { run, Map options ->
             'byepregen.surfaceOutputDifferential',
             options.surfaceOutputDifferential ?: 'false'
     )
+    run.systemProperty('byepregen.surface.metrics', options.surfaceMetrics ?: 'false')
     run.systemProperty('byepregen.surfaceBiomeCacheProfile', options.surfaceBiomeProfile ?: 'false')
     run.systemProperty('byepregen.verifyDfcColumn', options.verifyDfcColumn ?: 'false')
     run.systemProperty('neoforge.enabledGameTestNamespaces', project.mod_id)
