@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import org.slf4j.Logger;
 
@@ -85,6 +86,31 @@ public final class ConfigLoader {
             }
         });
         return read(option -> values.getOrDefault(option, BooleanSetting.DEFAULT));
+    }
+
+    static Config applyConflicts(Config loaded, Map<String, Set<String>> conflicts) {
+        if (conflicts.isEmpty()) {
+            return loaded;
+        }
+        CommentedConfig effective = document(loaded);
+        conflicts.forEach((path, modIds) -> {
+            ConfigOption option;
+            try {
+                option = ConfigOption.fromPath(path);
+            } catch (IllegalArgumentException exception) {
+                LOGGER.warn("Ignoring unknown ByePregen conflict option {} declared by mods {}", path, modIds);
+                return;
+            }
+            BooleanSetting setting = settingValue(effective, option);
+            if (setting == BooleanSetting.DEFAULT) {
+                effective.set(path, BooleanSetting.FALSE.serializedValue());
+                LOGGER.info("Disabled ByePregen option {} due to conflicts declared by mods {}", path, modIds);
+            } else {
+                LOGGER.info("Keeping explicit ByePregen option {}={} despite conflicts declared by mods {}",
+                        path, setting.serializedValue(), modIds);
+            }
+        });
+        return read(effective);
     }
 
     private static Config read(Function<ConfigOption, BooleanSetting> source) {
