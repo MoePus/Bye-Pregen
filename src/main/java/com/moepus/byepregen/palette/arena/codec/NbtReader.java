@@ -23,6 +23,9 @@ public final class NbtReader {
     }
 
     public static ArenaBlockStatePalettedContainer read(CompoundTag blockStatesTag) {
+        if (blockStatesTag instanceof ByteStreamTag byteStreamTag) {
+            blockStatesTag = byteStreamTag.materializedCopy();
+        }
         int[] paletteRawIds = readPaletteRawIds(blockStatesTag.getList(PALETTE, Tag.TAG_COMPOUND));
         if (paletteRawIds == null) {
             return null;
