@@ -64,6 +64,18 @@ public final class ByteStreamTag extends CompoundTag {
         return new ByteStreamTag(this.payload);
     }
 
+    /**
+     * Parses the payload into a plain CompoundTag without tripping the lazy write
+     * state, for read paths that receive a pending in-memory tag (e.g. a chunk
+     * load served from IOWorker's pending writes).
+     */
+    public CompoundTag materializedCopy() {
+        if (!this.tags.canWritePayload()) {
+            return this;
+        }
+        return readRootTag(this.payload);
+    }
+
     @Override
     public byte getTagType(String key) {
         if (this.tags.canWritePayload()) {
@@ -166,19 +178,23 @@ public final class ByteStreamTag extends CompoundTag {
         }
 
         private static Map<String, Tag> readPayload(byte[] payload) {
-            byte[] root = new byte[payload.length + ROOT_HEADER_SIZE];
-            root[0] = Tag.TAG_COMPOUND;
-            System.arraycopy(payload, 0, root, ROOT_HEADER_SIZE, payload.length);
-            try {
-                CompoundTag tag = NbtIo.read(new DataInputStream(new ByteArrayInputStream(root)));
-                Map<String, Tag> map = new HashMap<>(tag.size());
-                for (String key : tag.getAllKeys()) {
-                    map.put(key, tag.get(key));
-                }
-                return map;
-            } catch (IOException exception) {
-                throw new IllegalStateException("Failed to materialize arena block state payload", exception);
+            CompoundTag tag = readRootTag(payload);
+            Map<String, Tag> map = new HashMap<>(tag.size());
+            for (String key : tag.getAllKeys()) {
+                map.put(key, tag.get(key));
             }
+            return map;
+        }
+    }
+
+    private static CompoundTag readRootTag(byte[] payload) {
+        byte[] root = new byte[payload.length + ROOT_HEADER_SIZE];
+        root[0] = Tag.TAG_COMPOUND;
+        System.arraycopy(payload, 0, root, ROOT_HEADER_SIZE, payload.length);
+        try {
+            return NbtIo.read(new DataInputStream(new ByteArrayInputStream(root)));
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to materialize arena block state payload", exception);
         }
     }
 
